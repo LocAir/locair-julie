@@ -5,33 +5,33 @@
      de retrait : pas de frais de livraison, il ne paie que la location.
 
      LE PARCOURS (une action par écran) :
-       Ville → Point (carte) → Dates (calendrier façon Airbnb : retrait
-       puis retour, jours de fermeture barrés) → Vos infos → C'est noté
-     - Le titre reprend les mots de l'annonce, la première action (ville ou
-       « point le plus proche ») est visible sans défiler.
-     - Un résumé (point · durée · prix) suit le client d'écran en écran.
-     - « Vos infos » : 2 champs (prénom, téléphone). La demande part par
-       email au propriétaire (api/click-collect.js), qui rappelle. WhatsApp
-       et l'appel restent proposés pour qui préfère.
-     - Chaque ligne du récapitulatif a « Modifier » : on corrige et on
-       revient directement au récapitulatif.
+       Ville → Point (carte) → Dates (calendrier façon Airbnb) → Infos →
+       Paiement (Stripe) → C'est réservé
+     - Chaque étape est une entrée de l'historique : le bouton « retour »
+       du téléphone recule d'une étape. L'avancement est gardé dans
+       sessionStorage (rechargement, aller-retour WhatsApp, 3-D Secure).
+     - Les points de retrait viennent de /api/points-retrait (liste unique :
+       api/_lib/pointsRetrait.js). Point « exemple » = paiement refusé,
+       le client est envoyé sur WhatsApp.
+     - Paiement : api/checkout-click-collect.js (même mécanique que
+       checkout.js : PaymentIntent + réservation « en_attente » confirmée
+       par webhook.js, qui envoie un SMS et un email « retrait »).
 
      LA CARTE : MapLibre (unpkg) + fond OpenFreeMap (gratuit, sans clé,
-     usage commercial permis). Chargée seulement à l'écran « Point ».
-     vercel.json l'autorise : connect-src tiles.openfreemap.org et
-     worker-src blob:. Si elle ne charge pas, la liste suffit.
+     usage commercial permis). vercel.json l'autorise : connect-src
+     tiles.openfreemap.org et worker-src blob:.
 
-     PRIX : lus sur /api/pricing-config (modifiables dans l'admin), avec le
-     barème par défaut en secours (12/10/9/8 €, paliers 7/14/21 jours).
-     Le serveur recalcule toujours le total.
+     PRIX : lus sur /api/pricing-config, barème par défaut en secours. Le
+     serveur recalcule toujours le montant payé.
 
-     MESURE : rien avant l'accord cookies (clé locair_cookie_consent). Évé-
-     nements cc_demande (formulaire envoyé, avec la valeur), cc_whatsapp,
-     cc_appel. Ce n'est PAS la conversion d'achat AW-…/biPu…, réservée au
-     paiement réel.
+     MESURE : rien avant l'accord cookies (clé locair_cookie_consent).
+     Paiement réussi = conversion d'achat Google Ads AW-…/biPu… (montant
+     payé, référence). Événements : cc_vers_paiement, cc_paiement,
+     cc_whatsapp, cc_appel.
 
-     ⚠ POINTS DE RETRAIT = EXEMPLES. Remplir la liste POINTS plus bas
-     (exemple:false quand c'est réel). Page noindex : normal pour une pub.
+     ⚠ POINTS DE RETRAIT = EXEMPLES. Les remplacer dans
+     api/_lib/pointsRetrait.js (exemple:false quand c'est réel : le
+     paiement s'ouvre alors). Page noindex : normal pour une pub.
 ══════════════════════════════════════════════════════════════════════════ -->
 <html lang="fr" dir="ltr" class="nojs">
 <head>
@@ -89,7 +89,7 @@ a{color:var(--vif)}
 .nav-tel svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2}
 
 /* ── PROGRESSION : étapes nommées + résumé qui suit le client ── */
-.suivi{background:var(--paper);border-bottom:1px solid var(--line)}
+.suivi{background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:58px;z-index:25}
 .suivi[hidden]{display:none}
 .suivi .col{padding-block:10px 12px;display:grid;gap:10px}
 .suivi-l{display:flex;align-items:center;gap:10px}
@@ -297,6 +297,48 @@ body.a-cook .barre-dates{bottom:64px}
 .mentions{font-size:12.5px;color:var(--ink-2);text-align:center}
 .msg-erreur{color:var(--erreur);background:var(--erreur-fond)}
 
+/* ── INFOS + PAIEMENT ── */
+.recap-mini{margin-bottom:16px}
+.recap-mini>div{padding:9px 0;font-size:14.5px}
+.recap-mini dt{width:56px}
+.recap-mini .total dd{font-size:22px}
+.recap-mini .total small{font-family:var(--font);font-size:12.5px;font-weight:500;color:var(--ink-2);margin-left:6px}
+.deux{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.deux>div{min-width:0}
+.coche{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--ink-2);line-height:1.45;cursor:pointer}
+.coche input{width:20px;height:20px;flex-shrink:0;margin-top:1px;accent-color:var(--vif)}
+.coche.err span{color:var(--erreur)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.paiement-boite{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-l);padding:16px;margin-bottom:14px;box-shadow:var(--o-1)}
+.charge{font-size:14px;color:var(--ink-2);text-align:center;padding:18px 0}
+.securise{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px}
+.securise svg{width:14px;height:14px;stroke:var(--ink-2);fill:none;stroke-width:2}
+.localiser .rond{width:16px;height:16px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:tourne .8s linear infinite}
+@keyframes tourne{to{transform:rotate(360deg)}}
+.villes .squelette{min-height:48px;border-radius:var(--r-f);background:linear-gradient(90deg,var(--mist),#E9EEF6,var(--mist));background-size:200% 100%;animation:brille 1.2s infinite}
+@keyframes brille{to{background-position:-200% 0}}
+
+/* ── DÉTAILS D'ERGONOMIE ── */
+button,a,.j,.carte,.ville{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+body.en-etape .annonce{display:none}
+.ville .nbp{font-size:11.5px;font-weight:700;color:var(--ink-3);margin-left:4px}
+.ville:hover .nbp{color:var(--vif)}
+.prive{display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:var(--ink-3);margin-top:8px}
+.prive svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2}
+.etapes li.fait{cursor:pointer}
+.etapes li.fait:hover{color:var(--vif)}
+.resume button{font:inherit;font-size:13px;font-weight:700;color:var(--vif-d);background:var(--vif-clair);border:0;border-radius:var(--r-f);padding:3px 10px}
+.resume button:hover{background:#DCE7FB}
+.resume button::after{content:" ✎";font-size:11px;opacity:.6}
+.carte-pts:not(.pret){background:linear-gradient(90deg,#EEF1F5,#E3E9F2,#EEF1F5);background-size:200% 100%;animation:brille 1.2s infinite}
+.mois h3{position:sticky;top:var(--haut-suivi,112px);z-index:2;background:var(--mist);padding:8px 4px;margin:0 0 4px;box-shadow:0 6px 8px -8px rgba(14,23,38,.2)}
+.champ-ok{position:relative}
+.champ-ok .champ{padding-right:40px}
+.champ-ok::after{content:"";position:absolute;right:16px;top:46px;width:16px;height:9px;border-left:2.5px solid var(--ok);border-bottom:2.5px solid var(--ok);transform:rotate(-45deg)}
+.suggere{display:block;margin-top:6px;font-size:13.5px;color:var(--ink-2)}
+.suggere button{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--vif);text-decoration:underline;text-underline-offset:3px}
+.suggere[hidden]{display:none}
+
 /* ── C'EST NOTÉ ── */
 .merci{text-align:center;padding-block:36px 40px}
 .merci-ico{width:72px;height:72px;border-radius:50%;background:var(--ok-fond);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
@@ -337,7 +379,7 @@ body.a-cook{padding-bottom:72px}
     <div class="suivi-l">
       <button type="button" class="retour" id="retour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Retour</button>
       <ol class="etapes" id="etapes" aria-label="Étapes">
-        <li data-e="point">Point</li><li data-e="dates">Dates</li><li data-e="infos">Vos infos</li>
+        <li data-e="point">Point</li><li data-e="dates">Dates</li><li data-e="infos">Infos</li><li data-e="paiement">Paiement</li>
       </ol>
     </div>
     <p class="resume" id="resume" aria-live="polite" hidden></p>
@@ -366,6 +408,7 @@ body.a-cook{padding-bottom:72px}
         <button type="button" class="localiser" id="localiser">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="4"/></svg>
           Trouver le point le plus proche</button>
+        <p class="prive"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Votre position reste sur votre téléphone.</p>
         <p class="msg msg-alerte" id="loc-err" role="status" hidden></p>
         <p class="ou-ville">ou choisissez votre ville</p>
         <div class="villes" id="villes"></div>
@@ -418,41 +461,59 @@ body.a-cook{padding-bottom:72px}
       </div>
     </section>
 
-    <!-- ══ 5. VOS INFOS ══ -->
+    <!-- ══ 4. VOS INFOS ══ -->
     <section class="ecran etape" data-ecran="infos" aria-labelledby="t-infos" hidden>
-      <h2 id="t-infos" tabindex="-1">Dernière étape.</h2>
-      <p class="dire">Vérifiez, laissez votre numéro&nbsp;: on vous rappelle pour confirmer.</p>
-      <dl class="recap" id="recap">
+      <h2 id="t-infos" tabindex="-1">Vos coordonnées</h2>
+      <dl class="recap recap-mini" id="recap">
         <div><dt>Point</dt><dd id="r-point"></dd><button type="button" class="modif" data-modif="point" aria-label="Modifier le point de retrait">Modifier</button></div>
-        <div><dt>Retrait</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates">Modifier</button></div>
-        <div><dt>Retour</dt><dd id="r-duree"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates">Modifier</button></div>
-        <div><dt>Livraison</dt><dd><span class="barre-prix" id="r-livr-barre"></span>0 €</dd></div>
-        <div class="total"><dt>Total</dt><dd id="r-prix"></dd></div>
+        <div><dt>Dates</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates">Modifier</button></div>
+        <div class="total"><dt>Total</dt><dd><span id="r-prix"></span> <small><span class="barre-prix" id="r-livr-barre"></span>livraison 0 €</small></dd></div>
       </dl>
       <form class="form" id="form" novalidate>
-        <div>
-          <label class="champ-l" for="prenom">Votre prénom</label>
-          <input class="champ" id="prenom" name="prenom" autocomplete="given-name" required maxlength="60">
+        <div class="deux">
+          <div><label class="champ-l" for="prenom">Prénom</label><input class="champ" id="prenom" name="prenom" autocomplete="given-name" enterkeyhint="next" required maxlength="60"></div>
+          <div><label class="champ-l" for="nom">Nom</label><input class="champ" id="nom" name="nom" autocomplete="family-name" enterkeyhint="next" required maxlength="60"></div>
         </div>
         <div>
-          <label class="champ-l" for="tel">Votre téléphone</label>
-          <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
-          <p class="aide" id="tel-aide">Pour vous rappeler et confirmer l’heure du retrait.</p>
+          <label class="champ-l" for="email">Email</label>
+          <input class="champ" id="email" name="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" required maxlength="120" placeholder="vous@exemple.fr" autocapitalize="off" spellcheck="false">
+          <p class="suggere" id="email-sugg" hidden></p>
         </div>
-        <div class="sr" aria-hidden="true"><label for="site_web">Site web</label><input id="site_web" name="site_web" tabindex="-1" autocomplete="off"></div>
+        <div>
+          <label class="champ-l" for="tel">Téléphone</label>
+          <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
+          <p class="aide" id="tel-aide">Pour vous appeler et fixer l’heure du retrait.</p>
+        </div>
+        <label class="coche"><input type="checkbox" id="cgv"><span>J’accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer">conditions de location</a> et d’utilisation, et un prélèvement seulement si je rends l’appareil en retard.</span></label>
         <p class="msg msg-erreur" id="form-err" role="alert" hidden></p>
-        <button type="submit" class="btn" id="envoyer">Réserver mon climatiseur</button>
-        <p class="mentions">Aucun paiement maintenant · aucune caution. Votre numéro sert uniquement à vous rappeler pour cette réservation. <a href="/confidentialite">Confidentialité</a></p>
+        <button type="submit" class="btn" id="envoyer">Continuer vers le paiement</button>
+        <p class="mentions">Aucune caution. Vos coordonnées servent uniquement à cette réservation. <a href="/confidentialite">Confidentialité</a></p>
       </form>
       <p class="alt-ligne">Vous préférez&nbsp;? <a id="wa" href="#" target="_blank" rel="noopener noreferrer" data-mesure="cc_whatsapp">WhatsApp</a> · <a href="tel:+33663798756" data-mesure="cc_appel">06 63 79 87 56</a></p>
     </section>
 
-    <!-- ══ 6. C'EST NOTÉ ══ -->
+    <!-- ══ 5. PAIEMENT (Stripe) ══ -->
+    <section class="ecran etape" data-ecran="paiement" aria-labelledby="t-paiement" hidden>
+      <h2 id="t-paiement" tabindex="-1">Paiement</h2>
+      <p class="dire" id="p-resume"></p>
+      <div class="paiement-boite">
+        <div id="stripe-el" class="stripe-el"><p class="charge">Chargement du paiement sécurisé…</p></div>
+      </div>
+      <p class="msg msg-erreur" id="pay-err" role="alert" hidden></p>
+      <button type="button" class="btn" id="payer" disabled>Payer</button>
+      <p class="mentions securise"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Paiement sécurisé par Stripe · aucune caution bloquée</p>
+    </section>
+
+    <!-- ══ 6. C'EST RÉSERVÉ ══ -->
     <section class="ecran merci" data-ecran="merci" aria-labelledby="t-merci" hidden>
       <div class="merci-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-      <h2 id="t-merci" tabindex="-1">C’est noté, <em id="m-prenom"></em>&nbsp;!</h2>
+      <h2 id="t-merci" tabindex="-1">C’est réservé, <em id="m-prenom"></em>&nbsp;!</h2>
       <p class="dire" id="m-texte"></p>
       <dl class="recap" id="m-recap"></dl>
+      <div class="alts">
+        <a class="btn-2" id="m-itin" href="#" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Itinéraire</a>
+        <a class="btn-2" id="m-agenda" href="#" download="retrait-locair.ics"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Agenda</a>
+      </div>
       <p class="note-bas">Une question&nbsp;? <a href="tel:+33663798756" data-mesure="cc_appel">06 63 79 87 56</a> · 7j/7, 8h–20h</p>
     </section>
 
@@ -473,35 +534,16 @@ body.a-cook{padding-bottom:72px}
 
 <script>
 /* ── LES POINTS DE RETRAIT ──────────────────────────────────────────────
-   ⚠ EXEMPLES À REMPLACER. Une ligne = un point.
-   lat / lng : position du point (clic droit sur Google Maps → les deux
-   nombres affichés). Ici : centres-villes, en exemple.
-   livraison : prix qu'aurait coûté la livraison dans cette ville, affiché
-   barré au récapitulatif (60 € à Nice, Saint-Laurent-du-Var et
-   Cagnes-sur-Mer, 120 € ailleurs — comme les pages de ville).
-   fermes : jours où le point est fermé (0 = dimanche, 1 = lundi… 6 =
-   samedi). Ces jours sont barrés dans le calendrier, pour le retrait
-   comme pour le retour.
-   exemple:false quand l'adresse est réelle : la pastille disparaît. */
-var POINTS = [
-  {ville:'Nice',                 nom:'Nice Centre',            lat:43.7009, lng:7.2683, adresse:'Adresse à venir, 06000 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
-  {ville:'Nice',                 nom:'Nice Port',              lat:43.6966, lng:7.2852, adresse:'Adresse à venir, 06300 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
-  {ville:'Nice',                 nom:'Nice Ouest',             lat:43.6845, lng:7.2010, adresse:'Adresse à venir, 06200 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
-  {ville:'Saint-Laurent-du-Var', nom:'Saint-Laurent-du-Var',   lat:43.6731, lng:7.1907, adresse:'Adresse à venir, 06700 Saint-Laurent-du-Var', horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
-  {ville:'Cagnes-sur-Mer',       nom:'Cagnes-sur-Mer',         lat:43.6644, lng:7.1489, adresse:'Adresse à venir, 06800 Cagnes-sur-Mer',       horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
-  {ville:'Antibes',              nom:'Antibes',                lat:43.5804, lng:7.1251, adresse:'Adresse à venir, 06600 Antibes',              horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
-  {ville:'Antibes',              nom:'Juan-les-Pins',          lat:43.5684, lng:7.1110, adresse:'Adresse à venir, 06160 Juan-les-Pins',        horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
-  {ville:'Cannes',               nom:'Cannes',                 lat:43.5528, lng:7.0174, adresse:'Adresse à venir, 06400 Cannes',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
-  {ville:'Grasse',               nom:'Grasse',                 lat:43.6584, lng:6.9225, adresse:'Adresse à venir, 06130 Grasse',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
-  {ville:'Villefranche-sur-Mer', nom:'Villefranche-sur-Mer',   lat:43.7040, lng:7.3111, adresse:'Adresse à venir, 06230 Villefranche-sur-Mer', horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
-  {ville:'Beausoleil',           nom:'Beausoleil (Monaco)',    lat:43.7429, lng:7.4236, adresse:'Adresse à venir, 06240 Beausoleil',           horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
-  {ville:'Menton',               nom:'Menton',                 lat:43.7747, lng:7.4975, adresse:'Adresse à venir, 06500 Menton',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true}
-];
+   La liste vit côté serveur (api/_lib/pointsRetrait.js) : la page la lit
+   sur /api/points-retrait, et le paiement la relit pour vérifier le point.
+   Un point « exemple » s'affiche, mais le paiement y est refusé. */
+var POINTS = [];
 
 /* Barème par défaut — remplacé par /api/pricing-config dès qu'il répond. */
 var PALIERS = [[7,12],[14,10],[21,9],[Infinity,8]];
 var JOURS_MIN = 7, JOURS_MAX = 90;
 var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis du calendrier */
+var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
 
 /* ── MESURE : consentement, puis événements ─────────────────────────── */
 (function(){
@@ -522,32 +564,71 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
   document.getElementById('cook-oui').onclick = function(){ repondre('accepted'); };
   document.getElementById('cook-non').onclick = function(){ repondre('refused'); };
   window.mesurer = function(nom){ if(typeof window.gtag === 'function') window.gtag('event', nom, {value: window._ccValeur || 0, currency:'EUR'}); };
+  /* Paiement réel : la vraie conversion d'achat Google Ads (même étiquette
+     que le tunnel avec livraison), avec le montant payé et la référence. */
+  window.conversionAchat = function(valeur, ref){
+    if(typeof window.gtag !== 'function') return;
+    window.gtag('event', 'conversion', {send_to:'AW-18195242550/biPuCK7S1MkcELa8leRD', value:valeur, currency:'EUR', transaction_id:ref || ''});
+  };
   document.addEventListener('click', function(e){ var a = e.target.closest('[data-mesure]'); if(a) window.mesurer(a.dataset.mesure); });
 })();
 
 /* ── LE PARCOURS ───────────────────────────────────────────────────────── */
 (function(){
-  var ORDRE = ['ville','point','dates','infos','merci'];
-  var etat = {ville:null, point:null, jours:null, date:null, debut:null, fin:null, mois:3, pile:[], liste:[], pos:null, edition:false};
+  var ORDRE = ['ville','point','dates','infos','paiement','merci'];
+  var etat = {ville:null, point:null, jours:null, date:null, debut:null, fin:null, mois:3, liste:[], pos:null, edition:false,
+              client:null, secret:null, ref:null, montant:null};
   var $ = function(id){ return document.getElementById(id); };
   var ecrans = {};
   [].forEach.call(document.querySelectorAll('[data-ecran]'), function(e){ ecrans[e.dataset.ecran] = e; });
   var FLECHE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   var LETTRES = 'ABCDEFGHIJ';
+  var CLE_ETAT = 'locair_cc_etat';
 
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function prix(j){ var t = 0; for(var d = 1; d <= j; d++){ for(var k = 0; k < PALIERS.length; k++){ if(d <= PALIERS[k][0]){ t += PALIERS[k][1]; break; } } } return Math.round(t * 100) / 100; }
   function euros(n){ return n.toLocaleString('fr-FR', {maximumFractionDigits:2}) + ' €'; }
-  function parJour(n, j){ return (n / j).toLocaleString('fr-FR', {minimumFractionDigits: (n / j) % 1 ? 2 : 0, maximumFractionDigits:2}) + ' €/jour'; }
   function iso(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
   function dans(n){ var d = new Date(); d.setDate(d.getDate() + n); return iso(d); }
-  function lisible(s){ var p = s.split('-'); return new Date(+p[0], p[1]-1, +p[2]).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}); }
+  function d2(s){ var p = s.split('-'); return new Date(+p[0], p[1]-1, +p[2]); }
+  function lisible(s){ return d2(s).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}); }
+  function court(s){ return d2(s).toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}); }
   function plus(s, n){ var p = s.split('-'); return iso(new Date(+p[0], p[1]-1, +p[2] + n)); }
+  function ecart(a, b){ return Math.round((d2(b) - d2(a)) / 864e5); }
+  var doux = function(){ return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; };
 
-  /* ── navigation ── */
-  function aller(nom, sansPile){
-    var avant = ORDRE.filter(function(n){ return !ecrans[n].hidden; })[0];
-    if(!sansPile && avant && avant !== nom && avant !== 'merci') etat.pile.push(avant);
+  /* ── sauvegarde : un rechargement ou un aller-retour sur WhatsApp ne
+     fait rien perdre (sessionStorage, seulement le temps de l'onglet) ── */
+  function sauver(nom){
+    try{
+      sessionStorage.setItem(CLE_ETAT, JSON.stringify({
+        ecran:nom, ville:etat.ville, point:etat.point && etat.point.id, liste:etat.liste.map(function(p){ return p.id; }),
+        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, montant:etat.montant
+      }));
+    }catch(e){}
+  }
+  function relire(){ try{ return JSON.parse(sessionStorage.getItem(CLE_ETAT) || 'null'); }catch(e){ return null; } }
+  function parId(id){ return POINTS.filter(function(p){ return p.id === id; })[0] || null; }
+
+  /* ── navigation : chaque étape est une page de l'historique, le bouton
+     « retour » du téléphone recule d'une étape au lieu de quitter ── */
+  function possible(nom){
+    if(nom === 'point') return etat.liste.length > 0;
+    if(nom === 'dates') return !!etat.point;
+    if(nom === 'infos') return !!(etat.point && etat.debut && etat.fin);
+    if(nom === 'paiement') return !!(etat.secret);
+    if(nom === 'merci') return !!(etat.client && etat.ref);
+    return true;
+  }
+  function aller(nom, pop){
+    if(!possible(nom)) nom = 'ville';
+    if(!pop){
+      try{
+        var url = location.pathname + (nom === 'ville' ? '' : '#' + nom);
+        if(nom === 'merci' || (nom === 'ville' && !history.state)) history.replaceState({e:nom}, '', url);
+        else history.pushState({e:nom}, '', url);
+      }catch(e){}
+    }
     ORDRE.forEach(function(n){ ecrans[n].hidden = (n !== nom); });
     var k = ORDRE.indexOf(nom);
     $('suivi').hidden = (nom === 'ville' || nom === 'merci');
@@ -557,37 +638,61 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
       if(i === k) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
     });
     majResume(nom);
-    if(nom === 'dates') dessinerCal();
+    document.body.classList.toggle('en-etape', nom !== 'ville');
+    if(nom === 'dates'){ dessinerCal(); requestAnimationFrame(function(){ hauteurSuivi(); allerAuMois(); }); }
     if(nom === 'infos') remplirRecap();
-    if(nom === 'point' && carte) setTimeout(function(){ carte.resize(); }, 0);
+    if(nom === 'point'){ if(carte) setTimeout(function(){ carte.resize(); }, 0); else montrerCarte(); }
+    sauver(nom);
     window.scrollTo(0, 0);
     var t = ecrans[nom].querySelector('h2'); if(t && nom !== 'ville') t.focus({preventScroll:true});
   }
-  /* après une étape : en mode « Modifier », retour direct au récapitulatif */
+  window.addEventListener('popstate', function(ev){
+    etat.edition = false;
+    aller((ev.state && ev.state.e) || (location.hash || '').slice(1) || 'ville', true);
+  });
+  /* après une étape : en mode « Modifier », retour direct aux infos */
   function suite(nom){ if(etat.edition){ etat.edition = false; aller('infos'); } else aller(nom); }
-  $('retour').onclick = function(){ etat.edition = false; aller(etat.pile.pop() || 'ville', true); };
-  var doux = function(){ return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; };
+  $('retour').onclick = function(){ history.back(); };
+
+  /* résumé : chaque pastille ramène à l'étape qui la règle */
   function majResume(nom){
     var r = [], el = $('resume');
-    if(etat.point && nom !== 'point') r.push(etat.point.nom);
-    if(etat.jours && nom === 'infos'){ r.push(etat.jours + ' jours'); r.push(euros(prix(etat.jours))); }
-    el.innerHTML = r.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('');
+    if(etat.point && nom !== 'point') r.push([etat.point.nom, 'point']);
+    if(etat.debut && etat.fin && (nom === 'infos' || nom === 'paiement')){ var n = ecart(etat.debut, etat.fin); r.push([n + ' jours', 'dates']); r.push([euros(prix(n)), 'dates']); }
+    el.innerHTML = r.map(function(x){ return '<button type="button" data-va="' + x[1] + '" aria-label="Modifier : ' + esc(x[0]) + '">' + esc(x[0]) + '</button>'; }).join('');
     el.hidden = !r.length;
   }
+  function revenirA(cible){
+    if(cible === 'point'){ dessinerPoints(etat.pos ? etat.liste : POINTS.filter(function(p){ return p.ville === etat.ville; }), etat.pos); }
+    if(!ecrans.infos.hidden || !ecrans.paiement.hidden) etat.edition = true;
+    aller(cible);
+  }
+  $('resume').addEventListener('click', function(e){ var b = e.target.closest('[data-va]'); if(b) revenirA(b.dataset.va); });
+  $('etapes').addEventListener('click', function(e){ var li = e.target.closest('li.fait'); if(li && possible(li.dataset.e)) revenirA(li.dataset.e); });
+  function hauteurSuivi(){ document.documentElement.style.setProperty('--haut-suivi', (document.querySelector('.nav').offsetHeight + $('suivi').offsetHeight) + 'px'); }
+  function allerAuMois(){
+    if(!etat.debut) return;
+    var b = $('cal').querySelector('[data-s="' + etat.debut + '"]');
+    if(b){ var y = b.closest('.mois').getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--haut-suivi')) || 112) - 8; if(y > 200) window.scrollTo(0, y); }
+  }
+  function vibre(){ try{ if(navigator.vibrate) navigator.vibrate(8); }catch(e){} }
 
-  /* ── 1. villes ── */
-  var villes = POINTS.map(function(p){ return p.ville; }).filter(function(v, k, t){ return t.indexOf(v) === k; });
-  $('villes').innerHTML = villes.map(function(v){
-    return '<button type="button" class="ville' + (v.length > 11 ? ' large' : '') + '" data-ville="' + esc(v) + '">' + esc(v) + FLECHE + '</button>';
-  }).join('') + '<a class="ville ville-autre" href="tel:+33663798756" data-mesure="cc_appel">Autre ville&nbsp;? Appelez-nous</a>';
-  /* les noms longs (Cagnes-sur-Mer) passent en pleine largeur, en fin de grille */
-  [].slice.call($('villes').querySelectorAll('.large')).forEach(function(b){ $('villes').insertBefore(b, $('villes').querySelector('.ville-autre')); });
+  /* ── 1. villes (après lecture des points) ── */
+  $('villes').innerHTML = '<span class="squelette"></span><span class="squelette"></span><span class="squelette"></span><span class="squelette"></span>';
+  function construireVilles(){
+    var villes = POINTS.map(function(p){ return p.ville; }).filter(function(v, k, t){ return t.indexOf(v) === k; });
+    $('villes').innerHTML = villes.map(function(v){
+      var nb = POINTS.filter(function(p){ return p.ville === v; }).length;
+      return '<button type="button" class="ville' + (v.length > 11 ? ' large' : '') + '" data-ville="' + esc(v) + '" aria-label="' + esc(v) + ', ' + nb + ' point' + (nb > 1 ? 's' : '') + ' de retrait">' + esc(v) + (nb > 1 ? '<span class="nbp" aria-hidden="true">· ' + nb + '</span>' : '') + FLECHE + '</button>';
+    }).join('') + '<a class="ville ville-autre" href="tel:+33663798756" data-mesure="cc_appel">Autre ville&nbsp;? Appelez-nous</a>';
+    [].slice.call($('villes').querySelectorAll('.large')).forEach(function(b){ $('villes').insertBefore(b, $('villes').querySelector('.ville-autre')); });
+  }
   $('villes').addEventListener('click', function(e){
     var b = e.target.closest('[data-ville]'); if(!b) return;
     etat.ville = b.dataset.ville; etat.pos = null;
     var liste = POINTS.filter(function(p){ return p.ville === etat.ville; });
     if(liste.length === 1 && !etat.edition){ etat.point = liste[0]; etat.liste = liste; verifierDates(); suite('dates'); }
-    else { dessinerPoints(liste, null); aller('point'); montrerCarte(); }
+    else { dessinerPoints(liste, null); aller('point'); }
   });
 
   /* ── 2. points ── */
@@ -605,24 +710,22 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
     $('points').innerHTML = liste.map(function(p, k){
       var d = pos ? dist(km(pos, p)) + ' · ' : '';
       var tags = (pos && k === 0 ? '<span class="badge badge-proche">Le plus proche</span>' : '') + (p.exemple ? '<span class="badge badge-ex">Exemple</span>' : '');
-      return '<button type="button" class="carte" data-point="' + POINTS.indexOf(p) + '" data-k="' + k + '"><span class="carte-txt">' +
+      return '<button type="button" class="carte" data-point="' + esc(p.id) + '" data-k="' + k + '"><span class="carte-txt">' +
         (tags ? '<span class="etiquettes">' + tags + '</span>' : '') +
         '<span class="carte-t"><span class="lettre" aria-hidden="true">' + LETTRES[k] + '</span>' + esc(p.nom) + '</span>' +
         '<span class="carte-s">' + d + esc(p.adresse) + '</span><span class="carte-s">' + esc(p.horaires) + '</span></span>' +
         '<svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>';
     }).join('');
+    if(carte) majCarte();
   }
-  function choisirPoint(p){ etat.point = p; verifierDates(); suite(etat.edition && !etat.debut ? (etat.edition = false, 'dates') : 'dates'); }
-  $('points').addEventListener('click', function(e){
-    var b = e.target.closest('[data-point]'); if(b) choisirPoint(POINTS[+b.dataset.point]);
-  });
-  /* survol / focus d'une carte → son repère s'allume sur la carte */
+  function choisirPoint(p){ etat.point = p; var efface = verifierDates(); if(efface) etat.edition = false; suite('dates'); }
+  $('points').addEventListener('click', function(e){ var b = e.target.closest('[data-point]'); if(b) choisirPoint(parId(b.dataset.point)); });
   ['mouseover','focusin'].forEach(function(ev){
     $('points').addEventListener(ev, function(e){ var b = e.target.closest('[data-k]'); if(b) allumer(+b.dataset.k, false); });
   });
 
   /* ── la vraie carte : MapLibre + OpenFreeMap (chargés à la demande) ── */
-  var maplibre = null, carte = null, reperes = [];
+  var maplibre = null, carte = null, reperes = [], mlib = null;
   function chargerCarte(){
     if(maplibre) return maplibre;
     maplibre = new Promise(function(ok, ko){
@@ -638,87 +741,89 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
   function allumer(k, defiler){
     reperes.filter(function(r){ return !r.vous; }).forEach(function(r, i){ r.el.classList.toggle('on', i === k); });
     [].forEach.call($('points').children, function(c){ c.classList.toggle('on', +c.dataset.k === k); });
-    if(defiler){ var c = $('points').querySelector('[data-k="' + k + '"]'); if(c) c.scrollIntoView({block:'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); }
+    if(defiler){ var c = $('points').querySelector('[data-k="' + k + '"]'); if(c) c.scrollIntoView({block:'nearest', behavior:doux()}); }
+  }
+  function majCarte(){
+    var ml = mlib;
+    reperes.forEach(function(r){ r.m.remove(); }); reperes = [];
+    var bornes = new ml.LngLatBounds();
+    if(etat.pos){
+      var v = document.createElement('div'); v.className = 'vous'; v.title = 'Vous';
+      reperes.push({m:new ml.Marker({element:v}).setLngLat([etat.pos.lng, etat.pos.lat]).addTo(carte), el:v, vous:true});
+      bornes.extend([etat.pos.lng, etat.pos.lat]);
+    }
+    etat.liste.forEach(function(p, k){
+      var el = document.createElement('button');
+      el.type = 'button'; el.className = 'repere' + (etat.pos && k === 0 ? ' proche' : ''); el.textContent = LETTRES[k];
+      el.setAttribute('aria-label', 'Point ' + LETTRES[k] + ' : ' + p.nom);
+      el.addEventListener('click', function(ev){ ev.stopPropagation(); allumer(k, true); });
+      reperes.push({m:new ml.Marker({element:el}).setLngLat([p.lng, p.lat]).addTo(carte), el:el});
+      bornes.extend([p.lng, p.lat]);
+    });
+    carte.resize();
+    if(etat.liste.length === 1 && !etat.pos) carte.jumpTo({center:[etat.liste[0].lng, etat.liste[0].lat], zoom:13});
+    else carte.fitBounds(bornes, {padding:{top:40, bottom:62, left:40, right:40}, maxZoom:13, duration:0});
   }
   function montrerCarte(){
     var boite = $('carte-pts');
     chargerCarte().then(function(ml){
-      boite.hidden = false;
+      mlib = ml; boite.hidden = false;
       if(!carte){
         carte = new ml.Map({container:boite, style:'https://tiles.openfreemap.org/styles/positron',
           center:[7.2, 43.65], zoom:9, attributionControl:{compact:true}, cooperativeGestures:true, dragRotate:false, pitchWithRotate:false});
         carte.touchZoomRotate.disableRotation();
+        carte.on('load', function(){ boite.classList.add('pret'); });
       }
-      carte.resize();
-      reperes.forEach(function(r){ r.m.remove(); }); reperes = [];
-      var bornes = new ml.LngLatBounds();
-      /* « Vous » d'abord : il passe sous les repères au lieu de les cacher */
-      if(etat.pos){
-        var v = document.createElement('div'); v.className = 'vous'; v.title = 'Vous';
-        reperes.push({m:new ml.Marker({element:v}).setLngLat([etat.pos.lng, etat.pos.lat]).addTo(carte), el:v, vous:true});
-        bornes.extend([etat.pos.lng, etat.pos.lat]);
-      }
-      etat.liste.forEach(function(p, k){
-        var el = document.createElement('button');
-        el.type = 'button'; el.className = 'repere' + (etat.pos && k === 0 ? ' proche' : ''); el.textContent = LETTRES[k];
-        el.setAttribute('aria-label', 'Point ' + LETTRES[k] + ' : ' + p.nom);
-        el.addEventListener('click', function(ev){ ev.stopPropagation(); allumer(k, true); });
-        var m = new ml.Marker({element:el}).setLngLat([p.lng, p.lat]).addTo(carte);
-        reperes.push({m:m, el:el}); bornes.extend([p.lng, p.lat]);
-      });
-      if(etat.liste.length === 1 && !etat.pos) carte.jumpTo({center:[etat.liste[0].lng, etat.liste[0].lat], zoom:13});
-      else carte.fitBounds(bornes, {padding:{top:40, bottom:62, left:40, right:40}, maxZoom:13, duration:0});
+      majCarte();
     }).catch(function(){ boite.hidden = true; });
   }
 
   /* « Trouver le point le plus proche » : la position reste sur le téléphone. */
+  var LOC_TXT = $('localiser').innerHTML;
   $('localiser').addEventListener('click', function(){
     var b = this, err = $('loc-err');
     err.hidden = true;
     if(!navigator.geolocation){ err.textContent = 'Votre appareil ne donne pas sa position. Choisissez votre ville ci-dessous.'; err.hidden = false; return; }
-    b.setAttribute('aria-busy', 'true');
-    chargerCarte().catch(function(){});                          /* on prépare la carte pendant la recherche */
+    if(b.getAttribute('aria-busy')) return;
+    b.setAttribute('aria-busy', 'true'); b.innerHTML = '<span class="rond" aria-hidden="true"></span>Recherche de votre position…';
+    chargerCarte().catch(function(){});
     navigator.geolocation.getCurrentPosition(function(r){
-      b.removeAttribute('aria-busy');
+      b.removeAttribute('aria-busy'); b.innerHTML = LOC_TXT;
       var pos = {lat:r.coords.latitude, lng:r.coords.longitude};
       var tri = POINTS.slice().sort(function(a, c){ return km(pos, a) - km(pos, c); }).slice(0, 4);
       etat.ville = tri[0].ville;
-      dessinerPoints(tri, pos); aller('point'); montrerCarte();
+      dessinerPoints(tri, pos); aller('point');
     }, function(){
-      b.removeAttribute('aria-busy');
+      b.removeAttribute('aria-busy'); b.innerHTML = LOC_TXT;
       err.textContent = 'Position indisponible. Choisissez votre ville ci-dessous.'; err.hidden = false;
     }, {enableHighAccuracy:false, timeout:10000, maximumAge:600000});
   });
 
-  /* ── textes de prix (titre et carte de choix) ── */
-  function majPrixTextes(){
-    var pj = String(PALIERS[0][1]).replace('.', ',');
-    $('prix-mini').textContent = pj;
-  }
+  /* ── prix affiché dans le titre ── */
+  function majPrixTextes(){ $('prix-mini').textContent = String(PALIERS[0][1]).replace('.', ','); }
 
-  /* ── 3. le calendrier ──────────────────────────────────────────────────
-     1er toucher = retrait, 2e = retour (comme Airbnb). Jours passés et
-     jours de fermeture du point barrés. Retour au moins 7 jours après,
-     au plus 90. jours = nombre de jours entre retrait et retour. */
+  /* ── 3. le calendrier (façon Airbnb) ──────────────────────────────────
+     1er toucher = retrait, 2e = retour. Jours passés et jours de fermeture
+     du point barrés. Retour 7 à 90 jours après. Le premier mois commence à
+     la semaine en cours (pas de semaines passées toutes grisées). */
   var MOIS_MAX = 12;
-  function d2(s){ var p = s.split('-'); return new Date(+p[0], p[1]-1, +p[2]); }
-  function ecart(a, b){ return Math.round((d2(b) - d2(a)) / 864e5); }
-  function court(s){ return d2(s).toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}); }
   function ferme(s){ var f = (etat.point && etat.point.fermes) || []; return f.indexOf(d2(s).getDay()) >= 0; }
   function prochainOuvert(s){ var n = 0; while(ferme(s) && n++ < 7) s = plus(s, 1); return s; }
   function msgCal(t){ var m = $('cal-msg'); m.textContent = t || ''; m.hidden = !t; }
-
   function dessinerCal(){
     var auj = dans(0), max = dans(365), html = '';
     var base = new Date(); base.setDate(1);
+    var lundiCourant = plus(auj, -((new Date().getDay() + 6) % 7));
     for(var m = 0; m < etat.mois; m++){
       var d0 = new Date(base.getFullYear(), base.getMonth() + m, 1);
       var nb = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
-      var dec = (d0.getDay() + 6) % 7;                         /* semaine commençant le lundi */
-      html += '<section class="mois" aria-label="' + d0.toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '"><h3>' + d0.toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</h3>' +
+      var titre = d0.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
+      var dec = (d0.getDay() + 6) % 7, premier = 1;
+      if(m === 0){ var l = d2(lundiCourant); if(l.getMonth() === d0.getMonth()){ premier = l.getDate(); dec = 0; } }
+      html += '<section class="mois" aria-label="' + titre + '"><h3>' + titre + '</h3>' +
         '<div class="sem" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="jours-g">';
       for(var v = 0; v < dec; v++) html += '<span></span>';
-      for(var j = 1; j <= nb; j++){
+      for(var j = premier; j <= nb; j++){
         var s = iso(new Date(d0.getFullYear(), d0.getMonth(), j)), cls = ['j'], off = false, note = '';
         if(s < auj || s > max){ off = true; }
         else if(ferme(s)){ off = true; cls.push('ferme'); note = ', point fermé'; }
@@ -731,8 +836,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
         if(s === etat.debut){ cls.push('debut'); if(etat.fin) cls.push('a-fin'); }
         if(s === etat.fin) cls.push('fin');
         if(etat.debut && etat.fin && s > etat.debut && s < etat.fin) cls.push('entre');
-        var lab = d2(s).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) + note +
-          (s === etat.debut ? ', retrait' : '') + (s === etat.fin ? ', retour' : '');
+        var lab = lisible(s) + note + (s === etat.debut ? ', retrait' : '') + (s === etat.fin ? ', retour' : '');
         html += '<button type="button" class="' + cls.join(' ') + '" data-s="' + s + '"' + (off ? ' disabled' : '') +
           ' aria-label="' + lab + '"' + ((s === etat.debut || s === etat.fin) ? ' aria-pressed="true"' : '') + '><span>' + j + '</span></button>';
       }
@@ -750,7 +854,6 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
     fin.querySelector('b').textContent = etat.fin ? court(etat.fin) : (etat.debut ? 'Choisir' : '—');
     deb.classList.toggle('actif', !etat.debut); fin.classList.toggle('actif', !!etat.debut && !etat.fin);
     $('dates-dire').textContent = !etat.debut ? 'Touchez le jour du retrait.' : (!etat.fin ? 'Touchez le jour du retour (7 jours minimum).' : 'Parfait. Vous pouvez changer en touchant une autre date.');
-    /* raccourcis de durée, une fois le retrait choisi */
     var r = $('raccourcis');
     r.hidden = !etat.debut;
     if(etat.debut){
@@ -758,11 +861,13 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
       r.innerHTML = DUREES.map(function(d){ return '<button type="button" data-plus="' + d[0] + '" aria-pressed="' + (j === d[0]) + '">' + d[1] + '<small>' + euros(prix(d[0])) + '</small></button>'; }).join('');
     }
     var ok = etat.debut && etat.fin, t = $('bd-txt');
-    if(ok){ var n = ecart(etat.debut, etat.fin); t.innerHTML = '<b>' + n + ' jours · ' + euros(prix(n)) + '</b>' + esc(court(etat.debut) + ' → ' + court(etat.fin)); }
+    if(ok){ var n = ecart(etat.debut, etat.fin), tot = prix(n); t.innerHTML = '<b>' + n + ' jours · ' + euros(tot) + '</b>' + esc(court(etat.debut) + ' → ' + court(etat.fin)) + ' · soit ' + (tot / n).toLocaleString('fr-FR', {maximumFractionDigits:2}) + ' €/jour'; }
     else t.innerHTML = '<b>' + (etat.debut ? 'Choisissez le retour' : 'Choisissez vos dates') + '</b>7 jours minimum · 0 € livraison';
     $('dates-ok').disabled = !ok; $('effacer').hidden = !etat.debut;
     window._ccValeur = ok ? prix(ecart(etat.debut, etat.fin)) : 0;
+    sauver('dates');
   }
+  function redessiner(){ var y = window.scrollY; dessinerCal(); window.scrollTo(0, y); }
   $('cal').addEventListener('click', function(e){
     var b = e.target.closest('[data-s]'); if(!b || b.disabled) return;
     var s = b.dataset.s; msgCal('');
@@ -772,99 +877,225 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis 
       if(n < JOURS_MIN){ msgCal('7 jours minimum : retour à partir du ' + lisible(prochainOuvert(plus(etat.debut, JOURS_MIN))) + '.'); return; }
       etat.fin = s;
     }
-    var y = window.scrollY; dessinerCal(); window.scrollTo(0, y);
+    vibre(); redessiner();
   });
   $('raccourcis').addEventListener('click', function(e){
     var b = e.target.closest('[data-plus]'); if(!b) return;
-    etat.fin = prochainOuvert(plus(etat.debut, +b.dataset.plus)); msgCal('');
-    var y = window.scrollY; dessinerCal(); window.scrollTo(0, y);
+    etat.fin = prochainOuvert(plus(etat.debut, +b.dataset.plus)); msgCal(''); vibre(); redessiner();
   });
   $('sel-debut').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
   $('sel-fin').onclick = function(){ if(etat.debut){ etat.fin = null; msgCal(''); dessinerCal(); } };
   $('effacer').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
-  $('plus-mois').onclick = function(){ etat.mois = Math.min(MOIS_MAX, etat.mois + 3); var y = window.scrollY; dessinerCal(); window.scrollTo(0, y); };
-  $('dates-ok').onclick = function(){
-    if(!etat.debut || !etat.fin) return;
-    etat.date = etat.debut; etat.jours = ecart(etat.debut, etat.fin); suite('infos');
-  };
+  $('plus-mois').onclick = function(){ etat.mois = Math.min(MOIS_MAX, etat.mois + 3); redessiner(); };
+  $('dates-ok').onclick = function(){ if(etat.debut && etat.fin){ etat.secret = null; suite('infos'); } };
   /* changement de point : des dates devenues impossibles (jour fermé) sont effacées */
-  function verifierDates(){ if(etat.debut && (ferme(etat.debut) || (etat.fin && ferme(etat.fin)))){ etat.debut = etat.fin = null; } }
-
-  /* ── 5. vos infos ── */
-  function lignesRecap(){
-    var p = etat.point, retour = plus(etat.date, etat.jours);
-    return {point: p.nom + (p.exemple ? ' (exemple)' : ''), date: lisible(etat.date), retour: lisible(retour), duree: etat.jours + ' jours · retour le ' + lisible(retour), prix: euros(prix(etat.jours))};
+  function verifierDates(){
+    if(etat.debut && (ferme(etat.debut) || (etat.fin && ferme(etat.fin)))){ etat.debut = etat.fin = null; return true; }
+    return false;
   }
+
+  /* ── 4. vos infos ── */
+  function jours(){ return ecart(etat.debut, etat.fin); }
   function messageWA(){
-    var p = etat.point, l = lignesRecap();
-    return 'Bonjour, je réserve un climatiseur en Click & Collect :\n• Retrait : ' + p.nom + ' (' + p.ville + ')\n• Le ' + l.date + '\n• ' + l.duree + '\n• Total : ' + l.prix;
+    var p = etat.point, n = jours();
+    return 'Bonjour, je réserve un climatiseur en Click & Collect :\n• Retrait : ' + p.nom + ' (' + p.ville + ')\n• Du ' + lisible(etat.debut) + ' au ' + lisible(etat.fin) + ' (' + n + ' jours)\n• Total : ' + euros(prix(n));
   }
   function remplirRecap(){
-    var l = lignesRecap();
-    $('r-point').textContent = l.point; $('r-date').textContent = l.date; $('r-duree').textContent = l.retour + ' (' + etat.jours + ' jours)'; $('r-prix').textContent = l.prix;
-    $('r-livr-barre').textContent = etat.point.livraison ? etat.point.livraison + ' €' : '';
+    var p = etat.point, n = jours();
+    $('r-point').textContent = p.nom + (p.exemple ? ' (exemple)' : '');
+    $('r-date').textContent = court(etat.debut) + ' → ' + court(etat.fin) + ' · ' + n + ' j';
+    $('r-prix').textContent = euros(prix(n));
+    $('r-livr-barre').textContent = p.livraison ? p.livraison + ' € ' : '';
     $('wa').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(messageWA());
+    $('envoyer').textContent = p.exemple ? 'Réserver par WhatsApp' : 'Continuer vers le paiement · ' + euros(prix(n));
+    if(etat.client){ ['prenom','nom','email','tel'].forEach(function(k){ if(!$(k).value && etat.client[k]) $(k).value = etat.client[k]; }); }
   }
   $('recap').addEventListener('click', function(e){
     var b = e.target.closest('[data-modif]'); if(!b) return;
     etat.edition = true;
-    if(b.dataset.modif === 'point'){ dessinerPoints(etat.pos ? etat.liste : POINTS.filter(function(p){ return p.ville === etat.ville; }), etat.pos); aller('point'); montrerCarte(); }
+    if(b.dataset.modif === 'point'){ dessinerPoints(etat.pos ? etat.liste : POINTS.filter(function(p){ return p.ville === etat.ville; }), etat.pos); aller('point'); }
     else aller(b.dataset.modif);
   });
 
-  /* paramètres de campagne (gclid, utm_*) joints à la demande */
+  /* téléphone mis en forme pendant la saisie : 06 12 34 56 78 */
+  $('tel').addEventListener('input', function(){
+    var v = this.value, d = v.replace(/\D/g, '');
+    if(/^0\d*$/.test(d) && d.length <= 10 && v.indexOf('+') < 0){ this.value = d.replace(/(\d{2})(?=\d)/g, '$1 '); }
+    if(this.getAttribute('aria-invalid')){ this.removeAttribute('aria-invalid'); $('tel-aide').className = 'aide'; $('tel-aide').textContent = 'Pour vous appeler et fixer l’heure du retrait.'; }
+  });
+  /* coche verte quand un champ est bon (au départ du champ), rien de rouge
+     tant que la personne tape */
+  var VALIDE = {
+    prenom: function(v){ return v.trim().length > 0; },
+    nom: function(v){ return v.trim().length > 0; },
+    email: function(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); },
+    tel: function(v){ return telValide(v); }
+  };
+  Object.keys(VALIDE).forEach(function(k){
+    $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); this.parentNode.classList.toggle('champ-ok', VALIDE[k](this.value)); });
+    $(k).addEventListener('blur', function(){ this.parentNode.classList.toggle('champ-ok', VALIDE[k](this.value)); if(k === 'email') suggererEmail(); });
+    $(k).addEventListener('input', function(){ if(k === 'email') $('email-sugg').hidden = true; });
+  });
+  /* fautes de frappe courantes dans l'email : sinon la confirmation se perd */
+  var DOMAINES = {'gmial.com':'gmail.com','gmai.com':'gmail.com','gmail.fr':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com',
+    'hotmial.com':'hotmail.com','hotmail.con':'hotmail.com','hotmal.fr':'hotmail.fr','hotmai.fr':'hotmail.fr','yaho.fr':'yahoo.fr','yahoo.f':'yahoo.fr',
+    'outlok.fr':'outlook.fr','outlook.con':'outlook.com','orange.f':'orange.fr','oragne.fr':'orange.fr','wanado.fr':'wanadoo.fr','iclod.com':'icloud.com','icloud.fr':'icloud.com','free.f':'free.fr','sfr.f':'sfr.fr'};
+  function suggererEmail(){
+    var v = $('email').value.trim(), m = v.match(/^([^@\s]+)@([^@\s]+)$/), z = $('email-sugg');
+    var bon = m && DOMAINES[m[2].toLowerCase()];
+    if(!bon){ z.hidden = true; return; }
+    var prop = m[1] + '@' + bon;
+    z.innerHTML = 'Vouliez-vous dire <button type="button">' + esc(prop) + '</button>&nbsp;?';
+    $('email').parentNode.classList.remove('champ-ok');
+    z.hidden = false;
+    z.querySelector('button').onclick = function(){ $('email').value = prop; z.hidden = true; $('email').parentNode.classList.add('champ-ok'); $('tel').focus(); };
+  }
+  $('cgv').addEventListener('change', function(){ this.closest('.coche').classList.remove('err'); });
+
   var campagne = (function(){
     var q = new URLSearchParams(location.search), out = [];
     ['gclid','gbraid','wbraid','utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(function(k){ if(q.get(k)) out.push(k + '=' + q.get(k)); });
     return out.join(' · ');
   })();
-
   function telValide(v){ var d = v.replace(/\D/g, ''); return d.length >= 9 && d.length <= 13; }
-  $('tel').addEventListener('input', function(){ if(this.getAttribute('aria-invalid')){ this.removeAttribute('aria-invalid'); $('tel-aide').className = 'aide'; $('tel-aide').textContent = 'Pour vous rappeler et confirmer l’heure du retrait.'; } });
+  function invalide(id, msg){ $(id).setAttribute('aria-invalid', 'true'); $(id).focus(); if(msg){ var e = $('form-err'); e.textContent = msg; e.hidden = false; } }
+
   $('form').addEventListener('submit', function(e){
     e.preventDefault();
-    var prenom = $('prenom').value.trim(), tel = $('tel').value.trim(), err = $('form-err'), btn = $('envoyer');
-    err.hidden = true;
-    if(!prenom){ $('prenom').setAttribute('aria-invalid', 'true'); $('prenom').focus(); return; }
-    $('prenom').removeAttribute('aria-invalid');
-    if(!telValide(tel)){ $('tel').setAttribute('aria-invalid', 'true'); $('tel-aide').className = 'aide err'; $('tel-aide').textContent = 'Ce numéro semble incomplet. Exemple : 06 12 34 56 78.'; $('tel').focus(); return; }
-    btn.setAttribute('aria-busy', 'true'); btn.disabled = true; btn.textContent = 'Envoi…';
-    var p = etat.point;
-    fetch('/api/click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-      prenom:prenom, tel:tel, point:p.nom, ville:p.ville, adresse:p.adresse, exemple:p.exemple,
-      date:etat.date, jours:etat.jours, campagne:campagne, site_web:$('site_web').value
-    })}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok && j.ok, j:j}; }); })
+    var err = $('form-err'), btn = $('envoyer'); err.hidden = true;
+    if(etat.point.exemple){
+      /* point fictif : pas de paiement possible, on passe par WhatsApp */
+      err.innerHTML = 'Ce point de retrait est un exemple : le paiement en ligne n’y est pas encore ouvert. Réservez sur <a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a> ou au <a href="tel:+33663798756">06 63 79 87 56</a>.';
+      err.hidden = false; window.open($('wa').href, '_blank', 'noopener'); return;
+    }
+    var c = {prenom:$('prenom').value.trim(), nom:$('nom').value.trim(), email:$('email').value.trim(), tel:$('tel').value.trim()};
+    if(!c.prenom) return invalide('prenom', 'Indiquez votre prénom.');
+    if(!c.nom) return invalide('nom', 'Indiquez votre nom.');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return invalide('email', 'Cette adresse email semble incomplète.');
+    if(!telValide(c.tel)){ $('tel-aide').className = 'aide err'; $('tel-aide').textContent = 'Ce numéro semble incomplet. Exemple : 06 12 34 56 78.'; return invalide('tel'); }
+    if(!$('cgv').checked){ $('cgv').closest('.coche').classList.add('err'); err.textContent = 'Merci d’accepter les conditions pour continuer.'; err.hidden = false; $('cgv').focus(); return; }
+    etat.client = c; sauver('infos');
+    btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = 'Préparation du paiement…';
+    chargerStripe().catch(function(){});
+    fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(),
+      cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, _ref:etat.ref || '', campagne:campagne
+    })}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); })
     .then(function(r){
-      if(!r.ok) throw new Error();
-      window._ccValeur = r.j.total || prix(etat.jours); window.mesurer('cc_demande');
-      merci(prenom, tel, r.j.total);
-    }).catch(function(){
-      err.innerHTML = 'L’envoi n’a pas marché. Réservez sur <a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a> ou appelez le <a href="tel:+33663798756">06 63 79 87 56</a>.';
+      if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
+      etat.secret = r.j.clientSecret; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100;
+      window._ccValeur = etat.montant; window.mesurer('cc_vers_paiement');
+      aller('paiement'); monterPaiement();
+    }).catch(function(x){
+      err.innerHTML = esc(x.message || 'Le paiement n’a pas pu être préparé.') + ' Vous pouvez aussi réserver sur <a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>.';
       err.hidden = false;
-    }).then(function(){ btn.removeAttribute('aria-busy'); btn.disabled = false; btn.textContent = 'Réserver mon climatiseur'; });
+    }).then(function(){ btn.disabled = false; btn.removeAttribute('aria-busy'); remplirRecap(); });
   });
 
-  /* ── 6. c'est noté ── */
-  function merci(prenom, tel, total){
-    var l = lignesRecap();
-    $('m-prenom').textContent = prenom;
-    $('m-texte').textContent = 'On vous rappelle au ' + tel + ' pour confirmer l’heure du retrait (7j/7, 8h–20h). Rien à payer pour l’instant.';
-    $('m-recap').innerHTML = [['Point', l.point + ' — ' + etat.point.adresse], ['Retrait', l.date], ['Retour', l.retour + ' (' + etat.jours + ' jours)'], ['Total', total ? euros(total) : l.prix]]
+  /* ── 5. paiement Stripe (Payment Element) ── */
+  var stripeP = null, stripe = null, elements = null;
+  function chargerStripe(){
+    if(stripeP) return stripeP;
+    stripeP = new Promise(function(ok, ko){
+      if(window.Stripe) return ok(window.Stripe(STRIPE_PK));
+      var sc = document.createElement('script'); sc.src = 'https://js.stripe.com/v3/';
+      sc.onload = function(){ ok(window.Stripe(STRIPE_PK)); }; sc.onerror = function(){ stripeP = null; ko(); };
+      document.head.appendChild(sc);
+    });
+    return stripeP;
+  }
+  function monterPaiement(){
+    var n = jours();
+    $('p-resume').textContent = etat.point.nom + ' · ' + court(etat.debut) + ' → ' + court(etat.fin) + ' (' + n + ' jours)';
+    $('payer').textContent = 'Payer ' + euros(etat.montant || prix(n));
+    $('payer').disabled = true; $('pay-err').hidden = true;
+    chargerStripe().then(function(s){
+      stripe = s;
+      elements = s.elements({clientSecret:etat.secret, locale:'fr', appearance:{theme:'stripe', variables:{colorPrimary:'#1A5EDB', colorText:'#0E1726', fontFamily:'DM Sans, system-ui, sans-serif', borderRadius:'12px'}}});
+      $('stripe-el').innerHTML = '';
+      var pe = elements.create('payment', {layout:{type:'tabs', defaultCollapsed:false}, defaultValues:{billingDetails:{name:(etat.client.prenom + ' ' + etat.client.nom), email:etat.client.email, phone:etat.client.tel}}});
+      pe.on('ready', function(){ $('payer').disabled = false; });
+      pe.on('loaderror', function(){ $('pay-err').textContent = 'Le paiement ne s’affiche pas. Revenez en arrière et réessayez, ou appelez le 06 63 79 87 56.'; $('pay-err').hidden = false; });
+      pe.mount('#stripe-el');
+    }).catch(function(){
+      $('pay-err').textContent = 'Le module de paiement ne se charge pas. Vérifiez votre connexion, puis réessayez.'; $('pay-err').hidden = false;
+    });
+  }
+  $('payer').onclick = function(){
+    if(!stripe || !elements) return;
+    var b = this; b.disabled = true; b.setAttribute('aria-busy', 'true'); b.textContent = 'Paiement en cours…'; $('pay-err').hidden = true;
+    sauver('paiement');
+    stripe.confirmPayment({elements:elements, redirect:'if_required',
+      confirmParams:{return_url: location.origin + location.pathname + '?retour=paiement'}
+    }).then(function(r){
+      if(r.error){
+        $('pay-err').textContent = r.error.message || 'Le paiement n’est pas passé.'; $('pay-err').hidden = false;
+        b.disabled = false; b.removeAttribute('aria-busy'); b.textContent = 'Réessayer · ' + euros(etat.montant);
+      } else if(r.paymentIntent && (r.paymentIntent.status === 'succeeded' || r.paymentIntent.status === 'processing')){
+        paye();
+      }
+    });
+  };
+
+  /* ── 6. c'est réservé ── */
+  function paye(){
+    window.conversionAchat(etat.montant, etat.ref); window._ccValeur = etat.montant; window.mesurer('cc_paiement');
+    merci();
+  }
+  function ics(){
+    var p = etat.point, f = function(s){ return s.replace(/-/g, ''); };
+    var t = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Loc\'Air//Click & Collect//FR',
+      'BEGIN:VEVENT','UID:' + (etat.ref || Date.now()) + '-retrait@locair.fr','DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z',
+      'DTSTART;VALUE=DATE:' + f(etat.debut),'DTEND;VALUE=DATE:' + f(plus(etat.debut, 1)),
+      'SUMMARY:Retrait climatiseur Loc\'Air — ' + p.nom,'LOCATION:' + p.adresse,'DESCRIPTION:Retour au même point le ' + lisible(etat.fin) + '. 06 63 79 87 56.','END:VEVENT',
+      'BEGIN:VEVENT','UID:' + (etat.ref || Date.now()) + '-retour@locair.fr','DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z',
+      'DTSTART;VALUE=DATE:' + f(etat.fin),'DTEND;VALUE=DATE:' + f(plus(etat.fin, 1)),
+      'SUMMARY:Retour climatiseur Loc\'Air — ' + p.nom,'LOCATION:' + p.adresse,'END:VEVENT','END:VCALENDAR'];
+    return URL.createObjectURL(new Blob([t.join('\r\n')], {type:'text/calendar'}));
+  }
+  function merci(){
+    var p = etat.point, n = jours(), c = etat.client || {};
+    $('m-prenom').textContent = c.prenom || '';
+    $('m-texte').textContent = 'Paiement reçu. On vous appelle' + (c.tel ? ' au ' + c.tel : '') + ' pour fixer l’heure du retrait (7j/7, 8h–20h). Confirmation envoyée' + (c.email ? ' à ' + c.email : '') + '.';
+    $('m-recap').innerHTML = [['Point', p.nom + ' — ' + p.adresse], ['Retrait', lisible(etat.debut)], ['Retour', lisible(etat.fin) + ' (' + n + ' jours)'], ['Payé', euros(etat.montant || prix(n))]]
       .map(function(x, i){ return '<div' + (i === 3 ? ' class="total"' : '') + '><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('');
-    etat.pile = [];
+    $('m-itin').href = 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng;
+    try{ $('m-agenda').href = ics(); }catch(e){ $('m-agenda').hidden = true; }
     aller('merci');
+    try{ sessionStorage.removeItem(CLE_ETAT); }catch(e){}
   }
 
-  /* ── prix de l'admin ── */
+  /* ── démarrage : points, prix, puis reprise là où le client en était ── */
+  function demarrer(){
+    construireVilles();
+    var sv = relire(), q = new URLSearchParams(location.search);
+    if(sv){
+      etat.ville = sv.ville; etat.point = parId(sv.point); etat.liste = (sv.liste || []).map(parId).filter(Boolean);
+      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.montant = sv.montant;
+    }
+    /* retour d'une banque (3-D Secure) : Stripe ajoute redirect_status */
+    if(q.get('retour') === 'paiement' && sv && etat.point && etat.debut && etat.fin){
+      try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){}
+      if(q.get('redirect_status') === 'succeeded'){ paye(); return; }
+      aller('infos'); var e = $('form-err'); e.textContent = 'Le paiement n’a pas été validé par votre banque. Vous pouvez réessayer.'; e.hidden = false; return;
+    }
+    var h = (location.hash || '').slice(1);
+    if(h && h !== 'paiement' && h !== 'merci' && sv){ try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){} if(h !== 'ville') aller(h); else aller('ville', true); }
+    else aller('ville');
+  }
+  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; })
+    .catch(function(){ $('loc-err').textContent = 'Impossible de charger les points de retrait. Appelez le 06 63 79 87 56.'; $('loc-err').hidden = false; })
+    .then(demarrer);
   majPrixTextes();
   fetch('/api/pricing-config').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
     var c = j && j.pricing; if(!c) return;
     var n = function(v){ return Number(v); };
     var p = [[n(c.palier1_max_jours), n(c.palier1_tarif_cents)/100],[n(c.palier2_max_jours), n(c.palier2_tarif_cents)/100],[n(c.palier3_max_jours), n(c.palier3_tarif_cents)/100],[Infinity, n(c.palier4_tarif_cents)/100]];
-    if(p.every(function(x){ return isFinite(x[1]) && x[1] > 0 && (x[0] === Infinity || x[0] > 0); })){ PALIERS = p; majPrixTextes(); if(!ecrans.dates.hidden) dessinerCal(); }
+    if(p.every(function(x){ return isFinite(x[1]) && x[1] > 0 && (x[0] === Infinity || x[0] > 0); })){
+      PALIERS = p; if(isFinite(n(c.duree_min_jours)) && n(c.duree_min_jours) > 0) JOURS_MIN = n(c.duree_min_jours);
+      majPrixTextes(); if(!ecrans.dates.hidden) dessinerCal(); if(!ecrans.infos.hidden) remplirRecap();
+    }
   }).catch(function(){});
-
-  aller('ville', true);
 })();
 </script>
 </body>
