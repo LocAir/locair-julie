@@ -51,6 +51,16 @@ module.exports = async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Adresse email invalide.' });
   if (tel.replace(/\D/g, '').length < 9) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
 
+  // Pièce d'identité obligatoire : carte (recto + verso) ou passeport, déjà
+  // envoyée dans le bucket privé via /api/upload-identite. On n'accepte que
+  // des chemins de ce dossier, jamais un chemin arbitraire.
+  const pi = data.piece_identite && typeof data.piece_identite === 'object' ? data.piece_identite : {};
+  const attendu = pi.type === 'cni' ? 2 : pi.type === 'passeport' ? 1 : 0;
+  const chemins = Array.isArray(pi.paths) ? pi.paths.map((x) => clip(x, 200)) : [];
+  if (!attendu || chemins.length !== attendu || !chemins.every((x) => /^identites\/\d+-[a-f0-9]{18}\/(recto|verso|passeport)\.(jpg|png|webp|heic|heif|pdf)$/.test(x))) {
+    return res.status(400).json({ error: 'Merci d’ajouter votre pièce d’identité (carte recto et verso, ou passeport).' });
+  }
+
   const point = getPointRetrait(clip(data.point_id, 60));
   if (!point) return res.status(400).json({ error: 'Point de retrait inconnu.' });
   if (point.exemple) return res.status(409).json({ error: 'Ce point de retrait n’est pas encore ouvert au paiement en ligne. Réservez par WhatsApp ou au 06 63 79 87 56.' });
@@ -120,10 +130,11 @@ module.exports = async (req, res) => {
         frais_livraison: '0 EUR',
         customer_id: customerId,
         campagne: clip(data.campagne, 400),
+        piece_identite: pi.type,
       },
     }, { idempotencyKey: `cc-${ref}-${amountCents}-${dateDebut}-${point.id}` });
 
-    const { data: resa, error: insertErr } = await supabase.from('reservations').insert({
+    const ligne = {
       city_id: city.id,
       hors_zone: false,
       express: false,
@@ -145,7 +156,18 @@ module.exports = async (req, res) => {
       lang: 'fr',
       type_client: 'particulier',
       cgv_accepted_at: new Date().toISOString(),
-    }).select('id').single();
+      piece_identite_paths: chemins,
+    };
+    let { data: resa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single();
+    // Colonne piece_identite_paths pas encore créée en base (migration SQL à
+    // passer par le propriétaire) : on enregistre quand même la réservation,
+    // les chemins de la pièce d'identité partant dans les consignes, pour ne
+    // rien perdre. Voir supabase/migration_2026-11-18_piece_identite.sql.
+    if (insertErr && /piece_identite_paths/.test(insertErr.message || '')) {
+      delete ligne.piece_identite_paths;
+      ligne.instructions_acces = `${ligne.instructions_acces} | PIÈCE D'IDENTITÉ (${pi.type}) : ${chemins.join(' ; ')}`.slice(0, 1000);
+      ({ data: resa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single());
+    }
 
     if (insertErr) {
       console.error('[CC insert]', insertErr.message);

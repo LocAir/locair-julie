@@ -1117,5 +1117,35 @@ module.exports = async (req, res) => {
     console.error('[Cron dormants via daily]', e.message);
   }
 
+  // ── Pièces d'identité Click & Collect : effacées 30 jours après la fin de
+  // la location (RGPD — on ne garde pas une copie d'identité plus longtemps
+  // que nécessaire ; promesse affichée au client sur la page). Deux cas :
+  // la colonne piece_identite_paths (après migration), et les chemins mis
+  // dans instructions_acces tant que la migration n'est pas passée.
+  try {
+    const limite = new Date(Date.UTC(...todayStr.split('-').map((n, i) => i === 1 ? Number(n) - 1 : Number(n))) - 30 * 864e5).toISOString().slice(0, 10);
+    let effacees = 0;
+    const { data: avecColonne, error: colErr } = await supabase.from('reservations')
+      .select('id, piece_identite_paths').not('piece_identite_paths', 'is', null).lt('date_fin', limite).limit(200);
+    if (!colErr) {
+      for (const r of avecColonne || []) {
+        if (r.piece_identite_paths && r.piece_identite_paths.length) await supabase.storage.from('missions').remove(r.piece_identite_paths);
+        await supabase.from('reservations').update({ piece_identite_paths: null }).eq('id', r.id);
+        effacees++;
+      }
+    }
+    const { data: enConsigne } = await supabase.from('reservations')
+      .select('id, instructions_acces').eq('source_channel', 'click_collect').ilike('instructions_acces', '%identites/%').lt('date_fin', limite).limit(200);
+    for (const r of enConsigne || []) {
+      const chemins = String(r.instructions_acces || '').match(/identites\/[\w-]+\/(?:recto|verso|passeport)\.\w+/g) || [];
+      if (chemins.length) await supabase.storage.from('missions').remove(chemins);
+      await supabase.from('reservations').update({ instructions_acces: String(r.instructions_acces).replace(/ \| PIÈCE D'IDENTITÉ[\s\S]*$/, ' | Pièce d’identité supprimée (30 j après la location)') }).eq('id', r.id);
+      effacees++;
+    }
+    report.piecesIdentiteEffacees = effacees;
+  } catch (e) {
+    console.error('[Cron pièces d’identité]', e.message);
+  }
+
   return res.status(200).json({ ok: true, date: todayStr, ...report });
 };
