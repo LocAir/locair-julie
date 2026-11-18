@@ -905,7 +905,7 @@ module.exports = async (req, res) => {
 
     const { data: candidats } = await supabase
       .from('reservations')
-      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source, reservation_origine_id')
+      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source, source_channel, reservation_origine_id')
       .eq('statut', 'confirmee')
       .lte('date_debut', in14dStr)
       .gte('date_fin', todayStr)
@@ -1060,7 +1060,7 @@ module.exports = async (req, res) => {
     const hierEnd = new Date(hierStart); hierEnd.setUTCDate(hierEnd.getUTCDate() + 1);
     const { data: installsHier } = await supabase
       .from('livraisons')
-      .select('reservation:reservations!inner(id, statut, prenom, tel, lang, ref)')
+      .select('reservation:reservations!inner(id, statut, prenom, tel, lang, ref, source_channel)')
       .eq('type', 'livraison').eq('statut', 'fait')
       .eq('reservation.statut', 'confirmee')
       .gte('fait_at', hierStart.toISOString()).lt('fait_at', hierEnd.toISOString());
@@ -1069,6 +1069,9 @@ module.exports = async (req, res) => {
     for (const row of installsHier || []) {
       const resa = row.reservation;
       if (!resa) continue;
+      // Click & Collect : la « livraison » est le dépôt au point de retrait,
+      // pas une installation chez le client — pas de SMS de suivi ici.
+      if (resa.source_channel === 'click_collect') continue;
       try {
         const result = await sendSuiviInstallationSms(supabase, resa);
         if (result.sent) smsSuiviInstallation++;

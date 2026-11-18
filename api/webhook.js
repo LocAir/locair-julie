@@ -724,7 +724,12 @@ const handler = async (req, res) => {
         const lang = confirmedResa.lang || meta.lang || 'fr';
         const d = meta.date ? new Date(meta.date + 'T12:00:00Z') : null;
         let smsConfirmationContent;
-        if (lang === 'en') {
+        if (meta.mode === 'click_collect') {
+          // Click & Collect : le client vient chercher l'appareil — jamais
+          // « livraison » ni « notre technicien arrive ».
+          const dateStr = d ? d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+          smsConfirmationContent = `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. On vous appelle pour fixer l'heure. Une question ? 06 63 79 87 56.`;
+        } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
         } else if (lang === 'zh') {
@@ -761,7 +766,9 @@ const handler = async (req, res) => {
     // cron-daily.js à partir des données Supabase du moment (jamais figés à
     // l'avance comme l'ancien envoi programmé via scheduledAt) — voir
     // _lib/emailSchedule.js et _lib/emailEngine.js.
-    if (confirmedResa) {
+    if (confirmedResa && meta.mode === 'click_collect') {
+      await sendConfirmationClickCollect(getSupabase(), confirmedResa, meta, amount);
+    } else if (confirmedResa) {
       try {
         await sendScenarioEmail(getSupabase(), { reservationId: confirmedResa.id, scenario: 'confirmation' });
       } catch (e) {
@@ -780,6 +787,41 @@ const handler = async (req, res) => {
     return res.status(200).json({ received: true, error: 'internal' });
   }
 };
+
+// Email de confirmation Click & Collect — envoyé une seule fois (verrou
+// email_sent, comme le SMS de confirmation), tracé dans email_log.
+async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
+  try {
+    const { error: lockErr } = await supabase.from('email_sent')
+      .insert({ reservation_id: resa.id, scenario: 'confirmation_click_collect', sent_at: new Date().toISOString() });
+    if (lockErr) return; // déjà envoyé (ou en cours) par une autre instance
+    const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const fmt = (iso) => iso ? new Date(iso + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '';
+    const adressePoint = String(resa.adresse || '').replace(/^CLICK & COLLECT — /, '');
+    const lignes = [
+      ['Point de retrait', adressePoint],
+      ['Retrait', fmt(resa.date_debut) + ' — heure confirmée par téléphone'],
+      ['Retour au même point', fmt(resa.date_fin)],
+      ['Payé', amount + ' (sans livraison, sans caution)'],
+      ['Référence', resa.ref || ''],
+    ].map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#4B5873;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0"><b>${esc(v)}</b></td></tr>`).join('');
+    const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
+<h2 style="color:#1A5EDB;margin:0 0 12px">C’est réservé, ${esc(resa.prenom)} !</h2>
+<p>Votre climatiseur mobile vous attend. On vous appelle pour fixer l’heure du retrait.</p>
+<table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
+<p>Pensez à venir en voiture : l’appareil est livré avec son kit de fenêtre, sans perçage.</p>
+<p>Une question ? <a href="tel:+33663798756">06 63 79 87 56</a> · 7j/7, 8h–20h.</p>
+<p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
+    const r = await sendBrevoEmail({ to: resa.email, subject: `Click & Collect confirmé — retrait le ${fmt(resa.date_debut)}`, html, senderName: "Loc'Air" });
+    if (!r.ok) await supabase.from('email_sent').delete().eq('reservation_id', resa.id).eq('scenario', 'confirmation_click_collect').then(() => {}, () => {});
+    await supabase.from('email_log').insert({
+      reservation_id: resa.id, scenario: 'confirmation_click_collect', canal: 'email',
+      destinataire: resa.email, modele: 'confirmation_click_collect', statut: r.ok ? 'envoye' : 'erreur',
+    }).then(() => {}, () => {});
+  } catch (e) {
+    console.error('[Email Click & Collect]', e.message);
+  }
+}
 
 // Désactiver le body parser Vercel pour accéder au corps brut (signature Stripe)
 handler.config = { api: { bodyParser: false } };

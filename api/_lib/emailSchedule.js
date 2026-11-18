@@ -58,7 +58,17 @@ function scenariosDueToday(reservation, todayISO, { recupDatePrevue } = {}) {
     ? daysDiff(todayISO, recupDatePrevue) === 1
     : dFin === 0;
   if (recupDue) due.push('rappel_recuperation');
-  return due;
+  return sansRappelsDomicile(reservation, due);
+}
+
+// Click & Collect (reservations.source_channel = 'click_collect') : le client
+// vient chercher et rapporte l'appareil lui-même. Les rappels qui parlent de
+// livraison ou de récupération À DOMICILE (« notre technicien arrive
+// demain… ») seraient faux : on ne les envoie pas.
+const SCENARIOS_DOMICILE = ['preparation_j3', 'rappel_j1', 'rappel_recuperation', 'sms_rappel_recuperation'];
+function sansRappelsDomicile(reservation, liste) {
+  if (!reservation || reservation.source_channel !== 'click_collect') return liste;
+  return liste.filter((x) => !SCENARIOS_DOMICILE.includes(typeof x === 'string' ? x : x.scenario));
 }
 
 function scenarioDate(baseISO, offsetDays) {
@@ -92,7 +102,7 @@ function upcomingScenariosForReservation(reservation, todayISO, { recupDatePrevu
     { scenario: 'rappel_recuperation', date: recupDate },
     { scenario: 'sms_rappel_recuperation', date: recupDate },
   ];
-  return candidats.filter(c => c.date >= todayISO);
+  return sansRappelsDomicile(reservation, candidats.filter(c => c.date >= todayISO));
 }
 
 // Sœur "en retard" de upcomingScenariosForReservation() : mêmes candidats,
@@ -126,7 +136,7 @@ function pastScenariosForReservation(reservation, todayISO, { recupDatePrevue } 
     { scenario: 'rappel_recuperation', date: recupDate },
     { scenario: 'sms_rappel_recuperation', date: recupDate },
   ];
-  return candidats.filter(c => c.date < todayISO);
+  return sansRappelsDomicile(reservation, candidats.filter(c => c.date < todayISO));
 }
 
 // Une réservation "d'origine" (pas une prolongation) reste 'confirmee' pour
