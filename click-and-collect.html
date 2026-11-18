@@ -5,7 +5,8 @@
      de retrait : pas de frais de livraison, il ne paie que la location.
 
      LE PARCOURS (une action par écran) :
-       Ville → Point (carte) → Durée → Jour → Vos infos → C'est noté
+       Ville → Point (carte) → Dates (calendrier façon Airbnb : retrait
+       puis retour, jours de fermeture barrés) → Vos infos → C'est noté
      - Le titre reprend les mots de l'annonce, la première action (ville ou
        « point le plus proche ») est visible sans défiler.
      - Un résumé (point · durée · prix) suit le client d'écran en écran.
@@ -32,7 +33,7 @@
      ⚠ POINTS DE RETRAIT = EXEMPLES. Remplir la liste POINTS plus bas
      (exemple:false quand c'est réel). Page noindex : normal pour une pub.
 ══════════════════════════════════════════════════════════════════════════ -->
-<html lang="fr" dir="ltr">
+<html lang="fr" dir="ltr" class="nojs">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -106,7 +107,7 @@ a{color:var(--vif)}
 .resume span{font-size:13px;font-weight:700;color:var(--vif-d);background:var(--vif-clair);border-radius:var(--r-f);padding:3px 10px;font-variant-numeric:tabular-nums}
 
 main{flex:1;width:100%}
-.ecran{animation:vient .24s var(--mv) both}
+.ecran{animation:vient .24s var(--mv) backwards}  /* backwards : aucune transformation ne reste après l'animation (sinon les barres « fixed » restent collées à l'écran) */
 .ecran[hidden]{display:none}
 @keyframes vient{from{opacity:0;transform:translateY(8px)}}
 h1,h2,h3{font-family:var(--font-titre);font-weight:700;letter-spacing:-.01em;line-height:1.12;text-wrap:balance}
@@ -116,51 +117,66 @@ h2:focus{outline:none}
 .dire{color:var(--ink-2);font-size:16px;margin-bottom:16px}
 .etape{padding-block:18px 36px}
 
-/* ── ÉCRAN 1 ── */
-.haut{background:var(--paper);padding-block:20px 74px}
-.note{display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--ink-2);margin-bottom:10px}
-.etoiles{color:var(--etoile);letter-spacing:1px;font-size:15px}
-.note b{color:var(--ink)}
-.kicker{font-size:11.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--vif);margin-bottom:8px}
-.haut h1{font-size:clamp(32px,8.6vw,42px);margin-bottom:14px}
+/* ── ÉCRAN 1 — version « haut de gamme » ─────────────────────────────────
+   Photo 4K de la baie de Nice (hero-ete.webp, recadrée en cc-hero-*),
+   titre blanc sur dégradé, carte de choix blanche qui « flotte » sur la
+   photo. Tout est lisible sans animation ; les effets ne font qu'ajouter. */
+.hero{position:relative;color:#fff;overflow:hidden;isolation:isolate;padding-block:26px 104px;background:#0B1E44}
+.hero picture,.hero img.hero-img{position:absolute;inset:0;width:100%;height:100%;z-index:-2}
+.hero img.hero-img{object-fit:cover;object-position:50% 72%;transform-origin:50% 70%}
+.hero::after{content:"";position:absolute;inset:0;z-index:-1;background:
+  linear-gradient(180deg,rgba(6,18,42,.72) 0%,rgba(6,18,42,.42) 46%,rgba(6,18,42,.12) 72%,rgba(6,18,42,.5) 100%)}
+.verre{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-radius:var(--r-f);padding:6px 12px;margin-bottom:14px}
+.verre .etoiles{font-size:13px}
+.verre b{font-weight:700}
+.hero .kicker{color:#CFE0FF;font-size:11.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px}
+.hero h1{font-size:clamp(34px,9.4vw,52px);line-height:1.06;color:#fff;margin-bottom:16px;text-shadow:0 2px 24px rgba(0,0,0,.25);max-width:14ch}
+.hero h1 em{color:#BFD6FF}
 .puces{list-style:none;display:flex;flex-wrap:wrap;gap:8px}
-.puces li{font-size:13px;font-weight:700;color:var(--vif);background:var(--vif-clair);border-radius:var(--r-f);padding:6px 12px}
-.choix-ville{margin-top:-52px;background:var(--paper);border-radius:var(--r-l);box-shadow:var(--o-3);padding:18px 16px 16px;position:relative}
-.choix-ville h2{font-size:22px;margin-bottom:12px}
-.localiser{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border:0;border-radius:var(--r-f);background:var(--vif);color:#fff;font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(26,94,219,.3);transition:background .14s var(--mv)}
-.localiser:hover{background:var(--vif-d)}
+.puces li{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:var(--r-f);padding:6px 12px}
+.puces li svg{width:14px;height:14px;stroke:#BFD6FF;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+
+.choix-ville{margin-top:-78px;background:var(--paper);border-radius:24px;padding:20px 16px 16px;position:relative;
+  box-shadow:0 24px 60px -12px rgba(11,30,68,.35),0 2px 8px rgba(11,30,68,.06)}
+.choix-ville h2{font-size:23px;margin-bottom:14px}
+.localiser{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;border:0;border-radius:var(--r-f);
+  background:linear-gradient(135deg,#2A6EF0 0%,#1A5EDB 45%,#0D3FA0 100%);color:#fff;font-weight:700;font-size:16.5px;
+  box-shadow:0 10px 24px -6px rgba(26,94,219,.55);position:relative;overflow:hidden;transition:transform .14s var(--mv),box-shadow .14s var(--mv)}
+.localiser::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);transform:skewX(-20deg);animation:reflet 4.5s 1.2s infinite}
+@keyframes reflet{0%,70%{left:-60%}100%{left:130%}}
+.localiser:hover{transform:translateY(-1px);box-shadow:0 14px 28px -6px rgba(26,94,219,.6)}
 .localiser svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.2;stroke-linecap:round}
 .localiser[aria-busy="true"]{opacity:.75;cursor:progress}
-.ou-ville{font-size:13px;color:var(--ink-2);text-align:center;margin:10px 0}
+.ou-ville{font-size:13px;color:var(--ink-2);text-align:center;margin:12px 0 10px}
 .msg{font-size:13.5px;border-radius:var(--r-s);padding:9px 11px}
 .msg[hidden]{display:none}
 .msg-alerte{color:var(--ex-txt);background:var(--ex-fond);margin-top:10px}
 .villes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ville{min-height:54px;border:1.5px solid var(--line);background:var(--paper);border-radius:var(--r);font-weight:700;font-size:16px;color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 12px 0 14px;text-align:left;transition:border-color .14s var(--mv),background .14s var(--mv)}
-.ville:hover{border-color:var(--vif);background:var(--vif-clair)}
+.ville{min-height:48px;border:1.5px solid var(--line);background:var(--paper);border-radius:var(--r-f);font-weight:700;font-size:15px;color:var(--ink);
+  display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;text-align:center;transition:border-color .14s var(--mv),background .14s var(--mv),color .14s var(--mv)}
+.ville:hover{border-color:var(--vif);background:var(--vif-clair);color:var(--vif)}
 .ville.large{grid-column:1/-1}
-.ville svg{width:18px;height:18px;stroke:var(--vif);fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
-.ville-autre{grid-column:1/-1;font-weight:500;color:var(--ink-2);justify-content:center;border-style:dashed;text-decoration:none}
-.sous{font-size:13px;color:var(--ink-2);text-align:center;margin-top:12px}
-.rass{padding-block:28px 8px;display:grid;gap:22px}
-.garanties{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.garanties li{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px}
-.garanties b{display:block;font-family:var(--font-titre);font-size:21px;color:var(--vif);line-height:1.1;margin-bottom:3px}
-.garanties span{font-size:13.5px;color:var(--ink-2);line-height:1.4;display:block}
-.avis{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:16px}
-.avis p{font-size:15px;margin:6px 0;color:var(--ink-2)}
-.avis small{font-size:13px;font-weight:700}
-.rass h3{font-size:19px;margin-bottom:10px}
-.etapes-l{list-style:none;counter-reset:e;display:grid;gap:10px}
-.etapes-l li{counter-increment:e;display:flex;gap:12px;align-items:baseline;font-size:15px}
-.etapes-l li::before{content:counter(e);flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--vif-clair);color:var(--vif);font-weight:700;font-size:13.5px;display:flex;align-items:center;justify-content:center;transform:translateY(-1px)}
-.faq details{border-bottom:1px solid var(--line);padding:12px 0}
-.faq summary{font-weight:700;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
-.faq summary::-webkit-details-marker{display:none}
-.faq summary::after{content:"+";color:var(--vif);font-weight:700}
-.faq details[open] summary::after{content:"−"}
-.faq p{color:var(--ink-2);font-size:15px;margin-top:6px}
-.remonter{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;border:0;border-radius:var(--r-f);background:var(--vif);color:#fff;font-weight:700;font-size:16.5px;margin-block:8px 28px;box-shadow:var(--o-2)}
+.ville svg{display:none}
+.ville-autre{grid-column:1/-1;font-weight:500;color:var(--ink-2);border-style:dashed;text-decoration:none}
+.sous{font-size:12.5px;color:var(--ink-2);text-align:center;margin-top:12px}
+
+/* Une seule ligne de garanties sous la carte */
+.essentiel{list-style:none;display:flex;justify-content:center;flex-wrap:wrap;gap:6px 18px;padding-block:22px 6px;font-size:13.5px;color:var(--ink-2)}
+.essentiel b{color:var(--ink)}
+.pied{font-size:12px;color:var(--ink-3);text-align:center;padding-block:18px 28px}
+.pied a{color:var(--ink-3)}
+.alt-ligne{font-size:14px;color:var(--ink-2);text-align:center;margin-top:18px}
+.alt-ligne a{font-weight:700;color:var(--vif)}
+.hero-sous{font-size:16px;color:rgba(255,255,255,.9);max-width:30ch}
+
+@media(min-width:760px){
+  .hero{padding-block:56px 130px}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero img.hero-img,.localiser::after{animation:none}
+}
 
 /* ── LA CARTE (MapLibre + OpenFreeMap) ── */
 .carte-pts{height:230px;border-radius:var(--r);border:1px solid var(--line);background:#EEF1F5;margin-bottom:12px;overflow:hidden;position:relative}
@@ -195,6 +211,49 @@ h2:focus{outline:none}
 .badge-ex{background:var(--ex-fond);color:var(--ex-txt)}
 .note-bas{font-size:13px;color:var(--ink-2);text-align:center;margin-top:12px}
 .note-bas b{color:var(--vif)}
+
+/* ── LE CALENDRIER (façon Airbnb) ── */
+.avec-barre{padding-bottom:110px}
+.sel-dates{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin-bottom:12px;box-shadow:var(--o-1)}
+.sel-dates svg{width:18px;height:18px;stroke:var(--ink-3);fill:none;stroke-width:2;flex-shrink:0}
+.sel{flex:1;min-width:0;text-align:left;background:none;border:1.5px solid transparent;border-radius:10px;padding:8px 10px}
+.sel small{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.sel b{display:block;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel.actif{border-color:var(--ink);background:var(--mist)}
+.raccourcis{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.raccourcis[hidden]{display:none}
+.raccourcis button{flex-shrink:0;border:1.5px solid var(--line);background:var(--paper);border-radius:var(--r-f);padding:8px 14px;font-size:14px;font-weight:700;color:var(--ink)}
+.raccourcis button small{font-weight:500;color:var(--ink-2);margin-left:4px}
+.raccourcis button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.raccourcis button[aria-pressed="true"] small{color:rgba(255,255,255,.75)}
+.cal{display:grid;gap:22px;margin-top:8px}
+.mois h3{font-family:var(--font);font-size:16.5px;font-weight:700;margin:0 0 10px 4px;text-transform:capitalize}
+.sem,.jours-g{display:grid;grid-template-columns:repeat(7,1fr)}
+.sem span{font-size:11.5px;font-weight:700;color:var(--ink-3);text-align:center;padding-bottom:6px}
+.jours-g{row-gap:2px}
+.j{position:relative;aspect-ratio:1;border:0;background:none;font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;padding:0}
+.j span{position:relative;z-index:1;width:min(44px,100%);height:min(44px,100%);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .12s var(--mv),color .12s var(--mv)}
+.j:not(:disabled):hover span{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.j:disabled{color:#C3CCD9;cursor:default}
+.j.ferme span{text-decoration:line-through}
+.j.court{color:var(--ink-3)}
+.j.auj span{box-shadow:inset 0 0 0 1px var(--line)}
+.j.entre::before,.j.debut.a-fin::before,.j.fin::before{content:"";position:absolute;top:8%;bottom:8%;left:0;right:0;background:#DCE7FB}
+.j.debut.a-fin::before{left:50%}
+.j.fin::before{right:50%}
+.j.debut.fin::before{display:none}
+.j.debut span,.j.fin span{background:var(--vif);color:#fff;box-shadow:none}
+.plus-mois{display:block;width:100%;margin-top:16px;border:1.5px solid var(--line);background:var(--paper);border-radius:var(--r-f);min-height:48px;font-weight:700;color:var(--ink)}
+.barre-dates{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding:10px var(--gut-d) calc(10px + env(safe-area-inset-bottom,0px)) var(--gut-g);box-shadow:0 -6px 20px rgba(14,23,38,.06)}
+.barre-dates .col{display:flex;align-items:center;gap:10px;padding:0}
+.barre-dates p{flex:1;min-width:0;font-size:12.5px;color:var(--ink-2);line-height:1.3}
+.barre-dates p b{display:block;font-size:15.5px;color:var(--ink)}
+.barre-dates .effacer{background:none;border:0;font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:3px;color:var(--ink);padding:8px 4px}
+.barre-dates .effacer[hidden]{display:none}
+.barre-dates .btn{width:auto;min-height:48px;padding:0 22px;font-size:15.5px}
+.barre-dates .btn:disabled{background:#C3CCD9;box-shadow:none;cursor:not-allowed}
+body.a-cook .barre-dates{bottom:64px}
 
 /* panneaux « autre durée » / « autre date » */
 .libre{background:var(--paper);border-radius:var(--r-l);box-shadow:var(--o-2);padding:18px 16px;margin-top:10px;display:grid;gap:14px}
@@ -262,6 +321,7 @@ body.a-cook{padding-bottom:72px}
 </style>
 </head>
 <body>
+<script>document.documentElement.className = "js";</script>
 
 <p class="annonce">Retrait sans frais de livraison · 7j/7 · 8h–20h</p>
 <header class="nav">
@@ -277,7 +337,7 @@ body.a-cook{padding-bottom:72px}
     <div class="suivi-l">
       <button type="button" class="retour" id="retour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Retour</button>
       <ol class="etapes" id="etapes" aria-label="Étapes">
-        <li data-e="point">Point</li><li data-e="duree">Durée</li><li data-e="jour">Jour</li><li data-e="infos">Vos infos</li>
+        <li data-e="point">Point</li><li data-e="dates">Dates</li><li data-e="infos">Vos infos</li>
       </ol>
     </div>
     <p class="resume" id="resume" aria-live="polite" hidden></p>
@@ -288,20 +348,20 @@ body.a-cook{padding-bottom:72px}
 
   <!-- ══ 1. ARRIVÉE ══ -->
   <section class="ecran" data-ecran="ville" aria-labelledby="t-ville">
-    <div class="haut">
+    <div class="hero">
+      <picture>
+        <source media="(min-width:760px)" type="image/webp" srcset="/cc-hero-1600.webp 1600w, /cc-hero-2560.webp 2560w, /hero-ete.webp 3840w" sizes="100vw">
+        <img class="hero-img" src="/cc-hero-p720.webp" srcset="/cc-hero-p720.webp 720w, /cc-hero-p1080.webp 1080w" sizes="100vw" width="1080" height="1350" alt="" fetchpriority="high" decoding="async">
+      </picture>
       <div class="col">
-        <p class="note"><span class="etoiles" aria-hidden="true">★★★★★</span><span><b>4,9/5</b> · 38 avis Google</span></p>
-        <p class="kicker">Click &amp; Collect · Côte d’Azur</p>
+        <p class="verre"><span class="etoiles" aria-hidden="true">★★★★★</span><span><b>4,9/5</b> · 38 avis Google</span></p>
         <h1>Location de climatiseur dès <span id="prix-mini">12</span>&nbsp;€/jour. <em>Sans frais de livraison.</em></h1>
-        <ul class="puces">
-          <li>Retrait près de chez vous</li>
-          <li>0 € de caution</li>
-          <li>Sans perçage</li>
-        </ul>
+        <p class="hero-sous">Réservez en ligne, récupérez-le près de chez vous.</p>
       </div>
     </div>
+
     <div class="col">
-      <div class="choix-ville">
+      <div class="choix-ville" id="choix">
         <h2 id="t-ville" tabindex="-1">Où voulez-vous le récupérer&nbsp;?</h2>
         <button type="button" class="localiser" id="localiser">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="4"/></svg>
@@ -311,39 +371,16 @@ body.a-cook{padding-bottom:72px}
         <div class="villes" id="villes"></div>
         <p class="sous">Réservation en 1 minute · aucun paiement en ligne</p>
       </div>
-
-      <div class="rass">
-        <ul class="garanties">
-          <li><b>0 €</b><span>de livraison : vous passez le prendre</span></li>
-          <li><b>0 €</b><span>de caution, ni empreinte bancaire</span></li>
-          <li><b>Kit fourni</b><span>pour la fenêtre, sans outil ni perçage</span></li>
-          <li><b>7j/7</b><span>assistance de 8h à 20h, panne = appareil échangé</span></li>
-        </ul>
-        <div class="avis">
-          <span class="etoiles" aria-label="5 étoiles sur 5">★★★★★</span>
-          <p>«&nbsp;Parfait pour notre colocation&nbsp;! On a passé l’été au frais sans se ruiner.&nbsp;»</p>
-          <small>Sophie Margot · avis Google</small>
-        </div>
-        <div>
-          <h3>Comment ça marche</h3>
-          <ol class="etapes-l">
-            <li>Vous choisissez le point, la durée et le jour.</li>
-            <li>On vous rappelle pour confirmer l’heure du retrait.</li>
-            <li>Vous passez prendre l’appareil et son kit de fenêtre.</li>
-            <li>Vous le rapportez au même point à la fin.</li>
-          </ol>
-        </div>
-        <div class="faq">
-          <h3>Questions fréquentes</h3>
-          <details><summary>Combien ça coûte en tout&nbsp;?</summary><p id="faq-prix">Une semaine&nbsp;: 84&nbsp;€. Deux semaines&nbsp;: 154&nbsp;€. Pas de livraison, pas de caution. Le prix par jour baisse à partir du 8ᵉ jour. Location de 7 jours minimum.</p></details>
-          <details><summary>Quand est-ce que je paie&nbsp;?</summary><p>Rien en ligne. On vous rappelle pour confirmer l’heure du retrait et on vous explique le paiement à ce moment-là.</p></details>
-          <details><summary>Ma fenêtre est-elle compatible&nbsp;?</summary><p>Oscillo-battante, coulissante, Velux&nbsp;: dans presque tous les cas, oui. En cas de doute, envoyez-nous une photo sur WhatsApp.</p></details>
-          <details><summary>Et si l’appareil tombe en panne&nbsp;?</summary><p>Appelez-nous&nbsp;: on vous l’échange sans frais.</p></details>
-          <details><summary>Je ne peux pas me déplacer.</summary><p>On peut aussi livrer et installer chez vous, à partir de 60&nbsp;€ aller et retour. <a href="/reserver">Réserver avec livraison</a>.</p></details>
-        </div>
-        <button type="button" class="remonter" id="remonter">Choisir mon point de retrait</button>
-      </div>
     </div>
+
+    <div class="col">
+      <ul class="essentiel">
+        <li><b>0 €</b> livraison</li>
+        <li><b>0 €</b> caution</li>
+        <li>Kit <b>sans perçage</b></li>
+      </ul>
+    </div>
+    <footer class="pied"><div class="col">© Loc’Air · <a href="/cgv">CGV</a> · <a href="/mentions-legales">Mentions légales</a> · <a href="/confidentialite">Confidentialité</a></div></footer>
   </section>
 
   <div class="col">
@@ -352,42 +389,32 @@ body.a-cook{padding-bottom:72px}
     <section class="ecran etape" data-ecran="point" aria-labelledby="t-point" hidden>
       <h2 id="t-point" tabindex="-1">Quel point de retrait&nbsp;?</h2>
       <p class="dire" id="point-dire"></p>
-      <p class="avert" id="avert-ex" hidden><b>Exemples</b> — adresses et horaires provisoires.</p>
+      <p class="avert" id="avert-ex" hidden></p>
       <div class="carte-pts" id="carte-pts" aria-hidden="true" hidden></div>
       <div class="cartes" id="points"></div>
       <p class="note-bas">Disponibilité confirmée par téléphone avant votre passage.</p>
     </section>
 
-    <!-- ══ 3. LA DURÉE ══ -->
-    <section class="ecran etape" data-ecran="duree" aria-labelledby="t-duree" hidden>
-      <h2 id="t-duree" tabindex="-1">Pour combien de temps&nbsp;?</h2>
-      <p class="dire">Plus c’est long, moins le jour coûte. 7 jours minimum.</p>
-      <div class="cartes" id="durees"></div>
-      <div class="libre" id="duree-libre" hidden>
-        <div class="compteur">
-          <button type="button" class="pm" id="moins" aria-label="Un jour de moins">−</button>
-          <div class="jours" aria-live="polite"><b id="nb-jours">10</b><span>jours</span></div>
-          <button type="button" class="pm" id="plus" aria-label="Un jour de plus">+</button>
+    <!-- ══ 3. VOS DATES (calendrier, comme Airbnb) ══ -->
+    <section class="ecran etape avec-barre" data-ecran="dates" aria-labelledby="t-dates" hidden>
+      <h2 id="t-dates" tabindex="-1">Vos dates</h2>
+      <p class="dire" id="dates-dire">Touchez le jour du retrait, puis le jour du retour.</p>
+      <div class="sel-dates" aria-live="polite">
+        <button type="button" class="sel" id="sel-debut"><small>Retrait</small><b>Choisir</b></button>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <button type="button" class="sel" id="sel-fin"><small>Retour</small><b>—</b></button>
+      </div>
+      <div class="raccourcis" id="raccourcis" hidden></div>
+      <p class="msg msg-alerte" id="cal-msg" role="status" hidden></p>
+      <div class="cal" id="cal"></div>
+      <button type="button" class="plus-mois" id="plus-mois">Afficher plus de mois</button>
+      <p class="note-bas" id="cal-note"></p>
+      <div class="barre-dates" id="barre-dates">
+        <div class="col">
+          <p id="bd-txt"><b>Choisissez vos dates</b>7 jours minimum</p>
+          <button type="button" class="effacer" id="effacer">Effacer</button>
+          <button type="button" class="btn" id="dates-ok" disabled>Continuer</button>
         </div>
-        <p class="libre-prix" aria-live="polite"><b id="prix-libre"></b> au total</p>
-        <button type="button" class="btn" id="duree-ok">Valider cette durée</button>
-      </div>
-      <p class="note-bas">Livraison <b>0 €</b> · Caution <b>0 €</b></p>
-    </section>
-
-    <!-- ══ 4. LE JOUR ══ -->
-    <section class="ecran etape" data-ecran="jour" aria-labelledby="t-jour" hidden>
-      <h2 id="t-jour" tabindex="-1">Quand passez-vous&nbsp;?</h2>
-      <p class="dire" id="jour-dire"></p>
-      <div class="cartes" id="jours">
-        <button type="button" class="carte" data-d="0"><span class="carte-txt"><span class="carte-t">Aujourd’hui</span><span class="carte-s" data-dl="0"></span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
-        <button type="button" class="carte" data-d="1"><span class="carte-txt"><span class="carte-t">Demain</span><span class="carte-s" data-dl="1"></span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
-        <button type="button" class="carte carte-2" id="jour-autre" aria-expanded="false" aria-controls="jour-libre"><span class="carte-txt"><span class="carte-t">Une autre date</span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-      </div>
-      <div class="libre" id="jour-libre" hidden>
-        <label for="date" class="champ-l">Jour du retrait</label>
-        <input class="champ" type="date" id="date">
-        <button type="button" class="btn" id="jour-ok">Valider cette date</button>
       </div>
     </section>
 
@@ -396,9 +423,9 @@ body.a-cook{padding-bottom:72px}
       <h2 id="t-infos" tabindex="-1">Dernière étape.</h2>
       <p class="dire">Vérifiez, laissez votre numéro&nbsp;: on vous rappelle pour confirmer.</p>
       <dl class="recap" id="recap">
-        <div><dt>Retrait</dt><dd id="r-point"></dd><button type="button" class="modif" data-modif="point" aria-label="Modifier le point de retrait">Modifier</button></div>
-        <div><dt>Le</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="jour" aria-label="Modifier le jour">Modifier</button></div>
-        <div><dt>Durée</dt><dd id="r-duree"></dd><button type="button" class="modif" data-modif="duree" aria-label="Modifier la durée">Modifier</button></div>
+        <div><dt>Point</dt><dd id="r-point"></dd><button type="button" class="modif" data-modif="point" aria-label="Modifier le point de retrait">Modifier</button></div>
+        <div><dt>Retrait</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates">Modifier</button></div>
+        <div><dt>Retour</dt><dd id="r-duree"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates">Modifier</button></div>
         <div><dt>Livraison</dt><dd><span class="barre-prix" id="r-livr-barre"></span>0 €</dd></div>
         <div class="total"><dt>Total</dt><dd id="r-prix"></dd></div>
       </dl>
@@ -417,11 +444,7 @@ body.a-cook{padding-bottom:72px}
         <button type="submit" class="btn" id="envoyer">Réserver mon climatiseur</button>
         <p class="mentions">Aucun paiement maintenant · aucune caution. Votre numéro sert uniquement à vous rappeler pour cette réservation. <a href="/confidentialite">Confidentialité</a></p>
       </form>
-      <p class="ou">ou réservez directement</p>
-      <div class="alts">
-        <a class="btn-2" id="wa" href="#" target="_blank" rel="noopener noreferrer" data-mesure="cc_whatsapp"><svg viewBox="0 0 24 24" aria-hidden="true" fill="#25D366"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2-.2-.3 0-.5.1-.6l.4-.5c.2-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 21.8a9.9 9.9 0 01-5-1.4l-.4-.2-3.7 1 1-3.7-.2-.4A9.9 9.9 0 1112 21.8zM20.5 3.5A11.8 11.8 0 0012 0C5.5 0 .2 5.3.2 11.9c0 2.1.5 4.1 1.6 5.9L0 24l6.4-1.7c1.7.9 3.7 1.4 5.7 1.4 6.6 0 11.9-5.3 11.9-11.9 0-3.2-1.2-6.2-3.5-8.3z"/></svg>WhatsApp</a>
-        <a class="btn-2" href="tel:+33663798756" data-mesure="cc_appel"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>Appeler</a>
-      </div>
+      <p class="alt-ligne">Vous préférez&nbsp;? <a id="wa" href="#" target="_blank" rel="noopener noreferrer" data-mesure="cc_whatsapp">WhatsApp</a> · <a href="tel:+33663798756" data-mesure="cc_appel">06 63 79 87 56</a></p>
     </section>
 
     <!-- ══ 6. C'EST NOTÉ ══ -->
@@ -456,26 +479,29 @@ body.a-cook{padding-bottom:72px}
    livraison : prix qu'aurait coûté la livraison dans cette ville, affiché
    barré au récapitulatif (60 € à Nice, Saint-Laurent-du-Var et
    Cagnes-sur-Mer, 120 € ailleurs — comme les pages de ville).
+   fermes : jours où le point est fermé (0 = dimanche, 1 = lundi… 6 =
+   samedi). Ces jours sont barrés dans le calendrier, pour le retrait
+   comme pour le retour.
    exemple:false quand l'adresse est réelle : la pastille disparaît. */
 var POINTS = [
-  {ville:'Nice',                 nom:'Nice Centre',            lat:43.7009, lng:7.2683, adresse:'Adresse à venir, 06000 Nice',                 horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Nice',                 nom:'Nice Port',              lat:43.6966, lng:7.2852, adresse:'Adresse à venir, 06300 Nice',                 horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Nice',                 nom:'Nice Ouest',             lat:43.6845, lng:7.2010, adresse:'Adresse à venir, 06200 Nice',                 horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Saint-Laurent-du-Var', nom:'Saint-Laurent-du-Var',   lat:43.6731, lng:7.1907, adresse:'Adresse à venir, 06700 Saint-Laurent-du-Var', horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Cagnes-sur-Mer',       nom:'Cagnes-sur-Mer',         lat:43.6644, lng:7.1489, adresse:'Adresse à venir, 06800 Cagnes-sur-Mer',       horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Antibes',              nom:'Antibes',                lat:43.5804, lng:7.1251, adresse:'Adresse à venir, 06600 Antibes',              horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Antibes',              nom:'Juan-les-Pins',          lat:43.5684, lng:7.1110, adresse:'Adresse à venir, 06160 Juan-les-Pins',        horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Cannes',               nom:'Cannes',                 lat:43.5528, lng:7.0174, adresse:'Adresse à venir, 06400 Cannes',               horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Grasse',               nom:'Grasse',                 lat:43.6584, lng:6.9225, adresse:'Adresse à venir, 06130 Grasse',               horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Villefranche-sur-Mer', nom:'Villefranche-sur-Mer',   lat:43.7040, lng:7.3111, adresse:'Adresse à venir, 06230 Villefranche-sur-Mer', horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Beausoleil',           nom:'Beausoleil (Monaco)',    lat:43.7429, lng:7.4236, adresse:'Adresse à venir, 06240 Beausoleil',           horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Menton',               nom:'Menton',                 lat:43.7747, lng:7.4975, adresse:'Adresse à venir, 06500 Menton',               horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true}
+  {ville:'Nice',                 nom:'Nice Centre',            lat:43.7009, lng:7.2683, adresse:'Adresse à venir, 06000 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Nice',                 nom:'Nice Port',              lat:43.6966, lng:7.2852, adresse:'Adresse à venir, 06300 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Nice',                 nom:'Nice Ouest',             lat:43.6845, lng:7.2010, adresse:'Adresse à venir, 06200 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Saint-Laurent-du-Var', nom:'Saint-Laurent-du-Var',   lat:43.6731, lng:7.1907, adresse:'Adresse à venir, 06700 Saint-Laurent-du-Var', horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Cagnes-sur-Mer',       nom:'Cagnes-sur-Mer',         lat:43.6644, lng:7.1489, adresse:'Adresse à venir, 06800 Cagnes-sur-Mer',       horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Antibes',              nom:'Antibes',                lat:43.5804, lng:7.1251, adresse:'Adresse à venir, 06600 Antibes',              horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Antibes',              nom:'Juan-les-Pins',          lat:43.5684, lng:7.1110, adresse:'Adresse à venir, 06160 Juan-les-Pins',        horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Cannes',               nom:'Cannes',                 lat:43.5528, lng:7.0174, adresse:'Adresse à venir, 06400 Cannes',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Grasse',               nom:'Grasse',                 lat:43.6584, lng:6.9225, adresse:'Adresse à venir, 06130 Grasse',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Villefranche-sur-Mer', nom:'Villefranche-sur-Mer',   lat:43.7040, lng:7.3111, adresse:'Adresse à venir, 06230 Villefranche-sur-Mer', horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Beausoleil',           nom:'Beausoleil (Monaco)',    lat:43.7429, lng:7.4236, adresse:'Adresse à venir, 06240 Beausoleil',           horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Menton',               nom:'Menton',                 lat:43.7747, lng:7.4975, adresse:'Adresse à venir, 06500 Menton',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true}
 ];
 
 /* Barème par défaut — remplacé par /api/pricing-config dès qu'il répond. */
 var PALIERS = [[7,12],[14,10],[21,9],[Infinity,8]];
 var JOURS_MIN = 7, JOURS_MAX = 90;
-var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
+var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis du calendrier */
 
 /* ── MESURE : consentement, puis événements ─────────────────────────── */
 (function(){
@@ -501,8 +527,8 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
 
 /* ── LE PARCOURS ───────────────────────────────────────────────────────── */
 (function(){
-  var ORDRE = ['ville','point','duree','jour','infos','merci'];
-  var etat = {ville:null, point:null, jours:null, libre:10, date:null, pile:[], liste:[], pos:null, edition:false};
+  var ORDRE = ['ville','point','dates','infos','merci'];
+  var etat = {ville:null, point:null, jours:null, date:null, debut:null, fin:null, mois:3, pile:[], liste:[], pos:null, edition:false};
   var $ = function(id){ return document.getElementById(id); };
   var ecrans = {};
   [].forEach.call(document.querySelectorAll('[data-ecran]'), function(e){ ecrans[e.dataset.ecran] = e; });
@@ -531,7 +557,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
       if(i === k) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
     });
     majResume(nom);
-    if(nom === 'jour') majJour();
+    if(nom === 'dates') dessinerCal();
     if(nom === 'infos') remplirRecap();
     if(nom === 'point' && carte) setTimeout(function(){ carte.resize(); }, 0);
     window.scrollTo(0, 0);
@@ -540,14 +566,11 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
   /* après une étape : en mode « Modifier », retour direct au récapitulatif */
   function suite(nom){ if(etat.edition){ etat.edition = false; aller('infos'); } else aller(nom); }
   $('retour').onclick = function(){ etat.edition = false; aller(etat.pile.pop() || 'ville', true); };
-  $('remonter').onclick = function(){ window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); $('localiser').focus({preventScroll:true}); };
-
+  var doux = function(){ return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; };
   function majResume(nom){
     var r = [], el = $('resume');
     if(etat.point && nom !== 'point') r.push(etat.point.nom);
-    if(etat.jours && nom !== 'duree' && nom !== 'point') r.push(etat.jours + ' jours');
-    if(etat.date && nom === 'infos') r.push(lisible(etat.date).replace(/^\w+ /, ''));
-    if(etat.jours && nom !== 'duree' && nom !== 'point') r.push(euros(prix(etat.jours)));
+    if(etat.jours && nom === 'infos'){ r.push(etat.jours + ' jours'); r.push(euros(prix(etat.jours))); }
     el.innerHTML = r.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('');
     el.hidden = !r.length;
   }
@@ -563,7 +586,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     var b = e.target.closest('[data-ville]'); if(!b) return;
     etat.ville = b.dataset.ville; etat.pos = null;
     var liste = POINTS.filter(function(p){ return p.ville === etat.ville; });
-    if(liste.length === 1 && !etat.edition){ etat.point = liste[0]; etat.liste = liste; suite('duree'); }
+    if(liste.length === 1 && !etat.edition){ etat.point = liste[0]; etat.liste = liste; verifierDates(); suite('dates'); }
     else { dessinerPoints(liste, null); aller('point'); montrerCarte(); }
   });
 
@@ -578,7 +601,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     etat.liste = liste; etat.pos = pos;
     $('point-dire').textContent = pos ? 'Du plus proche au plus loin de vous. Touchez un point pour le choisir.'
       : (liste.length > 1 ? 'À ' + etat.ville + ', ' + liste.length + ' points. Touchez celui qui vous arrange.' : 'À ' + etat.ville + '.');
-    $('avert-ex').hidden = !liste.some(function(p){ return p.exemple; });
+    $('avert-ex').hidden = true;
     $('points').innerHTML = liste.map(function(p, k){
       var d = pos ? dist(km(pos, p)) + ' · ' : '';
       var tags = (pos && k === 0 ? '<span class="badge badge-proche">Le plus proche</span>' : '') + (p.exemple ? '<span class="badge badge-ex">Exemple</span>' : '');
@@ -589,7 +612,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
         '<svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>';
     }).join('');
   }
-  function choisirPoint(p){ etat.point = p; window._ccValeur = 0; suite('duree'); }
+  function choisirPoint(p){ etat.point = p; verifierDates(); suite(etat.edition && !etat.debut ? (etat.edition = false, 'dates') : 'dates'); }
   $('points').addEventListener('click', function(e){
     var b = e.target.closest('[data-point]'); if(b) choisirPoint(POINTS[+b.dataset.point]);
   });
@@ -667,50 +690,110 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     }, {enableHighAccuracy:false, timeout:10000, maximumAge:600000});
   });
 
-  /* ── 3. durée ── */
-  function dessinerDurees(){
-    $('durees').innerHTML = DUREES.map(function(d){
-      var t = prix(d[0]);
-      return '<button type="button" class="carte" data-j="' + d[0] + '"><span class="carte-txt"><span class="carte-t">' + d[1] + '</span><span class="carte-s">' + d[0] + ' jours</span></span>' +
-        '<span class="carte-p"><b>' + euros(t) + '</b><small>' + parJour(t, d[0]) + '</small></span></button>';
-    }).join('') + '<button type="button" class="carte carte-2" id="duree-autre" aria-expanded="false" aria-controls="duree-libre"><span class="carte-txt"><span class="carte-t">Autre durée</span><span class="carte-s">De ' + JOURS_MIN + ' à ' + JOURS_MAX + ' jours</span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>';
-    $('duree-autre').onclick = function(){ ouvrir(this, $('duree-libre')); };
-    var f = $('faq-prix'); if(f) f.textContent = 'Une semaine : ' + euros(prix(7)) + '. Deux semaines : ' + euros(prix(14)) + '. Pas de livraison, pas de caution. Le prix par jour baisse à partir du 8ᵉ jour. Location de 7 jours minimum.';
-    $('prix-mini').textContent = PALIERS[PALIERS.length - 1] ? String(PALIERS[0][1]).replace('.', ',') : '12';
+  /* ── textes de prix (titre et carte de choix) ── */
+  function majPrixTextes(){
+    var pj = String(PALIERS[0][1]).replace('.', ',');
+    $('prix-mini').textContent = pj;
   }
-  $('durees').addEventListener('click', function(e){
-    var b = e.target.closest('[data-j]'); if(!b) return;
-    etat.jours = +b.dataset.j; window._ccValeur = prix(etat.jours); suite('jour');
-  });
-  function ouvrir(bouton, panneau){
-    var o = panneau.hidden; panneau.hidden = !o; bouton.setAttribute('aria-expanded', o ? 'true' : 'false');
-    if(o) panneau.scrollIntoView({block:'nearest'});
-  }
-  function majLibre(){
-    $('nb-jours').textContent = etat.libre; $('prix-libre').textContent = euros(prix(etat.libre));
-    $('moins').disabled = etat.libre <= JOURS_MIN; $('plus').disabled = etat.libre >= JOURS_MAX;
-  }
-  $('moins').onclick = function(){ etat.libre = Math.max(JOURS_MIN, etat.libre - 1); majLibre(); };
-  $('plus').onclick  = function(){ etat.libre = Math.min(JOURS_MAX, etat.libre + 1); majLibre(); };
-  $('duree-ok').onclick = function(){ etat.jours = etat.libre; window._ccValeur = prix(etat.jours); suite('jour'); };
 
-  /* ── 4. jour ── */
-  function majJour(){
-    $('jour-dire').textContent = etat.point ? etat.point.nom + ' · ' + etat.point.horaires + '. On vous confirme l’heure par téléphone.' : '';
-    [].forEach.call(document.querySelectorAll('[data-dl]'), function(s){ s.textContent = lisible(dans(+s.dataset.dl)); });
+  /* ── 3. le calendrier ──────────────────────────────────────────────────
+     1er toucher = retrait, 2e = retour (comme Airbnb). Jours passés et
+     jours de fermeture du point barrés. Retour au moins 7 jours après,
+     au plus 90. jours = nombre de jours entre retrait et retour. */
+  var MOIS_MAX = 12;
+  function d2(s){ var p = s.split('-'); return new Date(+p[0], p[1]-1, +p[2]); }
+  function ecart(a, b){ return Math.round((d2(b) - d2(a)) / 864e5); }
+  function court(s){ return d2(s).toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}); }
+  function ferme(s){ var f = (etat.point && etat.point.fermes) || []; return f.indexOf(d2(s).getDay()) >= 0; }
+  function prochainOuvert(s){ var n = 0; while(ferme(s) && n++ < 7) s = plus(s, 1); return s; }
+  function msgCal(t){ var m = $('cal-msg'); m.textContent = t || ''; m.hidden = !t; }
+
+  function dessinerCal(){
+    var auj = dans(0), max = dans(365), html = '';
+    var base = new Date(); base.setDate(1);
+    for(var m = 0; m < etat.mois; m++){
+      var d0 = new Date(base.getFullYear(), base.getMonth() + m, 1);
+      var nb = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
+      var dec = (d0.getDay() + 6) % 7;                         /* semaine commençant le lundi */
+      html += '<section class="mois" aria-label="' + d0.toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '"><h3>' + d0.toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</h3>' +
+        '<div class="sem" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="jours-g">';
+      for(var v = 0; v < dec; v++) html += '<span></span>';
+      for(var j = 1; j <= nb; j++){
+        var s = iso(new Date(d0.getFullYear(), d0.getMonth(), j)), cls = ['j'], off = false, note = '';
+        if(s < auj || s > max){ off = true; }
+        else if(ferme(s)){ off = true; cls.push('ferme'); note = ', point fermé'; }
+        if(s === auj) cls.push('auj');
+        if(etat.debut && !etat.fin && s > etat.debut){
+          var e = ecart(etat.debut, s);
+          if(e < JOURS_MIN){ cls.push('court'); note = ', trop court'; }
+          if(e > JOURS_MAX){ off = true; }
+        }
+        if(s === etat.debut){ cls.push('debut'); if(etat.fin) cls.push('a-fin'); }
+        if(s === etat.fin) cls.push('fin');
+        if(etat.debut && etat.fin && s > etat.debut && s < etat.fin) cls.push('entre');
+        var lab = d2(s).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) + note +
+          (s === etat.debut ? ', retrait' : '') + (s === etat.fin ? ', retour' : '');
+        html += '<button type="button" class="' + cls.join(' ') + '" data-s="' + s + '"' + (off ? ' disabled' : '') +
+          ' aria-label="' + lab + '"' + ((s === etat.debut || s === etat.fin) ? ' aria-pressed="true"' : '') + '><span>' + j + '</span></button>';
+      }
+      html += '</div></section>';
+    }
+    $('cal').innerHTML = html;
+    $('plus-mois').hidden = etat.mois >= MOIS_MAX;
+    var p = etat.point;
+    $('cal-note').textContent = p ? p.nom + ' · ' + p.horaires + (p.fermes && p.fermes.length ? ' · jours barrés : point fermé' : '') + '. On vous confirme l’heure par téléphone.' : '';
+    majSelection();
   }
-  $('jours').addEventListener('click', function(e){
-    var b = e.target.closest('[data-d]'); if(!b) return;
-    etat.date = dans(+b.dataset.d); suite('infos');
+  function majSelection(){
+    var deb = $('sel-debut'), fin = $('sel-fin');
+    deb.querySelector('b').textContent = etat.debut ? court(etat.debut) : 'Choisir';
+    fin.querySelector('b').textContent = etat.fin ? court(etat.fin) : (etat.debut ? 'Choisir' : '—');
+    deb.classList.toggle('actif', !etat.debut); fin.classList.toggle('actif', !!etat.debut && !etat.fin);
+    $('dates-dire').textContent = !etat.debut ? 'Touchez le jour du retrait.' : (!etat.fin ? 'Touchez le jour du retour (7 jours minimum).' : 'Parfait. Vous pouvez changer en touchant une autre date.');
+    /* raccourcis de durée, une fois le retrait choisi */
+    var r = $('raccourcis');
+    r.hidden = !etat.debut;
+    if(etat.debut){
+      var j = etat.fin ? ecart(etat.debut, etat.fin) : 0;
+      r.innerHTML = DUREES.map(function(d){ return '<button type="button" data-plus="' + d[0] + '" aria-pressed="' + (j === d[0]) + '">' + d[1] + '<small>' + euros(prix(d[0])) + '</small></button>'; }).join('');
+    }
+    var ok = etat.debut && etat.fin, t = $('bd-txt');
+    if(ok){ var n = ecart(etat.debut, etat.fin); t.innerHTML = '<b>' + n + ' jours · ' + euros(prix(n)) + '</b>' + esc(court(etat.debut) + ' → ' + court(etat.fin)); }
+    else t.innerHTML = '<b>' + (etat.debut ? 'Choisissez le retour' : 'Choisissez vos dates') + '</b>7 jours minimum · 0 € livraison';
+    $('dates-ok').disabled = !ok; $('effacer').hidden = !etat.debut;
+    window._ccValeur = ok ? prix(ecart(etat.debut, etat.fin)) : 0;
+  }
+  $('cal').addEventListener('click', function(e){
+    var b = e.target.closest('[data-s]'); if(!b || b.disabled) return;
+    var s = b.dataset.s; msgCal('');
+    if(!etat.debut || etat.fin || s <= etat.debut){ etat.debut = s; etat.fin = null; }
+    else {
+      var n = ecart(etat.debut, s);
+      if(n < JOURS_MIN){ msgCal('7 jours minimum : retour à partir du ' + lisible(prochainOuvert(plus(etat.debut, JOURS_MIN))) + '.'); return; }
+      etat.fin = s;
+    }
+    var y = window.scrollY; dessinerCal(); window.scrollTo(0, y);
   });
-  $('jour-autre').onclick = function(){ ouvrir(this, $('jour-libre')); };
-  $('date').min = dans(0); $('date').max = dans(365);
-  $('jour-ok').onclick = function(){ var v = $('date').value; if(!v){ $('date').focus(); return; } etat.date = v; suite('infos'); };
+  $('raccourcis').addEventListener('click', function(e){
+    var b = e.target.closest('[data-plus]'); if(!b) return;
+    etat.fin = prochainOuvert(plus(etat.debut, +b.dataset.plus)); msgCal('');
+    var y = window.scrollY; dessinerCal(); window.scrollTo(0, y);
+  });
+  $('sel-debut').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
+  $('sel-fin').onclick = function(){ if(etat.debut){ etat.fin = null; msgCal(''); dessinerCal(); } };
+  $('effacer').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
+  $('plus-mois').onclick = function(){ etat.mois = Math.min(MOIS_MAX, etat.mois + 3); var y = window.scrollY; dessinerCal(); window.scrollTo(0, y); };
+  $('dates-ok').onclick = function(){
+    if(!etat.debut || !etat.fin) return;
+    etat.date = etat.debut; etat.jours = ecart(etat.debut, etat.fin); suite('infos');
+  };
+  /* changement de point : des dates devenues impossibles (jour fermé) sont effacées */
+  function verifierDates(){ if(etat.debut && (ferme(etat.debut) || (etat.fin && ferme(etat.fin)))){ etat.debut = etat.fin = null; } }
 
   /* ── 5. vos infos ── */
   function lignesRecap(){
     var p = etat.point, retour = plus(etat.date, etat.jours);
-    return {point: p.nom + (p.exemple ? ' (exemple)' : ''), date: lisible(etat.date), duree: etat.jours + ' jours · retour le ' + lisible(retour).replace(/^\w+ /, ''), prix: euros(prix(etat.jours))};
+    return {point: p.nom + (p.exemple ? ' (exemple)' : ''), date: lisible(etat.date), retour: lisible(retour), duree: etat.jours + ' jours · retour le ' + lisible(retour), prix: euros(prix(etat.jours))};
   }
   function messageWA(){
     var p = etat.point, l = lignesRecap();
@@ -718,7 +801,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
   }
   function remplirRecap(){
     var l = lignesRecap();
-    $('r-point').textContent = l.point; $('r-date').textContent = l.date; $('r-duree').textContent = l.duree; $('r-prix').textContent = l.prix;
+    $('r-point').textContent = l.point; $('r-date').textContent = l.date; $('r-duree').textContent = l.retour + ' (' + etat.jours + ' jours)'; $('r-prix').textContent = l.prix;
     $('r-livr-barre').textContent = etat.point.livraison ? etat.point.livraison + ' €' : '';
     $('wa').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(messageWA());
   }
@@ -766,19 +849,19 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     var l = lignesRecap();
     $('m-prenom').textContent = prenom;
     $('m-texte').textContent = 'On vous rappelle au ' + tel + ' pour confirmer l’heure du retrait (7j/7, 8h–20h). Rien à payer pour l’instant.';
-    $('m-recap').innerHTML = [['Retrait', l.point + ' — ' + etat.point.adresse], ['Le', l.date], ['Durée', l.duree], ['Total', total ? euros(total) : l.prix]]
+    $('m-recap').innerHTML = [['Point', l.point + ' — ' + etat.point.adresse], ['Retrait', l.date], ['Retour', l.retour + ' (' + etat.jours + ' jours)'], ['Total', total ? euros(total) : l.prix]]
       .map(function(x, i){ return '<div' + (i === 3 ? ' class="total"' : '') + '><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('');
     etat.pile = [];
     aller('merci');
   }
 
   /* ── prix de l'admin ── */
-  dessinerDurees(); majLibre();
+  majPrixTextes();
   fetch('/api/pricing-config').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
     var c = j && j.pricing; if(!c) return;
     var n = function(v){ return Number(v); };
     var p = [[n(c.palier1_max_jours), n(c.palier1_tarif_cents)/100],[n(c.palier2_max_jours), n(c.palier2_tarif_cents)/100],[n(c.palier3_max_jours), n(c.palier3_tarif_cents)/100],[Infinity, n(c.palier4_tarif_cents)/100]];
-    if(p.every(function(x){ return isFinite(x[1]) && x[1] > 0 && (x[0] === Infinity || x[0] > 0); })){ PALIERS = p; dessinerDurees(); majLibre(); }
+    if(p.every(function(x){ return isFinite(x[1]) && x[1] > 0 && (x[0] === Infinity || x[0] > 0); })){ PALIERS = p; majPrixTextes(); if(!ecrans.dates.hidden) dessinerCal(); }
   }).catch(function(){});
 
   aller('ville', true);
