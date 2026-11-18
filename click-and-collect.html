@@ -339,6 +339,44 @@ body:not(.en-etape) .nav-tel{background:rgba(255,255,255,.16);border:1px solid r
 .merci .alts .btn{min-height:54px}
 .merci .alts svg{width:20px;height:20px}
 
+/* ── LE MOT QUI TOURNE (titre) ──
+   Une ville après l'autre, toutes les 2,2 s. Rien ne bouge pour qui a
+   choisi « moins d'animations » : le titre dit alors « sur la Côte ». */
+.hero h1 .ligne{display:block}
+.tourne{position:relative;display:inline-grid;vertical-align:bottom;overflow:hidden;height:1.12em;line-height:1.12}
+.tourne span{grid-area:1/1;justify-self:start;white-space:nowrap;color:#fff;font-style:italic;font-weight:600;transform:translateY(105%);opacity:0;transition:transform .55s var(--mv),opacity .55s var(--mv);
+  background:linear-gradient(transparent 72%,rgba(26,94,219,.75) 72%,rgba(26,94,219,.75) 92%,transparent 92%)}
+.tourne span.on{transform:none;opacity:1}
+.tourne span.part{transform:translateY(-105%);opacity:0}
+.cote{display:none}
+.hero-sous b{color:#fff}
+@media(prefers-reduced-motion:reduce){ .anim{display:none} .cote{display:inline} }
+
+/* ── LES VILLES EN CARTES-PHOTOS (à faire glisser) ── */
+.villes-rail{display:grid;grid-auto-flow:column;grid-auto-columns:124px;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;
+  padding:2px 16px 8px;margin:0 -16px;scrollbar-width:none;scroll-padding-inline:16px}
+.villes-rail::-webkit-scrollbar{display:none}
+.vcarte{scroll-snap-align:start;position:relative;height:158px;border:0;border-radius:16px;overflow:hidden;padding:0;text-align:left;color:#fff;
+  background:linear-gradient(160deg,#3B7EF0 0%,#1A5EDB 45%,#0D3FA0 100%);box-shadow:0 8px 18px -8px rgba(11,30,68,.45);transition:transform .2s var(--mv),box-shadow .2s var(--mv)}
+.vcarte:nth-child(3n+2):not(.photo){background:linear-gradient(160deg,#2563EB,#0B1E44)}
+.vcarte:nth-child(3n):not(.photo){background:linear-gradient(160deg,#1A5EDB,#0E1726)}
+.vcarte img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s var(--mv)}
+.vcarte::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,18,42,0) 38%,rgba(6,18,42,.82) 100%)}
+.vcarte:not(.photo)::before{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;border:18px solid rgba(255,255,255,.08)}
+.vcarte:hover{transform:translateY(-2px);box-shadow:0 14px 24px -10px rgba(11,30,68,.55)}
+.vcarte:hover img{transform:scale(1.06)}
+.vcarte:active{transform:scale(.98)}
+.vc-txt{position:absolute;left:12px;right:10px;bottom:11px;z-index:1;display:grid;gap:1px}
+.vc-txt b{font-size:15.5px;line-height:1.15;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+.vc-txt small{font-size:12px;color:rgba(255,255,255,.85)}
+.vcarte.autre{background:var(--paper);border:1.5px dashed #B9C8E3;color:var(--ink-2);box-shadow:none;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;font-weight:700;font-size:14px;padding:12px}
+.vcarte.autre::after,.vcarte.autre::before{display:none}
+.vcarte.squelette{background:linear-gradient(90deg,var(--mist),#E3E9F2,var(--mist));background-size:200% 100%;animation:brille 1.2s infinite;box-shadow:none}
+.vcarte.squelette::after,.vcarte.squelette::before{display:none}
+.rail-info{font-size:12.5px;color:var(--ink-2);text-align:center;margin-top:8px}
+.rail-info b{color:var(--ink)}
+@media(min-width:560px){ .glisser{display:none} }
+
 /* ── PIÈCE D'IDENTITÉ ── */
 .identite{border:0;padding:0;margin:0;min-width:0}
 .choix-pi{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-f);padding:4px;margin-bottom:10px}
@@ -442,8 +480,8 @@ body.a-cook{padding-bottom:72px}
       </picture>
       <div class="col">
         <p class="verre"><span class="etoiles" aria-hidden="true">★★★★★</span><span><b>4,9/5</b> · 38 avis Google</span></p>
-        <h1>Location de climatiseur dès <span id="prix-mini">12</span>&nbsp;€/jour. <em>Sans frais de livraison.</em></h1>
-        <p class="hero-sous">Réservez en ligne, récupérez-le près de chez vous.</p>
+        <h1><span class="ligne">Location de climatiseur</span> <span class="ligne"><span class="anim" aria-hidden="true">à <span class="tourne" id="tourne"><span class="on">Nice</span></span></span><span class="cote" aria-hidden="true">sur la Côte d’Azur</span><span class="sr">sur la Côte d’Azur</span></span> <em>Sans frais de livraison.</em></h1>
+        <p class="hero-sous">Dès <b><span id="prix-mini">12</span>&nbsp;€/jour</b> · réservez en ligne, récupérez-le près de chez vous.</p>
       </div>
     </div>
 
@@ -456,7 +494,8 @@ body.a-cook{padding-bottom:72px}
         <p class="prive"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Votre position reste sur votre téléphone.</p>
         <p class="msg msg-alerte" id="loc-err" role="status" hidden></p>
         <p class="ou-ville">ou choisissez votre ville</p>
-        <div class="villes" id="villes"></div>
+        <div class="villes-rail" id="villes" aria-label="Villes, à faire glisser"></div>
+        <p class="rail-info"><b id="nb-villes">9</b> villes · <b id="nb-pts">12</b> points de retrait<span class="glisser" aria-hidden="true"> · faites glisser →</span></p>
         <p class="sous">Réservation en 1 minute · aucun paiement en ligne</p>
       </div>
     </div>
@@ -732,17 +771,45 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function vibre(){ try{ if(navigator.vibrate) navigator.vibrate(8); }catch(e){} }
 
   /* ── 1. villes (après lecture des points) ── */
-  $('villes').innerHTML = '<span class="squelette"></span><span class="squelette"></span><span class="squelette"></span><span class="squelette"></span>';
+  /* Vraies photos des villes (recadrées depuis les photos du site, ~25 Ko).
+     Une ville sans photo a une carte bleue à son nom : ajouter sa photo ici
+     le jour où elle existe (format 320 × 400, voir VISUELS.md). */
+  var PHOTOS = {'Nice':'/cc-ville-nice.webp', 'Cannes':'/cc-ville-cannes.webp', 'Antibes':'/cc-ville-antibes.webp', 'Menton':'/cc-ville-menton.webp', 'Beausoleil':'/cc-ville-monaco.webp'};
+  var COURT = {'Saint-Laurent-du-Var':'Saint-Laurent', 'Cagnes-sur-Mer':'Cagnes', 'Villefranche-sur-Mer':'Villefranche', 'Beausoleil':'Monaco'};
+  $('villes').innerHTML = '<span class="vcarte squelette"></span><span class="vcarte squelette"></span><span class="vcarte squelette"></span>';
   function construireVilles(){
     var villes = POINTS.map(function(p){ return p.ville; }).filter(function(v, k, t){ return t.indexOf(v) === k; });
-    $('villes').innerHTML = villes.map(function(v){
-      var nb = POINTS.filter(function(p){ return p.ville === v; }).length;
-      return '<button type="button" class="ville' + (v.length > 11 ? ' large' : '') + '" data-ville="' + esc(v) + '" aria-label="' + esc(v) + ', ' + nb + ' point' + (nb > 1 ? 's' : '') + ' de retrait">' + esc(v) + (nb > 1 ? '<span class="nbp" aria-hidden="true">· ' + nb + '</span>' : '') + FLECHE + '</button>';
-    }).join('') + '<a class="ville ville-autre" href="tel:+33663798756" data-mesure="cc_appel">Autre ville&nbsp;? Appelez-nous</a>';
-    [].slice.call($('villes').querySelectorAll('.large')).forEach(function(b){ $('villes').insertBefore(b, $('villes').querySelector('.ville-autre')); });
+    /* les villes avec photo d'abord : la première impression compte */
+    villes.sort(function(a, b){ return (PHOTOS[b] ? 1 : 0) - (PHOTOS[a] ? 1 : 0); });
+    $('villes').innerHTML = villes.map(function(v, i){
+      var nb = POINTS.filter(function(p){ return p.ville === v; }).length, ph = PHOTOS[v];
+      return '<button type="button" class="vcarte' + (ph ? ' photo' : '') + '" data-ville="' + esc(v) + '" aria-label="' + esc(v) + ', ' + nb + ' point' + (nb > 1 ? 's' : '') + ' de retrait">' +
+        (ph ? '<img src="' + ph + '" width="320" height="400" alt="" decoding="async"' + (i > 2 ? ' loading="lazy"' : '') + '>' : '') +
+        '<span class="vc-txt"><b>' + esc(v === 'Beausoleil' ? 'Beausoleil · Monaco' : v) + '</b><small>' + nb + ' point' + (nb > 1 ? 's' : '') + ' de retrait</small></span></button>';
+    }).join('') + '<a class="vcarte autre" href="tel:+33663798756" data-mesure="cc_appel">Autre ville&nbsp;?<br>Appelez-nous</a>';
+    $('nb-villes').textContent = villes.length; $('nb-pts').textContent = POINTS.length;
+    lancerTourne(villes);
+  }
+  /* le mot qui tourne dans le titre */
+  var tourneMinuteur = null;
+  function lancerTourne(villes){
+    var boite = $('tourne'); if(!boite || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var noms = villes.map(function(v){ return COURT[v] || v; });
+    if(noms.indexOf('Juan-les-Pins') < 0 && POINTS.some(function(p){ return p.nom === 'Juan-les-Pins'; })) noms.splice(3, 0, 'Juan-les-Pins');
+    boite.innerHTML = noms.map(function(n, i){ return '<span' + (i === 0 ? ' class="on"' : '') + '>' + esc(n) + '</span>'; }).join('');
+    var spans = [].slice.call(boite.children), i = 0;
+    clearInterval(tourneMinuteur);
+    tourneMinuteur = setInterval(function(){
+      if(document.hidden || ecrans.ville.hidden) return;
+      var a = spans[i]; i = (i + 1) % spans.length; var b = spans[i];
+      a.classList.remove('on'); a.classList.add('part');
+      b.classList.remove('part'); b.classList.add('on');
+      setTimeout(function(){ a.classList.remove('part'); }, 600);
+    }, 2200);
   }
   $('villes').addEventListener('click', function(e){
     var b = e.target.closest('[data-ville]'); if(!b) return;
+    window.mesurer('cc_ville');
     etat.ville = b.dataset.ville; etat.pos = null;
     var liste = POINTS.filter(function(p){ return p.ville === etat.ville; });
     if(liste.length === 1 && !etat.edition){ etat.point = liste[0]; etat.liste = liste; verifierDates(); suite('dates'); }
