@@ -4469,6 +4469,11 @@ function reservationRowHtml(res, readOnly){
       </div>
       ${entrepriseTag}
       <div class="resa-addr">${BOARD_IC_PIN} <span class="resa-addr-txt">${escHtml(res.adresse||'—')}</span></div>
+      ${res.source_channel==='click_collect'?`
+      <button onclick="openIdentite(${res.id})" title="Click & Collect : pièce d'identité envoyée par le client (supprimée 30 jours après la fin de la location)"
+        style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
+        ${IC_CAMERA} Pièce d'identité (Click & Collect)
+      </button>`:''}
       ${res.fenetre_photo_path?`
       <button onclick="openFenetrePhoto(${res.id})" title="Le client ne connaissait pas son type de fenêtre — il a envoyé une photo à la place"
         style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
@@ -7959,6 +7964,29 @@ function openMediaViewer(url, kind){
     </div>`;
   overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
   document.body.appendChild(overlay);
+}
+// Pièce d'identité Click & Collect : recto + verso (ou passeport) dans la
+// même fenêtre — liens signés valables 1 heure (admin-reservations.js).
+async function openIdentite(resaId){
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'identite_urls', id:resaId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    closeMediaViewer();
+    const LIB = {recto:'Recto', verso:'Verso', passeport:'Passeport'};
+    const overlay = document.createElement('div');
+    overlay.className = 'map-overlay'; overlay.id = 'media-overlay-el';
+    overlay.innerHTML = `<div class="map-modal"><div class="map-modal-head"><h2>Pièce d'identité</h2><button onclick="closeMediaViewer()">✕</button></div>
+      <div class="media-modal-body" style="display:grid;gap:12px">${d.urls.map(u => {
+        const href = safeHref(u.url);
+        return /\.pdf(\?|$)/i.test(u.url)
+          ? `<a href="${href}" target="_blank" rel="noopener">${escHtml(LIB[u.face]||u.face)} (PDF) ↗</a>`
+          : `<figure style="margin:0"><figcaption style="font-weight:700;margin-bottom:4px">${escHtml(LIB[u.face]||u.face)}</figcaption><img src="${href}" alt="${escHtml(LIB[u.face]||u.face)}"/></figure>`;
+      }).join('')}</div>
+      <div class="media-modal-foot">Liens valables 1 heure · pièce supprimée 30 jours après la fin de la location</div></div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
+    document.body.appendChild(overlay);
+  }catch(e){ showToast(e.message, 'error'); }
 }
 function closeMediaViewer(){
   const o = document.getElementById('media-overlay-el');

@@ -344,6 +344,7 @@ input[readonly]{background:rgba(255,255,255,.03);color:var(--fg);font-size:13.5p
       </div>
       <h1>Bienvenue</h1>
       <p class="sub">Suivez vos réservations et commissions Loc'Air en temps réel.</p>
+      <p class="sub" id="lg-remise-note" style="display:none;margin-top:10px;font-weight:700">QR code client scanné : connectez-vous pour valider la remise du climatiseur.</p>
     </div>
 
     <div class="card">
@@ -548,6 +549,59 @@ async function doLogin(){
 
 function authHeaders(){ return {'Content-Type':'application/json','x-partenaire-token':STATE.token}; }
 
+// ── Click & Collect : remise d'un climatiseur au client ─────────────────────
+// Le client montre son QR code ; le commerçant le scanne avec l'appareil
+// photo de son téléphone → cette page s'ouvre avec ?remise=<id>.<code>.
+// On garde le code le temps de la connexion, puis on affiche la réservation
+// (api/partenaire-remise.js) avec un rappel de vérifier la pièce d'identité.
+(function captureRemise(){
+  const q = new URLSearchParams(location.search), c = q.get('remise');
+  if(c){ try{ sessionStorage.setItem('p_remise', c); }catch(e){} q.delete('remise'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); }
+  try{ if(sessionStorage.getItem('p_remise')){ const n = document.getElementById('lg-remise-note'); if(n) n.style.display = 'block'; } }catch(e){}
+})();
+function remiseEnAttente(){ try{ return sessionStorage.getItem('p_remise'); }catch(e){ return null; } }
+function fermerRemise(){ document.getElementById('remise-overlay')?.remove(); try{ sessionStorage.removeItem('p_remise'); }catch(e){} }
+function dateFr(iso){ return iso ? new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) : ''; }
+async function ouvrirRemise(code){
+  document.getElementById('remise-overlay')?.remove();
+  const o = document.createElement('div'); o.className = 'overlay'; o.id = 'remise-overlay';
+  o.innerHTML = '<div class="card" style="max-width:400px;width:100%;margin:0"><div class="spinner-wrap"><div class="spinner"></div></div></div>';
+  document.body.appendChild(o);
+  const carte = o.querySelector('.card');
+  try{
+    const r = await fetch(API('partenaire-remise'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'voir', code})});
+    const d = await r.json();
+    if(!r.ok){ if(r.status===401){ logout(); return; } throw new Error(d.error || 'Erreur'); }
+    const v = d.reservation;
+    carte.innerHTML = `
+      <div class="card-title">Remise Click &amp; Collect</div>
+      <div class="card-sub">Réservation <b>${escHtml(v.ref||'')}</b></div>
+      <div style="font-size:22px;font-weight:800;margin:10px 0 4px">${escHtml(v.prenom||'')} ${escHtml(v.nom||'')}</div>
+      <div class="card-sub">Retrait ${escHtml(dateFr(v.date_debut))} · retour ${escHtml(dateFr(v.date_fin))}</div>
+      <div class="card-sub">${escHtml(v.point||'')}</div>
+      ${v.remis_at ? `<p style="margin:14px 0;font-weight:700;color:#0F7A3D">✓ Déjà remis le ${escHtml(new Date(v.remis_at).toLocaleString('fr-FR'))}.</p>`
+        : `<p style="margin:14px 0;padding:10px 12px;border-radius:10px;background:#FEF3C7;color:#92400E;font-size:14px">Vérifiez sa <b>pièce d’identité</b> : le nom doit correspondre. Remettez l’appareil <b>avec son kit de fenêtre</b>.</p>
+           <button class="btn" id="remise-ok">Confirmer la remise</button>`}
+      <button class="btn" style="background:transparent;color:inherit;border:1px solid currentColor" onclick="fermerRemise()">Fermer</button>
+      <p class="card-sub" id="remise-msg" style="margin-top:8px"></p>`;
+    const ok = document.getElementById('remise-ok');
+    if(ok) ok.onclick = async () => {
+      ok.disabled = true; ok.textContent = 'Validation…';
+      try{
+        const r2 = await fetch(API('partenaire-remise'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'valider', code})});
+        const d2 = await r2.json();
+        if(!r2.ok) throw new Error(d2.error || 'Erreur');
+        try{ sessionStorage.removeItem('p_remise'); }catch(e){}
+        carte.innerHTML = `<div class="card-title" style="color:#0F7A3D">✓ Remise confirmée</div>
+          <div class="card-sub">${escHtml(v.prenom||'')} ${escHtml(v.nom||'')} repart avec son climatiseur. Retour prévu ${escHtml(dateFr(v.date_fin))}.</div>
+          <button class="btn" onclick="fermerRemise();loadDashboard()">Terminé</button>`;
+      }catch(e){ ok.disabled = false; ok.textContent = 'Confirmer la remise'; document.getElementById('remise-msg').textContent = e.message; }
+    };
+  }catch(e){
+    carte.innerHTML = `<div class="card-title">QR code non valable</div><div class="card-sub">${escHtml(e.message)}</div><button class="btn" onclick="fermerRemise()">Fermer</button>`;
+  }
+}
+
 // ── Mot de passe oublié ───────────────────────────────────────────────────────
 function openForgotPin(){
   const overlay = document.createElement('div');
@@ -613,6 +667,7 @@ async function loadDashboard(){
       localStorage.setItem('p_taux', d.taux_commission_pct);
     }
     renderDashboard(d);
+    const rem = remiseEnAttente(); if(rem) ouvrirRemise(rem);
   }catch(e){
     zone.innerHTML = '<p class="empty">Impossible de charger votre activité. Réessayez.</p>';
   }

@@ -314,6 +314,10 @@ create table reservations (
                              )),
   source                   text,
   source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
+  piece_identite_paths     text[], -- Click & Collect : pièce d'identité (bucket privé missions, identites/), effacée 30 j après la fin
+  point_retrait_id         text, -- Click & Collect : id du point (api/_lib/pointsRetrait.js) — stock figé, prix fort à 80 %
+  remis_at                 timestamptz, -- Click & Collect : remise validée par le commerçant (scan QR)
+  remis_par_partenaire_id  bigint references partenaires(id),
   parrain_code             text, -- code parrain saisi par le client (programme parrainage)
   -- Lien fiable vers la réservation prolongée (posé uniquement quand source =
   -- 'site_prolongation') — voir migration_reservation_origine.sql.

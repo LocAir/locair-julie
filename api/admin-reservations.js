@@ -134,7 +134,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, express, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, creneau_recuperation, date_recuperation_souhaitee, created_at, forfait_id, forfait:forfaits ( nom ), partenaire:partenaires ( nom ), reservation_appareils ( appareil:appareils ( numero ) )')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, source_channel, installation, express, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, creneau_recuperation, date_recuperation_souhaitee, created_at, forfait_id, forfait:forfaits ( nom ), partenaire:partenaires ( nom ), reservation_appareils ( appareil:appareils ( numero ) )')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -1142,6 +1142,26 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase.storage.from('missions').createSignedUrl(resa.fenetre_photo_path, 3600);
       if (error) throw error;
       return res.status(200).json({ url: data.signedUrl });
+    }
+
+    // Pièce d'identité Click & Collect — select('*') : marche avant comme
+    // après la migration piece_identite_paths (sans la colonne, les chemins
+    // sont relus dans instructions_acces, voir checkout-click-collect.js).
+    if (action === 'identite_urls') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: resa } = await supabase.from('reservations').select('*').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+      let chemins = Array.isArray(resa.piece_identite_paths) ? resa.piece_identite_paths : [];
+      if (!chemins.length) chemins = String(resa.instructions_acces || '').match(/identites\/[\w-]+\/(?:recto|verso|passeport)\.\w+/g) || [];
+      if (!chemins.length) return res.status(404).json({ error: 'Aucune pièce d’identité (ou déjà supprimée après la location)' });
+      const urls = [];
+      for (const path of chemins) {
+        const { data, error } = await supabase.storage.from('missions').createSignedUrl(path, 3600);
+        if (!error && data) urls.push({ face: path.split('/').pop().split('.')[0], url: data.signedUrl });
+      }
+      if (!urls.length) return res.status(404).json({ error: 'Fichiers introuvables (déjà supprimés ?)' });
+      return res.status(200).json({ urls });
     }
 
     return res.status(400).json({ error: 'Action inconnue' });
