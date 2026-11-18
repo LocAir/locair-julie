@@ -3,10 +3,28 @@
      LOC'AIR — CLICK & COLLECT (climatiseur mobile uniquement)
      Le client vient chercher son climatiseur dans un point de retrait :
      pas de frais de livraison, il ne paie que la location.
-     ⚠ POINTS DE RETRAIT = EXEMPLES. Les adresses et horaires ci-dessous ne
-     sont pas réels. Tant qu'ils ne sont pas remplacés : noindex, absente du
-     sitemap et des menus. Remplir la liste « POINTS » plus bas, puis
-     enlever les badges « Exemple » et passer en index,follow.
+
+     UNE ACTION PAR ÉCRAN. Six écrans, un seul bouton principal chacun :
+       1. Accueil            → « Choisir mon point de retrait »
+       2. La ville           → toucher une ville
+       3. Le point           → toucher un point
+       4. La durée           → « Continuer » (le prix se met à jour)
+       5. Le jour du retrait → « Continuer »
+       6. Le récapitulatif   → « Réserver sur WhatsApp »
+     Le bouton « Retour » et la barre de progression ne sont pas des
+     actions : ils aident à se repérer.
+
+     Charte : marque.css (couleurs, polices, goutte). Voir MARQUE.md.
+     Sarcelle = on clique. Or = sur fond marine uniquement.
+
+     ⚠ POINTS DE RETRAIT = EXEMPLES. Les adresses et horaires ne sont pas
+     réels. Tant qu'ils ne sont pas remplacés : noindex, absente du sitemap
+     et des menus. Remplir la liste POINTS plus bas (exemple:false quand
+     c'est réel), puis passer en index,follow.
+
+     Prix : barème du climatiseur mobile (api/_lib/pricing.js) —
+     12 € j1-7, 10 € j8-14, 9 € j15-21, 8 € dès j22. Minimum 7 jours.
+     Click & Collect = pas de frais de livraison.
 ══════════════════════════════════════════════════════════════════════════ -->
 <html lang="fr" dir="ltr">
 <head>
@@ -16,295 +34,388 @@
 <link rel="canonical" href="https://www.locair.fr/click-and-collect">
 <meta name="description" content="Réservez votre climatiseur mobile et retirez-le dans un point de retrait Loc’Air sur la Côte d’Azur. Pas de frais de livraison : dès 12 € par jour, aucune caution.">
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#0A0A0A">
-<link rel="icon" href="/favicon-b.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0E1F35">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="/locair.css">
-<link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,600&family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'"/>
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,800;1,600&family=DM+Sans:opsz,wght@9..40,400;9..40,600;9..40,700&display=swap"/></noscript>
-<link rel="stylesheet" href="/atelier.css">
-<link rel="stylesheet" href="/menu.css">
-<link rel="stylesheet" href="/locair-design.css">
-<style>body,input,select,textarea,button{font-family:'DM Sans',system-ui,-apple-system,sans-serif!important;}</style>
-  <script src="/locair-nav.js" defer></script>
+<link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap"></noscript>
+<link rel="stylesheet" href="/marque.css">
+<style>
+:root{
+  --r-s:8px;--r:12px;--r-l:20px;--r-f:100px;
+  --o-1:0 1px 2px rgba(14,31,53,.06);
+  --o-2:0 4px 16px rgba(14,31,53,.08);
+  --o-3:0 12px 32px rgba(14,31,53,.14);
+  --mv:cubic-bezier(.32,.72,.28,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--mist);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100dvh}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--vif)}
+:focus-visible{outline:3px solid var(--vif);outline-offset:3px;border-radius:var(--r-s)}
+
+/* ── LA BARRE DU HAUT : marine, logo, téléphone ── */
+.nav{background:var(--ink);color:#fff}
+.nav-in{max-width:560px;margin:0 auto;padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{font-family:var(--font-titre);font-weight:700;font-size:22px;color:#fff;text-decoration:none;letter-spacing:-.02em}
+.nav-tel{color:#fff;text-decoration:none;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.92}
+.nav-tel svg{width:16px;height:16px;stroke:var(--gold);fill:none;stroke-width:2}
+
+/* ── LA PROGRESSION ── */
+.prog{max-width:560px;width:100%;margin:0 auto;padding:16px 16px 0;display:flex;align-items:center;gap:12px;min-height:56px}
+.prog[hidden]{display:none}
+.retour{background:none;border:0;width:40px;height:40px;border-radius:var(--r-f);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink)}
+.retour:hover{background:var(--line)}
+.retour svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.barre{flex:1;height:6px;background:var(--line);border-radius:var(--r-f);overflow:hidden}
+.barre i{display:block;height:100%;background:var(--vif);border-radius:var(--r-f);transition:width .24s var(--mv)}
+.etape-n{font-size:13px;font-weight:700;color:var(--ink-2);flex-shrink:0;min-width:34px;text-align:right}
+
+/* ── UN ÉCRAN ── */
+main{flex:1;width:100%;max-width:560px;margin:0 auto;padding:12px 16px 32px;display:flex;flex-direction:column}
+.ecran{display:flex;flex-direction:column;flex:1;animation:vient .24s var(--mv) both}
+.ecran[hidden]{display:none}
+@keyframes vient{from{opacity:0;transform:translateY(8px)}}
+.surtitre{font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--vif);margin-bottom:10px}
+h1,h2{font-family:var(--font-titre);font-weight:700;letter-spacing:-.02em;line-height:1.08;color:var(--ink)}
+h1{font-size:clamp(34px,9vw,48px);margin-bottom:14px}
+h2{font-size:clamp(28px,7.5vw,38px);margin-bottom:8px}
+.dire{color:var(--ink-2);font-size:17.5px;max-width:34ch;margin-bottom:24px}
+.pied{margin-top:auto;padding-top:24px}
+
+/* Le bouton principal : sarcelle, en gélule, pleine largeur. Un seul par écran. */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:0 24px;border:0;border-radius:var(--r-f);
+  background:var(--vif);color:#fff;font-size:17.5px;font-weight:700;text-decoration:none;box-shadow:var(--o-2);transition:background .14s var(--mv),transform .14s var(--mv)}
+.btn:hover{background:var(--vif-d)}
+.btn:active{transform:scale(.98)}
+.btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.btn-wa svg{fill:currentColor;stroke:none}
+.lien-2{display:block;text-align:center;margin-top:14px;font-size:14.5px;font-weight:700;color:var(--vif);text-decoration:none}
+
+/* ── ÉCRAN 1 : l'accueil, sur marine ── */
+.ecran-accueil{background:var(--ink);color:#fff;border-radius:var(--r-l);padding:28px 22px 22px;box-shadow:var(--o-3)}
+.ecran-accueil .surtitre{color:var(--gold)}
+.ecran-accueil h1{color:#fff}
+.ecran-accueil h1 em{font-style:normal;color:var(--gold)}
+.ecran-accueil .dire{color:rgba(255,255,255,.82)}
+.ecran-accueil .btn{background:#fff;color:var(--ink)}
+.ecran-accueil .btn:hover{background:var(--vif-clair)}
+.atouts{list-style:none;display:grid;gap:12px;margin-bottom:8px}
+.atouts li{display:flex;gap:12px;align-items:baseline;font-size:16px;color:rgba(255,255,255,.9)}
+.atouts b{color:#fff}
+.atouts li::before{content:"";flex-shrink:0;width:.5em;height:.5em;background:var(--gold);border-radius:50% 50% 50% 0;transform:rotate(-25deg) translateY(-.1em)}
+
+/* ── LES CHOIX (villes, points) : grosses cartes à toucher ── */
+.choix{display:grid;gap:10px}
+.carte{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r);
+  padding:16px 16px;min-height:64px;box-shadow:var(--o-1);transition:border-color .14s var(--mv),box-shadow .14s var(--mv),transform .14s var(--mv)}
+.carte:hover{border-color:var(--vif);box-shadow:var(--o-2)}
+.carte:active{transform:scale(.99)}
+.carte-txt{flex:1;min-width:0}
+.carte-t{font-weight:700;font-size:17.5px;color:var(--ink);display:block}
+.carte-s{font-size:14.5px;color:var(--ink-2);display:block}
+.carte-fl{width:22px;height:22px;stroke:var(--vif);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.pastille{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#FBF3D9;color:var(--gold-txt);border-radius:var(--r-s);padding:1px 7px;margin-bottom:4px}
+.nb{font-size:14.5px;font-weight:700;color:var(--vif);background:var(--vif-clair);border-radius:var(--r-f);padding:3px 10px;flex-shrink:0}
+.avert{font-size:14.5px;color:var(--ink-2);background:var(--paper);border-left:3px solid var(--alerte);border-radius:var(--r-s);padding:10px 12px;margin-bottom:16px}
+
+/* ── ÉCRAN 4 : la durée ── */
+.compteur{background:var(--paper);border-radius:var(--r-l);box-shadow:var(--o-2);padding:24px 16px;text-align:center}
+.compteur-l{display:flex;align-items:center;justify-content:center;gap:18px}
+.pm{width:56px;height:56px;border-radius:var(--r-f);border:1.5px solid var(--line);background:var(--paper);font-size:26px;font-weight:700;color:var(--vif);display:flex;align-items:center;justify-content:center}
+.pm:hover:not(:disabled){border-color:var(--vif)}
+.pm:disabled{opacity:.35;cursor:not-allowed}
+.jours{min-width:110px}
+.jours b{display:block;font-family:var(--font-titre);font-size:56px;line-height:1;color:var(--ink)}
+.jours span{font-size:14.5px;color:var(--ink-2)}
+.raccourcis{display:flex;justify-content:center;gap:8px;margin-top:18px;flex-wrap:wrap}
+.raccourcis button{border:1.5px solid var(--line);background:var(--paper);border-radius:var(--r-f);padding:6px 14px;font-size:14.5px;font-weight:700;color:var(--ink-2)}
+.raccourcis button[aria-pressed="true"]{border-color:var(--vif);color:var(--vif);background:var(--vif-clair)}
+.prix{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.prix b{font-family:var(--font-titre);font-size:40px;color:var(--vif);line-height:1}
+.prix p{font-size:14.5px;color:var(--ink-2);margin-top:6px}
+
+/* ── ÉCRAN 5 : la date ── */
+.date-l{display:block;font-weight:700;font-size:14.5px;margin-bottom:8px}
+.date{width:100%;min-height:60px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--paper);padding:0 16px;font:inherit;font-size:19.5px;color:var(--ink)}
+.date:focus{border-color:var(--vif);outline:none;box-shadow:0 0 0 3px var(--vif-clair)}
+.aide{font-size:14.5px;color:var(--ink-2);margin-top:10px}
+
+/* ── ÉCRAN 6 : le récapitulatif ── */
+.recap{background:var(--paper);border-radius:var(--r-l);box-shadow:var(--o-2);padding:6px 18px;margin-bottom:16px}
+.recap div{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line);font-size:16px}
+.recap div:last-child{border-bottom:0}
+.recap dt{color:var(--ink-2)}
+.recap dd{font-weight:700;text-align:right}
+.recap .total dd{font-family:var(--font-titre);font-size:28px;color:var(--vif)}
+.inclus{list-style:none;display:grid;gap:6px;font-size:14.5px;color:var(--ink-2)}
+.inclus li{display:flex;gap:10px;align-items:baseline}
+.inclus li::before{content:"";flex-shrink:0;width:.5em;height:.5em;background:var(--gold-txt);border-radius:50% 50% 50% 0;transform:rotate(-25deg)}
+
+@media(prefers-reduced-motion:reduce){
+  .ecran{animation:none}
+  .barre i,.btn,.carte{transition:none}
+}
+</style>
 </head>
-<body class="page">
-<div class="annbar" style="background:#0D3FA0;color:rgba(255,255,255,.92);font-size:13px;font-weight:500;text-align:center;padding:9px 24px;display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;">
-  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5" aria-hidden="true"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-  <strong>Express 2h</strong> — Côte d'Azur · 7j/7 · 8h–20h
+<body>
+
+<header class="nav sur-fonce">
+  <div class="nav-in">
+    <a class="nav-logo" href="/" aria-label="Loc’Air, retour à l’accueil">Loc<i class="gt">'</i>Air</a>
+    <a class="nav-tel" href="tel:+33663798756"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>06 63 79 87 56</a>
+  </div>
+</header>
+
+<div class="prog" id="prog" hidden>
+  <button type="button" class="retour" id="retour" aria-label="Revenir à l’étape précédente">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <div class="barre" role="progressbar" aria-label="Progression" aria-valuemin="1" aria-valuemax="5" id="barre"><i id="barre-i"></i></div>
+  <span class="etape-n" id="etape-n" aria-hidden="true"></span>
 </div>
-<header class="ld-navbar" style="position:sticky;top:0;z-index:200;background:#fff;border-bottom:1.5px solid #DDE6F5;box-shadow:0 1px 8px rgba(26,94,219,.07);">
-  <div class="ld-nav-inner" style="max-width:1200px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;gap:28px;">
-    <a href="/" class="ld-logo" aria-label="Loc’Air, location climatiseur Côte d’Azur" style="font-weight:900;font-size:22px;color:#1A5EDB;letter-spacing:-.04em;text-decoration:none;font-family:’DM Sans’,system-ui,sans-serif;flex-shrink:0;line-height:1;">Loc<em style="font-style:italic;color:#0D3FA0;">’Air</em><sup style="font-size:10px;vertical-align:super;line-height:1;font-weight:700;color:#8A9EC0;">®</sup></a>
-    <ul class="ld-nav-links" aria-label="Navigation principale">
-      <li><a href="/" style="display:block;padding:7px 11px;border-radius:8px;font-size:14px;font-weight:600;color:#4B5873;text-decoration:none;">Accueil</a></li>
-      <li><a href="/catalogue" style="display:block;padding:7px 11px;border-radius:8px;font-size:14px;font-weight:600;color:#4B5873;text-decoration:none;">Catalogue</a></li>
-      <li><a href="/portasplit" style="display:block;padding:7px 11px;border-radius:8px;font-size:14px;font-weight:600;color:#4B5873;text-decoration:none;">PortaSplit</a></li>
-      <li><a href="/installation-split" style="display:block;padding:7px 11px;border-radius:8px;font-size:14px;font-weight:600;color:#4B5873;text-decoration:none;">Installation split</a></li>
-    </ul>
-    <div class="ld-nav-ctas" style="display:flex;gap:10px;align-items:center;flex-shrink:0;">
-      <a href="/reserver" class="ld-btn-primary" style="display:inline-flex;align-items:center;gap:6px;background:#1A5EDB;color:#fff;padding:9px 18px;border-radius:50px;font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 4px 14px rgba(26,94,219,.3);white-space:nowrap;font-family:’DM Sans’,system-ui,sans-serif;">Réserver maintenant</a>
-    </div>
-    <button class="ld-burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
-  </div>
-</header>
-<style>
-/* Hide old nav/annbar elements now replaced by ld-navbar */
-header.nav:not(.ld-navbar),header.bar,.ann[id="ann-bar"],.nav-bar-old{display:none!important;}
-/* Ensure body starts at the right place */
-body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important;}
-</style>
-
-
-<!-- Texte partage par tous les liens qui ouvrent un nouvel onglet. -->
-<span id="nouvel-onglet" class="sr-only">s’ouvre dans un nouvel onglet</span>
-
-<a class="sr-only" href="#texte">Aller au contenu</a>
-
-<header class="bar" id="bar">
-  <div class="bar-in">
-    <a href="/" class="logo lockup" aria-label="Loc'Air, spécialiste du confort thermique"><span class="logo-n">Loc'Air</span><span class="logo-t" aria-hidden="true">Spécialiste du confort thermique</span></a>
-    <span class="bar-fil">Click &amp; Collect</span>
-    <a class="btn btn-1 btn-s" href="/reserver">Réserver</a>
-    <button type="button" class="mb" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
-  </div>
-</header>
-<div class="mm" id="menu" hidden>
-  <div class="mm-in" role="dialog" aria-modal="true" aria-label="Menu">
-    <button type="button" class="mm-x" aria-label="Fermer le menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-
-    <nav aria-label="Menu principal">
-      <ul class="mm-l">
-        <li><a href="/#appareils">Nos offres</a></li>
-        <li><a href="/portasplit">PortaSplit réversible</a></li>
-        <li><a href="/#modele">Notre modèle</a></li>
-        <li><a href="/#process">Comment ça marche</a></li>
-        <li><a href="/boutique">Loc'Air Shop</a></li>
-        <li><a href="/blog/">Guides</a></li>
-        <li><a href="/#faq">FAQ</a></li>
-      </ul>
-    </nav>
-    <div class="mm-esp">
-      <a href="/client">Espace client</a>
-      <a href="/hub">Espace ambassadeur</a>
-    </div>
-    <div class="mm-b">
-      <a href="tel:+33663798756">06 63 79 87 56</a>
-      <span>7j/7 · 8 h–20 h</span>
-    </div>
-    <a href="/reserver" class="mm-resa">Réserver — livré dès demain <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-  </div>
-</div>
-
-<style>
-.cc-pts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:18px 0 8px}
-.cc-pt{background:#fff;border:1px solid #DDE6F5;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:6px}
-.cc-pt h3{font-size:17px;margin:0;color:#0E1726}
-.cc-pt p{margin:0;font-size:14px;color:#4B5873;line-height:1.5}
-.cc-pt .cc-h{font-size:13px}
-.cc-pt a{margin-top:6px;font-size:14px;font-weight:700;color:#1A5EDB;text-decoration:none}
-.cc-ex{align-self:flex-start;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#FEF3C7;color:#92400E;border-radius:6px;padding:2px 8px}
-.cc-avert{background:#FEF3C7;border:1px solid #F59E0B;color:#78350F;border-radius:12px;padding:12px 16px;font-size:14px;margin:0 0 16px}
-.cc-filtre{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.cc-filtre button{font:inherit;font-size:13px;font-weight:600;padding:7px 14px;border-radius:20px;border:1px solid #DDE6F5;background:#fff;color:#1A5EDB;cursor:pointer}
-.cc-filtre button[aria-pressed="true"]{background:#1A5EDB;color:#fff;border-color:#1A5EDB}
-</style>
-
-<header class="tete">
-  <div class="in">
-    <p class="fil"><a href="/">Accueil</a><span>›</span>Click &amp; Collect</p>
-    <span class="kicker">Climatiseur mobile · Côte d’Azur</span>
-    <h1>Click &amp; Collect.<em> Vous réservez, vous passez le prendre.</em></h1>
-    <p class="dire">Vous venez chercher votre climatiseur dans un point de retrait près de chez vous. Pas de frais de livraison : vous ne payez que la location.</p>
-    <div class="tete-meta">
-      <span><b>Dès 12 €</b> par jour</span>
-      <span><b>0 €</b> de livraison</span>
-      <span><b>Aucune caution</b></span>
-      <span>Kit fourni, <b>sans perçage</b></span>
-    </div>
-    <div class="tete-act">
-      <a class="btn btn-1" href="#points">Voir les points de retrait →</a>
-      <a class="btn btn-out" href="tel:+33663798756">06.63.79.87.56</a>
-    </div>
-  </div>
-</header>
 
 <main id="texte">
 
-<section class="essentiel" aria-label="L’essentiel">
-  <div class="essentiel-in">
-    <div><b>84 €</b><span>Une semaine de climatiseur. Rien d’autre à payer.</span></div>
-    <div><b>154 €</b><span>Deux semaines. Sans frais de livraison.</span></div>
-    <div><b>0 €</b><span>De caution. Ni chèque, ni empreinte bancaire.</span></div>
-    <div><b>Zéro trou</b><span>Le kit se pose sur la fenêtre, sans outil, et se retire sans trace.</span></div>
-  </div>
-</section>
-
-<article class="art">
-  <div class="mes">
-    <p class="chapo">Vous avez une voiture et vous passez près d’un de nos points de retrait&nbsp;? Venez chercher votre climatiseur vous-même. On garde le même appareil, le même kit et la même assistance — vous économisez juste le prix de la livraison.</p>
-
-    <h2 id="deroule">Comment ça marche</h2>
-    <ol>
-      <li><b>Vous choisissez un point de retrait</b> dans la liste plus bas.</li>
-      <li><b>Vous réservez</b> par téléphone ou sur WhatsApp. On vous confirme dans l’heure le jour et l’heure du retrait (7j/7, 8h–20h).</li>
-      <li><b>Vous passez prendre l’appareil.</b> Il est prêt, avec son kit de fenêtre. On vous montre en deux minutes comment le brancher.</li>
-      <li><b>Vous l’installez chez vous.</b> Le kit se pose sur la fenêtre sans outil et sans percer.</li>
-      <li><b>À la fin, vous le rapportez</b> au point de retrait.</li>
-    </ol>
-
-    <h2 id="points">Nos points de retrait</h2>
-    <p class="cc-avert"><b>Exemples</b> — les adresses et horaires ci-dessous sont provisoires. Appelez-nous pour connaître le point le plus proche de chez vous.</p>
-    <div class="cc-filtre" id="cc-filtre" aria-label="Filtrer par ville"></div>
-    <div class="cc-pts" id="cc-pts">
-      <!-- Rempli par le script plus bas à partir de la liste POINTS.
-           Sans JavaScript, la liste de secours ci-dessous reste visible. -->
-      <noscript><p>Nice, Cannes, Antibes, Cagnes-sur-Mer, Menton — appelez le 06 63 79 87 56.</p></noscript>
+  <!-- 1. ACCUEIL -->
+  <section class="ecran" data-ecran="accueil" aria-labelledby="t-accueil">
+    <div class="ecran-accueil sur-fonce">
+      <p class="surtitre">Click &amp; Collect · Climatiseur mobile</p>
+      <h1 id="t-accueil">Vous passez le prendre.<br><em>Pas de livraison à payer.</em></h1>
+      <ul class="atouts">
+        <li><span><b>Dès 12 €</b> par jour, rien d’autre</span></li>
+        <li><span><b>Aucune caution</b>, ni empreinte bancaire</span></li>
+        <li><span><b>Kit de fenêtre fourni</b>, sans perçage</span></li>
+        <li><span><b>Panne ?</b> Appareil échangé sans frais</span></li>
+      </ul>
+      <div class="pied">
+        <button type="button" class="btn" data-suite>Choisir mon point de retrait
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </div>
     </div>
+    <a class="lien-2" href="/reserver">Je préfère être livré chez moi</a>
+  </section>
 
-    <h2 id="prix">Combien ça coûte</h2>
-    <p>Le prix de la location est le même que pour une livraison. La seule différence&nbsp;: <b>pas de frais de livraison</b> (60&nbsp;€ ou 120&nbsp;€ selon la ville quand on vient chez vous).</p>
-    <div class="tab">
-    <table>
-      <thead><tr><th scope="col">Durée</th><th scope="col">Prix du jour</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">Les 7 premiers jours</th><td><b>12 €</b> par jour</td></tr>
-        <tr><th scope="row">Du 8ᵉ au 14ᵉ jour</th><td><b>10 €</b> par jour</td></tr>
-        <tr><th scope="row">Du 15ᵉ au 21ᵉ jour</th><td><b>9 €</b> par jour</td></tr>
-        <tr><th scope="row">À partir du 22ᵉ jour</th><td><b>8 €</b> par jour</td></tr>
-      </tbody>
-    </table>
-    </div>
-    <div class="chif">
-      <b>154 €</b>
-      <span>Deux semaines en Click &amp; Collect&nbsp;: 7 × 12 € + 7 × 10 €. Pas de livraison, pas de caution. Avec une livraison à Nice, le même séjour coûterait 214 €.</span>
-    </div>
-    <p>La durée minimale est de 7 jours. Le Click &amp; Collect concerne <b>uniquement le climatiseur mobile</b>. Pour un PortaSplit ou un rafraîchisseur, on livre et on installe nous-mêmes.</p>
+  <!-- 2. LA VILLE -->
+  <section class="ecran" data-ecran="ville" aria-labelledby="t-ville" hidden>
+    <h2 id="t-ville" tabindex="-1">Dans quelle ville&nbsp;?</h2>
+    <p class="dire">Choisissez la plus proche de chez vous.</p>
+    <div class="choix" id="villes"></div>
+  </section>
 
-    <h2 id="compris">Ce qui est compris</h2>
-    <ul>
-      <li><b>Le kit de calfeutrage</b> pour la fenêtre. Sans perçage, sans trace.</li>
-      <li><b>Le remplacement en cas de panne</b>, sans frais.</li>
-      <li><b>L’assistance 7j/7</b>, de 8h à 20h, au 06 63 79 87 56.</li>
-      <li><b>Aucune caution.</b> Ni chèque, ni empreinte bancaire.</li>
+  <!-- 3. LE POINT -->
+  <section class="ecran" data-ecran="point" aria-labelledby="t-point" hidden>
+    <h2 id="t-point" tabindex="-1">Quel point de retrait&nbsp;?</h2>
+    <p class="dire" id="point-dire"></p>
+    <p class="avert" id="avert-ex" hidden><b>Exemples</b> — adresses et horaires provisoires. On vous confirme le point exact par téléphone.</p>
+    <div class="choix" id="points"></div>
+  </section>
+
+  <!-- 4. LA DURÉE -->
+  <section class="ecran" data-ecran="duree" aria-labelledby="t-duree" hidden>
+    <h2 id="t-duree" tabindex="-1">Pour combien de jours&nbsp;?</h2>
+    <p class="dire">7 jours minimum. Plus c’est long, moins le jour coûte.</p>
+    <div class="compteur">
+      <div class="compteur-l">
+        <button type="button" class="pm" id="moins" aria-label="Un jour de moins">−</button>
+        <div class="jours" aria-live="polite"><b id="nb-jours">7</b><span>jours</span></div>
+        <button type="button" class="pm" id="plus" aria-label="Un jour de plus">+</button>
+      </div>
+      <div class="raccourcis" id="raccourcis">
+        <button type="button" data-j="7">1 sem.</button>
+        <button type="button" data-j="14">2 sem.</button>
+        <button type="button" data-j="30">1 mois</button>
+      </div>
+      <div class="prix" aria-live="polite">
+        <b id="prix">84 €</b>
+        <p id="prix-detail">soit 12,00 € par jour · 0 € de livraison</p>
+      </div>
+    </div>
+    <div class="pied">
+      <button type="button" class="btn" data-suite>Continuer
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </div>
+  </section>
+
+  <!-- 5. LE JOUR DU RETRAIT -->
+  <section class="ecran" data-ecran="date" aria-labelledby="t-date" hidden>
+    <h2 id="t-date" tabindex="-1">Quel jour passez-vous&nbsp;?</h2>
+    <p class="dire">On vous confirme l’heure du retrait par téléphone.</p>
+    <label class="date-l" for="date">Jour du retrait</label>
+    <input class="date" type="date" id="date" required>
+    <p class="aide" id="date-retour"></p>
+    <div class="pied">
+      <button type="button" class="btn" data-suite id="date-ok">Continuer
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </div>
+  </section>
+
+  <!-- 6. LE RÉCAPITULATIF -->
+  <section class="ecran" data-ecran="recap" aria-labelledby="t-recap" hidden>
+    <h2 id="t-recap" tabindex="-1">C’est presque fini.</h2>
+    <p class="dire">Vérifiez, puis envoyez-nous votre demande.</p>
+    <dl class="recap">
+      <div><dt>Point de retrait</dt><dd id="r-point"></dd></div>
+      <div><dt>Retrait le</dt><dd id="r-date"></dd></div>
+      <div><dt>Retour le</dt><dd id="r-retour"></dd></div>
+      <div><dt>Livraison</dt><dd>0 €</dd></div>
+      <div class="total"><dt>Total location</dt><dd id="r-prix"></dd></div>
+    </dl>
+    <ul class="inclus">
+      <li>Aucune caution, ni empreinte bancaire.</li>
+      <li>Vous rapportez l’appareil au même point.</li>
+      <li>Assistance 7j/7, 8h–20h.</li>
     </ul>
-    <p><b>À prévoir&nbsp;:</b> une voiture avec un coffre assez grand, et quelqu’un pour vous aider à porter. Vous préférez qu’on s’en occupe&nbsp;? <a href="/reserver">Réservez avec livraison</a> : on livre, on installe et on reprend l’appareil.</p>
-
-    <h2 id="questions">Questions fréquentes</h2>
-    <h3>Je peux retirer l’appareil le jour même&nbsp;?</h3>
-    <p>Appelez-nous&nbsp;: on vérifie le stock du point de retrait et on vous confirme l’heure dans l’heure.</p>
-    <h3>Et si l’appareil tombe en panne&nbsp;?</h3>
-    <p>Appelez-nous. On vous l’échange sans frais.</p>
-    <h3>Je ne sais pas si ma fenêtre est compatible.</h3>
-    <p>Envoyez-nous une photo sur WhatsApp, on vous répond tout de suite. Oscillo-battante, coulissante, Velux&nbsp;: dans presque tous les cas, ça marche.</p>
-
-    <div class="tete-act" style="margin-top:28px">
-      <a class="btn btn-1" style="color:#fff;text-decoration:none" href="https://wa.me/33663798756?text=Bonjour%2C+je+voudrais+un+climatiseur+en+Click+%26+Collect." target="_blank" rel="noopener noreferrer">Réserver sur WhatsApp →</a>
-      <a class="btn btn-out" style="text-decoration:none" href="tel:+33663798756">Appeler le 06.63.79.87.56</a>
+    <div class="pied">
+      <a class="btn btn-wa" id="envoyer" href="#" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2-.2-.3 0-.5.1-.6l.4-.5c.2-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 21.8a9.9 9.9 0 01-5-1.4l-.4-.2-3.7 1 1-3.7-.2-.4A9.9 9.9 0 1112 21.8zM20.5 3.5A11.8 11.8 0 0012 0C5.5 0 .2 5.3.2 11.9c0 2.1.5 4.1 1.6 5.9L0 24l6.4-1.7c1.7.9 3.7 1.4 5.7 1.4 6.6 0 11.9-5.3 11.9-11.9 0-3.2-1.2-6.2-3.5-8.3z"/></svg>
+        Réserver sur WhatsApp</a>
+      <a class="lien-2" id="appeler" href="tel:+33663798756">Ou appeler le 06 63 79 87 56</a>
     </div>
-  </div>
-</article>
+  </section>
 
 </main>
+
+<noscript>
+  <p style="max-width:560px;margin:0 auto 32px;padding:0 16px">Pour réserver en Click &amp; Collect, appelez le <a href="tel:+33663798756">06 63 79 87 56</a> (7j/7, 8h–20h).</p>
+</noscript>
 
 <script>
 /* ── LES POINTS DE RETRAIT ──────────────────────────────────────────────
    ⚠ EXEMPLES À REMPLACER. Une ligne = un point. Pour en ajouter un,
-   copier une ligne et changer les valeurs. Mettre exemple:false quand
-   l'adresse est réelle : le badge « Exemple » disparaît. */
+   copier une ligne et changer les valeurs. exemple:false quand l'adresse
+   est réelle : la pastille « Exemple » disparaît. */
 var POINTS = [
-  {ville:'Nice',           nom:'Point Nice Centre',       adresse:'Adresse à venir, 06000 Nice',           horaires:'Lun–Sam · 9h–19h', exemple:true},
-  {ville:'Nice',           nom:'Point Nice Ouest',        adresse:'Adresse à venir, 06200 Nice',           horaires:'Lun–Sam · 9h–19h', exemple:true},
-  {ville:'Cagnes-sur-Mer', nom:'Point Cagnes-sur-Mer',    adresse:'Adresse à venir, 06800 Cagnes-sur-Mer', horaires:'Lun–Sam · 9h–19h', exemple:true},
-  {ville:'Antibes',        nom:'Point Antibes',           adresse:'Adresse à venir, 06600 Antibes',        horaires:'Lun–Sam · 9h–19h', exemple:true},
-  {ville:'Cannes',         nom:'Point Cannes',            adresse:'Adresse à venir, 06400 Cannes',         horaires:'Lun–Sam · 9h–19h', exemple:true},
-  {ville:'Menton',         nom:'Point Menton',            adresse:'Adresse à venir, 06500 Menton',         horaires:'Lun–Sam · 9h–19h', exemple:true}
+  {ville:'Nice',           nom:'Nice Centre',     adresse:'Adresse à venir, 06000 Nice',           horaires:'Lun–Sam · 9h–19h', exemple:true},
+  {ville:'Nice',           nom:'Nice Ouest',      adresse:'Adresse à venir, 06200 Nice',           horaires:'Lun–Sam · 9h–19h', exemple:true},
+  {ville:'Cagnes-sur-Mer', nom:'Cagnes-sur-Mer',  adresse:'Adresse à venir, 06800 Cagnes-sur-Mer', horaires:'Lun–Sam · 9h–19h', exemple:true},
+  {ville:'Antibes',        nom:'Antibes',         adresse:'Adresse à venir, 06600 Antibes',        horaires:'Lun–Sam · 9h–19h', exemple:true},
+  {ville:'Cannes',         nom:'Cannes',          adresse:'Adresse à venir, 06400 Cannes',         horaires:'Lun–Sam · 9h–19h', exemple:true},
+  {ville:'Menton',         nom:'Menton',          adresse:'Adresse à venir, 06500 Menton',         horaires:'Lun–Sam · 9h–19h', exemple:true}
 ];
+
+/* Barème du climatiseur mobile — identique à api/_lib/pricing.js. */
+var PALIERS = [[7,12],[14,10],[21,9],[Infinity,8]];
+var JOURS_MIN = 7, JOURS_MAX = 90;
+
 (function(){
-  var zone = document.getElementById('cc-pts'), filtre = document.getElementById('cc-filtre');
-  if(!zone) return;
+  var ORDRE = ['accueil','ville','point','duree','date','recap'];
+  var etat = {i:0, ville:null, point:null, jours:7, date:null};
+  var $ = function(id){ return document.getElementById(id); };
+  var ecrans = {};
+  [].forEach.call(document.querySelectorAll('[data-ecran]'), function(e){ ecrans[e.dataset.ecran] = e; });
+
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  function afficher(ville){
-    zone.innerHTML = POINTS.filter(function(p){ return !ville || p.ville === ville; }).map(function(p){
-      var msg = encodeURIComponent('Bonjour, je voudrais un climatiseur en Click & Collect au ' + p.nom + '.');
-      return '<div class="cc-pt">' + (p.exemple ? '<span class="cc-ex">Exemple</span>' : '') +
-        '<h3>' + esc(p.nom) + '</h3><p>' + esc(p.adresse) + '</p><p class="cc-h">' + esc(p.horaires) + '</p>' +
-        '<a href="https://wa.me/33663798756?text=' + msg + '" target="_blank" rel="noopener noreferrer">Réserver ici</a></div>';
+  var FLECHE = '<svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+
+  function prix(j){
+    var t = 0;
+    for(var d = 1; d <= j; d++){ for(var k = 0; k < PALIERS.length; k++){ if(d <= PALIERS[k][0]){ t += PALIERS[k][1]; break; } } }
+    return t;
+  }
+  function euros(n){ return n.toLocaleString('fr-FR', {minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits:2}) + ' €'; }
+  function jourISO(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function lisible(iso){ var p = iso.split('-'); return new Date(+p[0], p[1]-1, +p[2]).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}); }
+  function plus(iso, n){ var p = iso.split('-'); var d = new Date(+p[0], p[1]-1, +p[2] + n); return jourISO(d); }
+
+  /* ── aller à un écran ── */
+  function aller(i, focus){
+    etat.i = i;
+    ORDRE.forEach(function(n, k){ ecrans[n].hidden = (k !== i); });
+    var prog = $('prog');
+    prog.hidden = (i === 0);
+    if(i > 0){
+      $('barre-i').style.width = (i / (ORDRE.length - 1) * 100) + '%';
+      $('barre').setAttribute('aria-valuenow', i);
+      $('etape-n').textContent = i + '/' + (ORDRE.length - 1);
+    }
+    if(ORDRE[i] === 'recap') remplirRecap();
+    window.scrollTo(0, 0);
+    if(focus !== false){ var t = ecrans[ORDRE[i]].querySelector('h1,h2'); if(t){ t.setAttribute('tabindex','-1'); t.focus({preventScroll:true}); } }
+    try{ history.replaceState(null, '', i ? '#' + ORDRE[i] : location.pathname); }catch(e){}
+  }
+  function suite(){ aller(etat.i + 1); }
+  $('retour').onclick = function(){ aller(Math.max(0, etat.i - 1)); };
+  [].forEach.call(document.querySelectorAll('[data-suite]'), function(b){
+    b.addEventListener('click', function(){ if(b.id === 'date-ok' && !etat.date){ $('date').focus(); $('date').reportValidity && $('date').reportValidity(); return; } suite(); });
+  });
+
+  /* ── écran ville ── */
+  var villes = POINTS.map(function(p){ return p.ville; }).filter(function(v, k, t){ return t.indexOf(v) === k; });
+  $('villes').innerHTML = villes.map(function(v){
+    var n = POINTS.filter(function(p){ return p.ville === v; }).length;
+    return '<button type="button" class="carte" data-ville="' + esc(v) + '"><span class="carte-txt"><span class="carte-t">' + esc(v) + '</span></span>' +
+      '<span class="nb">' + n + ' point' + (n > 1 ? 's' : '') + '</span>' + FLECHE + '</button>';
+  }).join('');
+  $('villes').addEventListener('click', function(e){
+    var b = e.target.closest('[data-ville]'); if(!b) return;
+    etat.ville = b.dataset.ville; etat.point = null; dessinerPoints(); suite();
+  });
+
+  /* ── écran point ── */
+  function dessinerPoints(){
+    var liste = POINTS.filter(function(p){ return p.ville === etat.ville; });
+    $('point-dire').textContent = liste.length > 1 ? 'À ' + etat.ville + ', nous avons ' + liste.length + ' points.' : 'À ' + etat.ville + ', nous avons un point.';
+    $('avert-ex').hidden = !liste.some(function(p){ return p.exemple; });
+    $('points').innerHTML = liste.map(function(p){
+      var k = POINTS.indexOf(p);
+      return '<button type="button" class="carte" data-point="' + k + '"><span class="carte-txt">' +
+        (p.exemple ? '<span class="pastille">Exemple</span>' : '') +
+        '<span class="carte-t">' + esc(p.nom) + '</span><span class="carte-s">' + esc(p.adresse) + '</span><span class="carte-s">' + esc(p.horaires) + '</span></span>' + FLECHE + '</button>';
     }).join('');
   }
-  var villes = POINTS.map(function(p){ return p.ville; }).filter(function(v, i, t){ return t.indexOf(v) === i; });
-  ['Toutes'].concat(villes).forEach(function(v, i){
-    var b = document.createElement('button');
-    b.type = 'button'; b.textContent = v; b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
-    b.onclick = function(){
-      [].forEach.call(filtre.children, function(x){ x.setAttribute('aria-pressed', 'false'); });
-      b.setAttribute('aria-pressed', 'true'); afficher(i === 0 ? '' : v);
-    };
-    filtre.appendChild(b);
+  $('points').addEventListener('click', function(e){
+    var b = e.target.closest('[data-point]'); if(!b) return;
+    etat.point = POINTS[+b.dataset.point]; suite();
   });
-  afficher('');
+
+  /* ── écran durée ── */
+  function majDuree(){
+    var j = etat.jours, t = prix(j);
+    $('nb-jours').textContent = j;
+    $('prix').textContent = euros(t);
+    $('prix-detail').textContent = 'soit ' + (t / j).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' € par jour · 0 € de livraison';
+    $('moins').disabled = j <= JOURS_MIN; $('plus').disabled = j >= JOURS_MAX;
+    [].forEach.call($('raccourcis').children, function(b){ b.setAttribute('aria-pressed', +b.dataset.j === j ? 'true' : 'false'); });
+    majRetour();
+  }
+  $('moins').onclick = function(){ etat.jours = Math.max(JOURS_MIN, etat.jours - 1); majDuree(); };
+  $('plus').onclick  = function(){ etat.jours = Math.min(JOURS_MAX, etat.jours + 1); majDuree(); };
+  $('raccourcis').addEventListener('click', function(e){ var b = e.target.closest('[data-j]'); if(b){ etat.jours = +b.dataset.j; majDuree(); } });
+
+  /* ── écran date ── */
+  var auj = new Date();
+  $('date').min = jourISO(auj);
+  $('date').max = jourISO(new Date(auj.getFullYear() + 1, auj.getMonth(), auj.getDate()));
+  function majRetour(){
+    $('date-retour').textContent = etat.date ? 'Retour au même point le ' + lisible(plus(etat.date, etat.jours)) + '.' : '';
+  }
+  $('date').addEventListener('input', function(){ etat.date = this.value || null; majRetour(); });
+
+  /* ── écran récap ── */
+  function remplirRecap(){
+    var p = etat.point, t = prix(etat.jours), retour = plus(etat.date, etat.jours);
+    $('r-point').textContent = p.nom + (p.exemple ? ' (exemple)' : '');
+    $('r-date').textContent = lisible(etat.date);
+    $('r-retour').textContent = lisible(retour);
+    $('r-prix').textContent = euros(t);
+    var msg = 'Bonjour, je voudrais réserver un climatiseur mobile en Click & Collect.\n' +
+      '• Point de retrait : ' + p.nom + ' (' + p.ville + ')\n' +
+      '• Retrait le ' + lisible(etat.date) + '\n' +
+      '• Durée : ' + etat.jours + ' jours (retour le ' + lisible(retour) + ')\n' +
+      '• Total affiché : ' + euros(t) + ', sans livraison';
+    $('envoyer').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(msg);
+  }
+
+  majDuree();
+  aller(0, false);
 })();
 </script>
-<footer class="ld-footer" style="background:#0E1726;color:rgba(255,255,255,.7);font-family:’DM Sans’,system-ui,sans-serif;padding:48px 0 0;margin-top:48px;">
-  <div class="ld-footer-inner" style="max-width:1200px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;">
-    <div class="ld-footer-brand">
-      <div style="font-weight:900;font-size:20px;color:#fff;letter-spacing:-.04em;margin-bottom:10px;">Loc<em style="font-style:italic;opacity:.85;">’Air</em><sup style="font-size:10px;vertical-align:super;opacity:.7;">®</sup></div>
-      <p style="font-size:13px;line-height:1.6;max-width:240px;margin-bottom:12px;">Location de climatiseurs, PortaSplit et rafraîchisseurs d’air sur la Côte d’Azur. Livraison en 2h, 7j/7.</p>
-      <p style="font-size:12px;color:rgba(255,255,255,.45);">11 Avenue Chantal, 06100 Nice<br>06 63 79 87 56 &middot; 8h–20h, 7j/7</p>
-    </div>
-    <div>
-      <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;margin-bottom:14px;">Produits</div>
-      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;">
-        <li><a href="/catalogue" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Climatiseurs mobiles</a></li>
-        <li><a href="/portasplit" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">PortaSplit réversible</a></li>
-        <li><a href="/catalogue" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Rafraîchisseurs</a></li>
-        <li><a href="/boutique" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Boutique</a></li>
-      </ul>
-    </div>
-    <div>
-      <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;margin-bottom:14px;">Villes</div>
-      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;">
-        <li><a href="/location-climatiseur-nice" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Nice</a></li>
-        <li><a href="/location-climatiseur-cannes" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Cannes</a></li>
-        <li><a href="/location-climatiseur-antibes" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Antibes</a></li>
-        <li><a href="/location-climatiseur-monaco" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Monaco</a></li>
-        <li><a href="/location-climatiseur-menton" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Menton</a></li>
-        <li><a href="/location-climatiseur-grasse" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Grasse</a></li>
-      </ul>
-    </div>
-    <div>
-      <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;margin-bottom:14px;">Infos</div>
-      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;">
-        <li><a href="/contact" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Installation split</a></li>
-        <li><a href="/reserver" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Réserver</a></li>
-        <li><a href="/cgv" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">CGV</a></li>
-        <li><a href="/mentions-legales" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Mentions légales</a></li>
-        <li><a href="/confidentialite" style="font-size:13px;color:rgba(255,255,255,.6);text-decoration:none;">Confidentialité</a></li>
-      </ul>
-    </div>
-  </div>
-  <div style="max-width:1200px;margin:32px auto 0;padding:16px 24px 20px;border-top:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(255,255,255,.4);flex-wrap:wrap;gap:8px;">
-    <span>© 2026 Loc’Air® — Côte d’Azur</span>
-    <span><a href="/cgv" style="color:rgba(255,255,255,.4);text-decoration:none;">CGV</a> &middot; <a href="/mentions-legales" style="color:rgba(255,255,255,.4);text-decoration:none;">Mentions légales</a> &middot; <a href="/confidentialite" style="color:rgba(255,255,255,.4);text-decoration:none;">Confidentialité</a></span>
-  </div>
-</footer>
-
-
-<script>
-/* La barre prend son ombre dès qu'on a quitté le haut de la page. C'est le
-   seul script de ces pages : un texte doit se lire sans JavaScript. */
-(function(){
-  var bar = document.getElementById('bar');
-  if(!bar) return;
-  var poser = function(){ bar.classList.toggle('pose', window.scrollY > 40); };
-  poser();
-  window.addEventListener('scroll', poser, {passive:true});
-})();
-</script>
-<script src="/menu.js" defer></script>
-<a class="wa-float" href="https://wa.me/33663798756?text=Bonjour%2C+je+voudrais+un+climatiseur+en+Click+%26+Collect." target="_blank" rel="noopener noreferrer" aria-label="Question ? Écrivez-nous sur WhatsApp">
-  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-</a>
-<style>.wa-float{position:fixed;bottom:max(24px,env(safe-area-inset-bottom,24px));right:24px;width:56px;height:56px;background:#25D366;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:9000;box-shadow:0 4px 20px rgba(37,211,102,.4);transition:transform .2s,box-shadow .2s;text-decoration:none}.wa-float:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(37,211,102,.5)}.wa-float svg{width:28px;height:28px}</style>
+</body>
+</html>
