@@ -39,7 +39,7 @@ def bar(fil="Guides", href="/blog"):
       <ul class="mm-l">
         <li><a href="/#appareils">Appareils</a></li>
         <li><a href="/portasplit-hiver">Offre hiver</a></li>
-        <li><a href="/#modele">Notre modèle</a></li>
+        <li><a href="/qui-sommes-nous">Qui sommes-nous</a></li>
         <li><a href="/#process">Comment ça marche</a></li>
         <li><a href="/boutique">Loc'Air Shop</a></li>
         <li><a href="/blog/">Guides</a></li>
