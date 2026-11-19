@@ -28,6 +28,12 @@
 //   zone      'cote-azur' ou 'madrid' (page et langue)
 //   ouverture [heure d'ouverture, heure de fermeture] des jours ouverts,
 //             à l'heure de Paris (affiche « Ouvert · ferme à 19h »)
+//   photos    jusqu'à 2 photos du point, dans cet ordre : la devanture vue de
+//             la rue, puis le comptoir / l'intérieur. Fichiers .webp à poser
+//             dans /points/ (ex. ['/points/nice-port-1.webp',
+//             '/points/nice-port-2.webp']). Prises par le propriétaire ou le
+//             commerçant, AVEC SON ACCORD — jamais de photo Google Maps.
+//             Vide = rien ne change à l'écran.
 const STOCK_PAR_DEFAUT = 4;
 const COMMISSION_POINT_PCT = 15;
 const POINTS_RETRAIT = [
@@ -53,6 +59,7 @@ POINTS_RETRAIT.forEach((p) => {
   if (!p.zone) p.zone = 'cote-azur';
   if (!Array.isArray(p.ouverture)) p.ouverture = [9, 19];
   if (!('partenaire_code' in p)) p.partenaire_code = null;
+  if (!Array.isArray(p.photos)) p.photos = [];
 });
 
 function getPointRetrait(id) {
