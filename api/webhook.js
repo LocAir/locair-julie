@@ -816,7 +816,7 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
       [T('Point de retrait', 'Pick-up point'), adressePoint],
       [T('Retrait', 'Pick-up'), fmt(resa.date_debut) + ' — ' + horaires],
       [T('Retour au même point', 'Return to the same point'), fmt(resa.date_fin)],
-      [T('Payé', 'Paid'), amount + T(' (sans livraison, sans caution)', ' (no delivery fee, no deposit)')],
+      [T('Payé', 'Paid'), amount + T(' (sans caution)', ' (no deposit)')],
       [T('Référence', 'Reference'), resa.ref || ''],
     ].map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#4B5873;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0"><b>${esc(v)}</b></td></tr>`).join('');
     const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
