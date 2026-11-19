@@ -1132,6 +1132,17 @@ html[data-style="brut"] .bdp-julie,html[data-style="brut"] .bdp-res a{border-rad
 html[data-style="brut"] .bdp-t,html[data-style="brut"] .bdp-bas{font-family:var(--mono)}
 .nav .nav-langue.haut{margin-left:auto}
 .nav .nav-langue.haut+.espace{margin-left:8px}
+
+/* ── PHOTO DU HAUT : zoom lent façon caméra (haut de gamme) ──
+   À l'arrivée, la baie se rapproche doucement (2,4 s), puis la photo
+   « respire » très lentement (aller-retour de 26 s). En descendant la page,
+   elle glisse un peu moins vite que le texte (effet de profondeur).
+   Rien ne bouge si « moins d'animations » est demandé. */
+[data-ecran="ville"] .hero img.hero-img{will-change:transform;scale:1.16;translate:0 var(--hz-y,0px)}
+[data-ecran="ville"] .hero img.hero-img.hz{animation:hzEntree 3s cubic-bezier(.25,.6,.3,1) both,hzRespire 26s ease-in-out 3s infinite alternate}
+@keyframes hzEntree{from{scale:1.16}to{scale:1.04}}
+@keyframes hzRespire{from{scale:1.04}to{scale:1.11}}
+@media(prefers-reduced-motion:reduce){[data-ecran="ville"] .hero img.hero-img{animation:none;scale:1;translate:none}}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -2790,6 +2801,20 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var cible = $(a.dataset.vers); if(!cible) return;
     e.preventDefault(); cible.scrollIntoView({behavior:doux(), block:'start'});
   });
+
+  /* profondeur : la photo du haut glisse un peu moins vite que la page */
+  (function(){
+    var img = document.querySelector('[data-ecran="ville"] .hero img.hero-img'); if(!img) return;
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    /* le zoom d'arrivée démarre quand la photo est prête (sinon on ne le voit pas) */
+    function go(){ img.classList.add('hz'); }
+    if(img.complete && img.naturalWidth) go(); else { img.addEventListener('load', go, {once:true}); setTimeout(go, 2500); }
+    var raf = 0;
+    window.addEventListener('scroll', function(){
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function(){ var y = Math.min(window.scrollY, 900); img.style.setProperty('--hz-y', (y * 0.25).toFixed(1) + 'px'); });
+    }, {passive:true});
+  })();
 
   /* ── démarrage : points, prix, puis reprise là où le client en était ── */
   function demarrer(){
