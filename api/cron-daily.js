@@ -1274,7 +1274,7 @@ async function effacerIdentitesOrphelines() {
 async function envoyerRappelsClickCollect(supabase, todayStr) {
   const { rappelsClickCollectDus } = require('./_lib/emailSchedule');
   const { getPointRetrait } = require('./_lib/pointsRetrait');
-  const { imageQrRemise, pinClient } = require('./_lib/clickCollect');
+  const { imageQrRemise } = require('./_lib/clickCollect');
   const demain = new Date(new Date(todayStr + 'T12:00:00Z').getTime() + 864e5).toISOString().slice(0, 10);
   let { data: rows, error } = await supabase.from('reservations')
     .select('id, ref, prenom, email, tel, lang, statut, source, source_channel, date_debut, date_fin, point_retrait_id, adresse, remis_at, rendu_at')
@@ -1319,7 +1319,7 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
 <p>${texte}</p>
 ${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
 ${retrait ? `<p><img src="${imageQrRemise(r.id, r.ref, 220)}" width="220" height="220" alt="QR code"></p>` : ''}
-<p style="font-size:15px">${T('Numéro de commande', 'Order number', 'Número de pedido')} : <b>${esc(r.ref || '')}</b> · ${T('Code', 'Code', 'Código')} : <b style="letter-spacing:.15em">${pinClient(r.id, r.ref)}</b></p>
+<p style="font-size:15px">${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b>${esc(r.ref || '')}</b> — ${T('au comptoir, scannez le QR code du commerçant et tapez ce numéro.', 'at the counter, scan the shop’s QR code and enter this number.', 'en el mostrador, escanea el código QR del comercio y escribe este número.')}</p>
 <p style="color:#4B5873;font-size:13px">${T('Référence', 'Reference', 'Referencia')} : ${esc(r.ref || '')} · Loc’Air · locair.fr</p></div>`;
       const res = await sendBrevoEmail({ to: r.email, subject, html, senderName: "Loc'Air" });
       if (!res.ok) {

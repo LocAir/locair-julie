@@ -68,13 +68,12 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   <!-- 1. le client s'identifie -->
   <section id="e-id">
     <h1><span lang="fr">Retirer ou rendre votre climatiseur</span><span lang="en">Pick up or return your air conditioner</span><span lang="es">Recoge o devuelve tu aire acondicionado</span></h1>
-    <p class="sous"><span lang="fr">Tapez votre numéro de commande et votre code à 4 chiffres. Ils sont dans votre email et votre SMS de confirmation.</span><span lang="en">Enter your order number and your 4-digit code. You’ll find them in your confirmation email and text.</span><span lang="es">Escribe tu número de pedido y tu código de 4 cifras. Están en tu email y tu SMS de confirmación.</span></p>
+    <p class="sous"><span lang="fr">Tapez votre numéro de commande. Il est dans votre email et votre SMS de confirmation, et reste le même jusqu’au retour.</span><span lang="en">Enter your order number. It’s in your confirmation email and text, and stays the same until you return the unit.</span><span lang="es">Escribe tu número de pedido. Está en tu email y tu SMS de confirmación, y es el mismo hasta la devolución.</span></p>
     <p class="point" id="point" hidden></p>
     <form class="carte" id="f-id" novalidate>
       <div class="champ"><label for="ref"><span lang="fr">Numéro de commande</span><span lang="en">Order number</span><span lang="es">Número de pedido</span></label>
         <input id="ref" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CC-XXXXXXXX" maxlength="40"></div>
-      <div class="champ"><label for="pin"><span lang="fr">Code à 4 chiffres</span><span lang="en">4-digit code</span><span lang="es">Código de 4 cifras</span></label>
-        <input id="pin" class="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••"></div>
+      
       <button class="btn" id="b-id" type="submit"><span lang="fr">Voir ma réservation</span><span lang="en">See my booking</span><span lang="es">Ver mi reserva</span></button>
       <p class="msg err" id="m-id" role="alert" hidden></p>
     </form>
@@ -113,7 +112,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var q = new URLSearchParams(location.search), POINT = (q.get('p') || '').slice(0, 60), etat = {ref:'', pin:'', resa:null};
+  var q = new URLSearchParams(location.search), POINT = (q.get('p') || '').slice(0, 60), etat = {ref:'', resa:null};
   function langue(){ var l = document.documentElement.getAttribute('data-l'); return l === 'en' || l === 'es' ? l : 'fr'; }
   function L(fr, en, es){ var l = langue(); return l === 'en' ? en : l === 'es' ? es : fr; }
   function choisir(l){
@@ -137,18 +136,18 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   }).catch(function(){});
 
   /* réservation gardée sur ce téléphone après le paiement : pré-remplie */
-  try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && mr.ref){ $('ref').value = mr.ref; if(mr.pin) $('pin').value = mr.pin; } }catch(e){}
+  try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && mr.ref) $('ref').value = mr.ref; }catch(e){}
 
   function appel(corps){
-    corps.point = POINT; corps.ref = etat.ref; corps.pin = etat.pin; corps.lang = langue();
+    corps.point = POINT; corps.ref = etat.ref; corps.lang = langue();
     return fetch('/api/cc-comptoir', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corps)})
       .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
   }
 
   $('f-id').addEventListener('submit', function(e){
     e.preventDefault();
-    etat.ref = $('ref').value.trim().toUpperCase().replace(/\s+/g, ''); etat.pin = $('pin').value.replace(/\D/g, '');
-    if(!etat.ref || etat.pin.length !== 4) return erreur($('m-id'), L('Indiquez votre numéro de commande et votre code à 4 chiffres.', 'Enter your order number and your 4-digit code.', 'Indica tu número de pedido y tu código de 4 cifras.'));
+    etat.ref = $('ref').value.trim().toUpperCase().replace(/\s+/g, '');
+    if(etat.ref.length < 6) return erreur($('m-id'), L('Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.'));
     if(!POINT) return erreur($('m-id'), L('Scannez le QR code affiché au comptoir.', 'Scan the QR code at the counter.', 'Escanea el código QR del mostrador.'));
     var b = $('b-id'); b.disabled = true; erreur($('m-id'), '');
     appel({action:'voir'}).then(function(r){
