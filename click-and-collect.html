@@ -860,6 +860,40 @@ html[data-style="brut"] .tf-raccourcis button[aria-pressed="true"]{background:va
 html[data-style="brut"] .tf-total,html[data-style="brut"] .tf-q output{font-family:var(--mono);color:var(--noir)}
 html[data-style="brut"] .tf-q{text-transform:uppercase}
 html[data-style="brut"] .tf-eco,html[data-style="brut"] .tf-res small{font-family:var(--mono);text-transform:uppercase;font-size:12px}
+
+/* ── BANDEAU CHALEUR ── */
+.chaleur{display:inline-flex;align-items:center;gap:8px;margin:0 0 14px;padding:7px 14px 7px 8px;border-radius:var(--r-f);background:rgba(255,255,255,.95);color:var(--ink);font-size:14px;font-weight:700;box-shadow:0 8px 20px -8px rgba(0,0,0,.4)}
+.chaleur[hidden]{display:none}
+.ch-t{background:#F59E0B;color:#fff;border-radius:var(--r-f);padding:3px 10px;font-weight:900}
+.chaleur.fort .ch-t{background:#DC2626}
+@media(min-width:1000px){body [data-ecran="ville"] .hero>.col{grid-template-areas:"meteo ticket" "titre ticket" "phrase ticket"}.chaleur{grid-area:meteo;justify-self:start;align-self:end}}
+html[data-style="brut"] .chaleur{border-radius:0;border:2.5px solid var(--noir);box-shadow:4px 4px 0 var(--noir);font-family:var(--mono);text-transform:uppercase;font-size:12.5px}
+html[data-style="brut"] .ch-t{border-radius:0}
+/* ── AVIS ── */
+.avis{padding-block:40px 20px}
+.avis-tete{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.avis h2{font-family:var(--font);font-weight:900;font-size:clamp(28px,7vw,40px);letter-spacing:-.03em;margin:0}
+.avis-note{display:flex;align-items:center;gap:10px;margin:0}
+.avis-note>b{font-size:40px;font-weight:900;letter-spacing:-.04em;line-height:1}
+.avis-note>span{display:grid;font-size:13px;color:var(--ink-2)}
+.av-et{color:#F5B301;letter-spacing:1px;font-size:15px}
+.avis-rail{display:grid;grid-auto-flow:column;grid-auto-columns:84%;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:4px 16px 10px;scrollbar-width:none}
+.avis-rail::-webkit-scrollbar{display:none}
+.av-carte{scroll-snap-align:start;margin:0;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.av-carte blockquote{margin:0;font-size:15px;line-height:1.5;color:var(--ink);flex:1}
+.av-carte figcaption{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center}
+.av-ini{grid-row:1/3;width:38px;height:38px;border-radius:50%;background:var(--vif);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.av-carte figcaption b{font-size:14.5px}
+.av-carte figcaption small{font-size:12.5px;color:var(--ink-2)}
+.avis-lien{display:inline-block;margin-top:8px;font-weight:700;color:var(--vif);text-decoration:none}
+.avis-lien:hover{text-decoration:underline}
+@media(min-width:760px){.avis-rail{grid-auto-flow:row;grid-template-columns:repeat(3,1fr);grid-auto-columns:auto;overflow:visible;margin:0;padding:4px 0 10px}}
+@media(min-width:1000px){body [data-ecran="ville"] .avis>.col{max-width:1160px;padding-left:40px;padding-right:40px}}
+html[data-style="brut"] .avis h2{text-transform:uppercase}
+html[data-style="brut"] .av-carte{border-radius:0;border:2.5px solid var(--noir);box-shadow:5px 5px 0 var(--noir)}
+html[data-style="brut"] .av-ini{border-radius:0;background:var(--noir);font-family:var(--mono)}
+html[data-style="brut"] .avis-note>b{font-family:var(--mono)}
+html[data-style="brut"] .avis-lien{font-family:var(--mono);text-transform:uppercase;color:var(--noir);text-decoration:underline}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -941,6 +975,7 @@ html[data-style="brut"] .tf-eco,html[data-style="brut"] .tf-res small{font-famil
       <a href="https://www.tiktok.com/@locair" target="_blank" rel="noopener noreferrer" aria-label="TikTok" data-mesure="cc_reseau"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 12a4 4 0 104 4V4a5 5 0 005 5"/></svg></a>
       </aside>
       <div class="col">
+        <p class="chaleur" id="chaleur" hidden></p>
         <h1><span class="ligne"><span lang="fr">Réservez.</span><span lang="en">Book.</span></span> <span class="ligne"><span lang="fr">Récupérez</span><span lang="en">Pick up</span></span> <span class="ligne"><span class="anim" aria-hidden="true"><span lang="fr">à</span><span lang="en">in</span> <span class="tourne" id="tourne"><span class="on">Nice</span></span></span><span class="cote" aria-hidden="true"><span lang="fr">sur la Côte</span><span lang="en">on the Riviera</span></span><span class="sr"><span lang="fr">votre climatiseur sur la Côte d’Azur</span><span lang="en">your air conditioner on the French Riviera</span></span></span></h1>
         <p class="hero-sous mission"><span lang="fr">Votre climatiseur chez un commerçant près de chez vous. Réservable à toute heure.</span><span lang="en">Your air conditioner at a shop near you. Bookable at any hour.</span></p>
         <a class="ticket" href="#choix" id="ticket">
@@ -1069,6 +1104,16 @@ html[data-style="brut"] .tf-eco,html[data-style="brut"] .tf-res small{font-famil
     <section class="avantages" aria-labelledby="t-av"><div class="col">
       <h2 id="t-av"><span lang="fr">Pourquoi c’est plus simple</span><span lang="en">Why it’s simpler</span></h2>
       <ul class="av-grille"><li><span class="av-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg></span><b><span lang="fr">Zéro caution</span><span lang="en">No deposit</span></b><p><span lang="fr">Rien n’est bloqué sur votre carte.</span><span lang="en">Nothing is held on your card.</span></p></li><li><span class="av-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M19 3v4h-4"/></svg></span><b><span lang="fr">Prolongation à tout moment</span><span lang="en">Extend any time</span></b><p><span lang="fr">En ligne, depuis votre espace client. Pas besoin de repasser au point.</span><span lang="en">Online, from your customer area. No need to go back to the shop.</span></p></li><li><span class="av-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M2 3l20 18"/></svg></span><b><span lang="fr">0 € de livraison</span><span lang="en">€0 delivery</span></b><p><span lang="fr">L’appareil est déjà chez un commerçant près de chez vous.</span><span lang="en">The unit is already at a shop near you.</span></p></li><li><span class="av-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 3v18M4 12h16"/></svg></span><b><span lang="fr">Sans perçage</span><span lang="en">No drilling</span></b><p><span lang="fr">Kit de fenêtre fourni. Rien à abîmer.</span><span lang="en">Window kit included. Nothing to damage.</span></p></li><li><span class="av-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10 18h4"/></svg></span><b><span lang="fr">Réservable 24h/24</span><span lang="en">Book 24/7</span></b><p><span lang="fr">Paiement sécurisé en ligne, à toute heure.</span><span lang="en">Secure online payment, at any hour.</span></p></li><li><span class="av-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l6 6 4-4 8 8"/><path d="M14 17h7v-7"/></svg></span><b><span lang="fr">Plus vous gardez, moins vous payez</span><span lang="en">Keep it longer, pay less</span></b><p><span lang="fr">Le prix par jour baisse dès le 8e jour.</span><span lang="en">The daily price drops from day 8.</span></p></li></ul>
+    </div></section>
+
+    <!-- ══ AVIS (les mêmes vrais avis Google que sur l'accueil de locair.fr, mot pour mot) ══ -->
+    <section class="avis" aria-labelledby="t-avis"><div class="col">
+      <div class="avis-tete">
+        <h2 id="t-avis"><span lang="fr">Ils nous font confiance</span><span lang="en">They trust us</span></h2>
+        <p class="avis-note"><b id="avis-note">4,9</b><span><span class="av-et" aria-hidden="true">★★★★★</span><span><span id="avis-nb">38</span> <span lang="fr">avis Google</span><span lang="en">Google reviews</span></span></span></p>
+      </div>
+      <div class="avis-rail"><figure class="av-carte"><span class="av-et" aria-label="5 étoiles sur 5">★★★★★</span><blockquote>« Parfait pour notre colocation ! Aly a installé deux clims en moins d’une heure, tout compris dans le prix. On a passé l’été au frais sans se ruiner. »</blockquote><figcaption><span class="av-ini" aria-hidden="true">S</span><b>Sophie M.</b><small><span lang="fr">Juillet 2026</span><span lang="en">July 2026</span> · Google</small></figcaption></figure><figure class="av-carte"><span class="av-et" aria-label="5 étoiles sur 5">★★★★★</span><blockquote>« Je me suis retrouvée avec ma clim en panne par cette chaleur avec mes chats et un bébé à la maison et j’ai eu la chance de tomber là-dessus, vraiment au top ! »</blockquote><figcaption><span class="av-ini" aria-hidden="true">A</span><b>Anaïs A.</b><small><span lang="fr">Juin 2026</span><span lang="en">June 2026</span> · Google</small></figcaption></figure><figure class="av-carte"><span class="av-et" aria-label="5 étoiles sur 5">★★★★★</span><blockquote>« Super expérience avec cette entreprise. Installation professionnelle et service client réactif. Le climatiseur était performant et bien entretenu. »</blockquote><figcaption><span class="av-ini" aria-hidden="true">M</span><b>Mike T.</b><small><span lang="fr">Juin 2026</span><span lang="en">June 2026</span> · Google</small></figcaption></figure></div>
+      <a class="avis-lien" href="https://g.page/r/CeJQrt2gLNNrEAE" target="_blank" rel="noopener noreferrer" data-mesure="cc_avis_google"><span lang="fr">Lire tous les avis sur Google</span><span lang="en">Read all reviews on Google</span> ↗</a>
     </div></section>
 
     <footer class="pied"><div class="col">© Loc’Air · <a href="/qui-sommes-nous"><span lang="fr">Qui sommes-nous</span><span lang="en">About us</span></a> · <a href="/cgv">CGV</a> · <a href="/mentions-legales">Mentions légales</a> · <a href="/confidentialite">Confidentialité</a></div></footer>
@@ -2251,6 +2296,29 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   $('tf-jours').addEventListener('input', majSimu);
   $('tf-exemples').addEventListener('click', function(e){ var b = e.target.closest('[data-tfj]'); if(!b) return; $('tf-jours').value = b.dataset.tfj; majSimu(); vibre(); });
   $('tf-cta').addEventListener('click', function(){ etat.dureeVoulue = +$('tf-jours').value; window.mesurer('cc_tarif_duree'); });
+
+  /* ── BANDEAU CHALEUR : vraie prévision de la semaine (Open-Meteo, via
+     /api/meteo-semaine). Affiché seulement à partir de 25 °C : jamais de
+     chaleur inventée. ?meteo=31 pour voir le rendu (essai). ── */
+  (function(){
+    var el = $('chaleur'); if(!el) return;
+    var essai = +(new URLSearchParams(location.search).get('meteo') || 0);
+    function montrer(m){
+      if(!m || !(m.max >= 25)) return;
+      var d = d2(m.date), auj = m.date === dans(0), dem = m.date === dans(1);
+      var jour = auj ? L('aujourd’hui', 'today') : dem ? L('demain', 'tomorrow') : d.toLocaleDateString(LOC(), {weekday:'long'});
+      var fort = m.max >= 29;
+      el.className = 'chaleur' + (fort ? ' fort' : '');
+      el.innerHTML = '<span class="ch-t">' + m.max + ' °C</span> ' + esc(fort ? L('Vague de chaleur ' + jour + ' à ' + m.ville, 'Heatwave ' + jour + ' in ' + m.ville) : L('annoncés ' + jour + ' à ' + m.ville, 'forecast ' + jour + ' in ' + m.ville));
+      el.hidden = false;
+    }
+    if(essai >= 25 && essai <= 45){ montrer({max:essai, date:dans(2), ville:'Nice'}); return; }
+    fetch('/api/meteo-semaine').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ if(j) montrer(j.max); }).catch(function(){});
+  })();
+  fetch('/api/google-rating').then(function(r){ return r.json(); }).then(function(d){
+    if(!d || !d.available) return;
+    $('avis-note').textContent = d.rating.toFixed(1).replace('.', ','); $('avis-nb').textContent = d.count;
+  }).catch(function(){});
 
   /* ── démarrage : points, prix, puis reprise là où le client en était ── */
   function demarrer(){
