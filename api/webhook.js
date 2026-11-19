@@ -157,9 +157,9 @@ async function logPaymentIncident(supabase, { cityId, reservationId, description
 async function handlePaymentFailed(supabase, intent) {
   const resa = await findReservationByPaymentIntent(supabase, intent.id);
   const raison = intent.last_payment_error?.message || 'raison inconnue';
-  if (resa && resa.statut === 'en_attente') {
-    await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).eq('statut', 'en_attente');
-  }
+  // On n'annule PLUS la réservation ici : le client peut réessayer avec une
+  // autre carte sur le même paiement, et ce deuxième essai peut réussir.
+  // Les réservations restées « en attente » sont nettoyées par le cron.
   await logPaymentIncident(supabase, {
     cityId: resa?.city_id,
     reservationId: resa?.id,

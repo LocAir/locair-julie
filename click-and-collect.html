@@ -1825,7 +1825,11 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function LOC(){ var l = langue(); return l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : 'fr-FR'; }
   function euros(n){ var t = n.toLocaleString(LOC(), {maximumFractionDigits:2}); return langue() === 'en' ? '€' + t : t + ' €'; }
   function iso(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
-  function dans(n){ var d = new Date(); d.setDate(d.getDate() + n); return iso(d); }
+  function dans(n){
+    /* « aujourd'hui » = la date à Paris, quel que soit le fuseau du téléphone (le serveur compte pareil) */
+    var p = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Paris', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date()).split('-');
+    var d = new Date(+p[0], +p[1] - 1, +p[2]); d.setDate(d.getDate() + n); return iso(d);
+  }
   function d2(s){ var p = s.split('-'); return new Date(+p[0], p[1]-1, +p[2]); }
   function lisible(s){ return d2(s).toLocaleDateString(LOC(), {weekday:'long', day:'numeric', month:'long'}); }
   function court(s){ return d2(s).toLocaleDateString(LOC(), {weekday:'short', day:'numeric', month:'short'}); }
@@ -2139,6 +2143,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       b.removeAttribute('aria-busy'); b.innerHTML = LOC_TXT;
       var pos = {lat:r.coords.latitude, lng:r.coords.longitude};
       var tri = POINTS.slice().sort(function(a, c){ return km(pos, a) - km(pos, c); }).slice(0, 4);
+      if(!tri.length){ err.textContent = L('Aucun point de retrait à afficher pour le moment. Réessayez dans un instant.', 'No pick-up point to show right now. Please try again shortly.', 'No hay puntos de recogida que mostrar ahora mismo. Vuelve a intentarlo en un momento.'); err.hidden = false; return; }
       etat.ville = tri[0].ville;
       dessinerPoints(tri, pos); window.mesurer('cc_geoloc');
       choisirPoint(tri[0]);
@@ -2156,7 +2161,6 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     ol.innerHTML = D.map(function(d){
       return '<li role="button" tabindex="0" data-deb="' + d[0] + '" data-fin="' + d[1] + '"><b>' + euros(prix(d[0])) + '</b><span class="tf-j">' + d[2] + '</span></li>';
     }).join('');
-    $('tf-exemples').innerHTML = DUREES.map(function(d){ return '<button type="button" data-tfj="' + d[0] + '">' + dureeNom(d[0], d[1]) + '</button>'; }).join('');
     var r = $('tf-jours'); r.min = JOURS_MIN; r.max = JOURS_MAX; if(+r.value < JOURS_MIN) r.value = JOURS_MIN;
     $('tf-note').textContent = L('Nous pratiquons une tarification dynamique : de ' + euros(CC.min) + ' à ' + euros(CC.max) + ' la semaine selon la demande (chaleur, stock). Le prix exact s’affiche toujours avant de payer.', 'We use dynamic pricing: from ' + euros(CC.min) + ' to ' + euros(CC.max) + ' a week depending on demand (heat, stock). The exact price is always shown before you pay.', 'Aplicamos precios dinámicos: de ' + euros(CC.min) + ' a ' + euros(CC.max) + ' a la semana según la demanda (calor, stock). El precio exacto se muestra siempre antes de pagar.');
     majSimu();
@@ -2175,9 +2179,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       el._raf = requestAnimationFrame(function(t){ t0 = 0; });
     })();
     $('tf-parj').textContent = L('soit ', '') + euros(Math.round(tot / n * 100) / 100) + L(' par jour', ' a day');
-    $('tf-eco').innerHTML = eco > 0 ? '<b>' + L('−', '−') + euros(eco) + '</b> ' + L('par rapport à ' + euros(PALIERS[0][1]) + ' par jour', 'compared with ' + euros(PALIERS[0][1]) + ' a day', 'respecto a ' + euros(PALIERS[0][1]) + ' al día') : L('Le prix par jour baisse dès le 8e jour.', 'The daily price drops from day 8.');
     [].forEach.call($('tf-paliers').children, function(li){ var a = +li.dataset.deb, b = +li.dataset.fin; li.classList.toggle('on', a <= n); li.classList.toggle('actuel', a <= n && n <= b); li.setAttribute('aria-pressed', String(a <= n && n <= b)); });
-    [].forEach.call($('tf-exemples').children, function(b){ b.setAttribute('aria-pressed', String(+b.dataset.tfj === n)); });
     r.style.setProperty('--p', ((n - r.min) / (r.max - r.min) * 100) + '%');
     $('tf-cta').textContent = L('Réserver ' + n + ' jours · ' + euros(tot), 'Book ' + n + ' days · ' + euros(tot), 'Reservar ' + n + ' días · ' + euros(tot)) + ' ↑';
   }
@@ -2190,6 +2192,11 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   var MOIS_MAX = 12;
   function ferme(s){ var f = (etat.point && etat.point.fermes) || []; return f.indexOf(d2(s).getDay()) >= 0; }
   function prochainOuvert(s){ var n = 0; while(ferme(s) && n++ < 7) s = plus(s, 1); return s; }
+  function finRetour(debut, n){
+    var f = prochainOuvert(plus(debut, n)), k = 0;
+    while(ecart(debut, f) > JOURS_MAX && k++ < 14){ f = plus(f, -1); while(ferme(f) && k++ < 14) f = plus(f, -1); }
+    return f;
+  }
   function msgCal(t){ var m = $('cal-msg'); m.textContent = t || ''; m.hidden = !t; }
   function dessinerCal(){
     var auj = dans(0), max = dans(365), html = '';
@@ -2240,7 +2247,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var cle = k;
     fetch('/api/click-collect-prix?point=' + encodeURIComponent(etat.point.id) + '&debut=' + etat.debut + '&jours=' + ecart(etat.debut, etat.fin))
       .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){ if(!j || clePrix() !== cle) return; j.cle = cle; etat.prix = j; if(!ecrans.dates.hidden) majSelection(); })
+      .then(function(j){ if(!j || clePrix() !== cle) return; j.cle = cle; etat.prix = j; if(!ecrans.dates.hidden) majSelection(); else if(!ecrans.infos.hidden){ remplirRecap(); majResume('infos'); monterInline(); } })
       .catch(function(){});
   }
   /* pourquoi le prix monte (tarification dynamique) — en clair pour le client */
@@ -2266,7 +2273,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var dem = prochainOuvert(dans(1));
     choix.push([dem, dem === dans(1) ? L('Demain', 'Tomorrow') : court(dem)]);
     v.innerHTML = choix.map(function(c){
-      var fin = prochainOuvert(plus(c[0], n)), j = ecart(c[0], fin);
+      var fin = finRetour(c[0], n), j = ecart(c[0], fin);
       return '<button type="button" class="vite-b" data-deb="' + c[0] + '" data-fin="' + fin + '"><b>' + c[1] + ' · ' + j + L(' jours', ' days') + '</b><small>' + L('retour le ', 'back on ') + esc(court(fin)) + '</small><span class="vite-p">' + euros(prix(j)) + '</span></button>';
     }).join('');
     v.hidden = $('vite-ou').hidden = false;
@@ -2316,7 +2323,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   $('cal').addEventListener('click', function(e){
     var b = e.target.closest('[data-s]'); if(!b || b.disabled) return;
     var s = b.dataset.s; msgCal('');
-    if(!etat.debut || etat.fin || s <= etat.debut){ etat.debut = s; etat.fin = null; if(etat.dureeVoulue >= JOURS_MIN){ etat.fin = prochainOuvert(plus(s, etat.dureeVoulue)); etat.dureeVoulue = 0; } }
+    if(!etat.debut || etat.fin || s <= etat.debut){ etat.debut = s; etat.fin = null; if(etat.dureeVoulue >= JOURS_MIN){ etat.fin = finRetour(s, etat.dureeVoulue); etat.dureeVoulue = 0; } }
     else {
       var n = ecart(etat.debut, s);
       if(n < JOURS_MIN){ msgCal(L('7 jours minimum : retour à partir du ', '7 days minimum: return from ') + lisible(prochainOuvert(plus(etat.debut, JOURS_MIN))) + '.'); return; }
@@ -2326,7 +2333,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   });
   $('raccourcis').addEventListener('click', function(e){
     var b = e.target.closest('[data-plus]'); if(!b) return;
-    etat.fin = prochainOuvert(plus(etat.debut, +b.dataset.plus)); msgCal(''); vibre(); redessiner();
+    etat.fin = finRetour(etat.debut, +b.dataset.plus); msgCal(''); vibre(); redessiner();
   });
   $('sel-debut').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
   $('sel-fin').onclick = function(){ if(etat.debut){ etat.fin = null; msgCal(''); dessinerCal(); } };
@@ -2463,7 +2470,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     ['gclid','gbraid','wbraid','utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(function(k){ if(q.get(k)) out.push(k + '=' + q.get(k)); });
     return out.join(' · ');
   })();
-  function telValide(v){ var d = v.replace(/\D/g, ''); return d.length >= 8 && d.length <= 15; }
+  function telValide(v){ var d = v.replace(/\D/g, ''); return d.length >= 9 && d.length <= 15; }
   function invalide(id, msg){ $(id).setAttribute('aria-invalid', 'true'); $(id).focus(); if(msg){ var e = $('resa-err'); e.textContent = msg; e.hidden = false; } }
 
   /* ── PAIEMENT SUR LE MÊME ÉCRAN que les coordonnées ──
@@ -2510,18 +2517,30 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(!telValide(c.tel)){ $('tel-aide').className = 'aide err'; $('tel-aide').textContent = L('Ce numéro semble incomplet. Exemple : 06 12 34 56 78.', 'This number looks incomplete. Include your country code, e.g. +44 7700 900123.'); return invalide('tel'); }
     if(!$('cgv').checked){ $('cgv').closest('.coche').classList.add('err'); err.textContent = L('Merci d’accepter les conditions pour continuer.', 'Please accept the terms to continue.'); err.hidden = false; $('cgv').focus(); return; }
     etat.client = c; sauver('infos');
+    var vuCents = montantCents(), cleVue = clePrix();
+    /* même prix et mêmes dates qu'un paiement déjà préparé (ex. après « le prix a changé ») : on le reprend */
+    if(etat.paye){ etat.paye = false; etat.secret = etat.ref = etat.idtok = etat.remise = null; }   /* nouvelle réservation après une réservation payée */
+    var reprise = inl.ok && etat.secret && etat.secretCle === cleVue && Math.round((etat.montant || 0) * 100) === vuCents;
+    if(!reprise){ etat.secret = null; etat.ref = null; }
     btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = inl.ok ? L('Paiement en cours…', 'Processing payment…') : L('Préparation du paiement…', 'Preparing payment…');
     chargerStripe().catch(function(){});
     (inl.ok ? inl.el.submit().then(function(r){ if(r.error){ var x = new Error(r.error.message || ''); x.carte = true; throw x; } }) : Promise.resolve()).then(function(){
+      if(reprise) return {ok:true, j:{clientSecret:etat.secret, ref:etat.ref, amountCents:vuCents, remise:etat.remise, identite:etat.idtok}, reprise:true};
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
         prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
-        cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, _ref:etat.ref || '', campagne:campagne
-      })});
-    }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); })
+        cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, campagne:campagne
+      })}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
+    })
     .then(function(r){
-      if(r.j.nouveauPrixCents){ etat.prix = {cle:clePrix(), totalCents:r.j.nouveauPrixCents, majore:r.j.majore, normalCents:prix(jours()) * 100, majorationPct:25}; remplirRecap(); majResume('infos'); }
+      if(r.j.nouveauPrixCents){ etat.prix = {cle:clePrix(), totalCents:r.j.nouveauPrixCents, majore:r.j.majore, normalCents:prix(jours()) * 100, majorationPct:r.j.majorationPct || 0}; remplirRecap(); majResume('infos'); }
       if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
-      etat.secret = r.j.clientSecret; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
+      etat.secret = r.j.clientSecret; etat.secretCle = cleVue; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
+      /* le serveur a un autre prix que celui affiché : on montre le nouveau prix et on laisse le client décider */
+      if(inl.ok && r.j.amountCents !== vuCents){
+        etat.prix = {cle:cleVue, totalCents:r.j.amountCents, majore:r.j.amountCents > prix(jours()) * 100, remise:r.j.amountCents < prix(jours()) * 100, normalCents:prix(jours()) * 100, majorationPct:0, raisons:[]};
+        remplirRecap(); majResume('infos'); monterInline();
+        var y = new Error(L('Le prix vient d’être mis à jour : ', 'The price has just been updated: ', 'El precio se acaba de actualizar: ') + euros(r.j.amountCents / 100) + L('. Vérifiez puis appuyez de nouveau sur Payer.', '. Check it, then tap Pay again.', '. Revísalo y vuelve a pulsar Pagar.')); y.carte = true; throw y;
+      }
       window._ccValeur = etat.montant; window.mesurer('cc_vers_paiement');
       if(!inl.ok){ aller('paiement'); monterPaiement(); return; }
       if(Math.round(etat.montant * 100) !== inl.montant){ inl.montant = Math.round(etat.montant * 100); inl.el.update({amount:inl.montant}); }
@@ -2589,6 +2608,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
 
   /* ── 6. c'est réservé ── */
   function paye(){
+    etat.paye = true;
     window.conversionAchat(etat.montant, etat.ref); window._ccValeur = etat.montant; window.mesurer('cc_paiement');
     merci();
   }
@@ -2627,6 +2647,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(sansNav) return;
     aller('merci');
     try{ sessionStorage.removeItem(CLE_ETAT); }catch(e){}
+    /* gardé 24 h : si la page se recharge (souvent quand Android ouvre l'appareil photo
+       pour la pièce d'identité), le client retrouve son QR code et l'envoi de la pièce */
+    try{ localStorage.setItem('locair_cc_merci', JSON.stringify({t:Date.now(), point:p.id, debut:etat.debut, fin:etat.fin, client:{prenom:c.prenom || '', email:c.email || ''}, ref:etat.ref, montant:etat.montant, remise:etat.remise, idtok:etat.idtok})); }catch(e){}
   }
 
   /* Pièce d'identité APRÈS le paiement (écran « C'est réservé ») */
@@ -2776,7 +2799,6 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       if(!vu && t){ clearInterval(t); t = null; sec.classList.remove('demo'); }
     }, {threshold:.45}).observe(sec);
   })();
-  $('tf-exemples').addEventListener('click', function(e){ var b = e.target.closest('[data-tfj]'); if(!b) return; $('tf-jours').value = b.dataset.tfj; majSimu(); vibre(); });
   $('tf-cta').addEventListener('click', function(){ etat.dureeVoulue = etat.dureeSimu = +$('tf-jours').value; window.mesurer('cc_tarif_duree'); });
 
   /* ── BANDEAU CHALEUR : vraie prévision de la semaine (Open-Meteo, via
@@ -2915,6 +2937,14 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       aller('infos'); var e = $('resa-err'); e.textContent = L('Le paiement n’a pas été validé par votre banque. Vous pouvez réessayer.', 'Your bank didn’t approve the payment. You can try again.'); e.hidden = false; return;
     }
     var h = (location.hash || '').slice(1);
+    /* confirmation rechargée : on la réaffiche (QR code + envoi de la pièce d'identité) */
+    if(h === 'merci' && !sv){
+      var mr = null; try{ mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); }catch(e){}
+      if(mr && Date.now() - mr.t < 864e5 && parId(mr.point)){
+        etat.point = parId(mr.point); etat.ville = etat.point.ville; etat.debut = mr.debut; etat.fin = mr.fin; etat.client = mr.client; etat.ref = mr.ref; etat.montant = mr.montant; etat.remise = mr.remise; etat.idtok = mr.idtok; etat.paye = true;
+        merci(); return;
+      }
+    }
     /* lien direct à envoyer aux commerçants : #partenaire (ou #partner = anglais) */
     if(h === 'partenaire' || h === 'partner'){
       try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){}

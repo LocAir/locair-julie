@@ -1241,3 +1241,93 @@ module.exports = async (req, res) => {
 
   return res.status(200).json({ ok: true, date: todayStr, ...report });
 };
+
+// ── Click & Collect : panier abandonné depuis plus de 2 h ─────────────────
+// Annule le paiement Stripe s'il n'a pas abouti, puis la réservation, pour
+// libérer l'appareil du point. Jamais d'annulation d'un paiement réussi
+// (le webhook peut simplement être en retard) : dans ce cas on ne touche à rien.
+async function annulerPanierClickCollect(supabase, stripe, resa) {
+  try {
+    if (resa.stripe_payment_intent_id) {
+      const pi = await stripe.paymentIntents.retrieve(resa.stripe_payment_intent_id);
+      if (['succeeded', 'processing', 'requires_capture'].includes(pi.status)) return false;
+      if (pi.status !== 'canceled') await stripe.paymentIntents.cancel(pi.id).catch(() => {});
+    }
+    const { data } = await supabase.from('reservations').update({ statut: 'annulee' })
+      .eq('id', resa.id).eq('statut', 'en_attente').select('id');
+    return !!(data && data.length);
+  } catch (e) {
+    console.error('[CC panier abandonné]', resa.ref, e.message);
+    return false;
+  }
+}
+
+// ── Pièces d'identité orphelines ──────────────────────────────────────────
+// Pas encore automatisé : la liste des fichiers du stockage ne donne pas de
+// date fiable par dossier. À faire à la main depuis Supabase si besoin.
+// On ne supprime rien plutôt que de risquer d'effacer une pièce utile.
+async function effacerIdentitesOrphelines() {
+  return 'non automatisé';
+}
+
+// ── Click & Collect : rappels la veille du retrait et la veille du retour ─
+async function envoyerRappelsClickCollect(supabase, todayStr) {
+  const { rappelsClickCollectDus } = require('./_lib/emailSchedule');
+  const { getPointRetrait } = require('./_lib/pointsRetrait');
+  const { imageQrRemise } = require('./_lib/clickCollect');
+  const demain = new Date(new Date(todayStr + 'T12:00:00Z').getTime() + 864e5).toISOString().slice(0, 10);
+  let { data: rows, error } = await supabase.from('reservations')
+    .select('id, ref, prenom, email, tel, lang, statut, source, source_channel, date_debut, date_fin, point_retrait_id, adresse, remis_at, rendu_at')
+    .eq('source_channel', 'click_collect').eq('statut', 'confirmee')
+    .or(`date_debut.eq.${demain},date_fin.eq.${demain}`).limit(300);
+  if (error && (error.code === '42703' || /does not exist/i.test(error.message || ''))) {
+    ({ data: rows, error } = await supabase.from('reservations')
+      .select('id, ref, prenom, email, tel, lang, statut, source, source_channel, date_debut, date_fin, point_retrait_id, adresse')
+      .eq('source_channel', 'click_collect').eq('statut', 'confirmee')
+      .or(`date_debut.eq.${demain},date_fin.eq.${demain}`).limit(300));
+  }
+  if (error) throw error;
+  const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let envoyes = 0;
+  for (const r of rows || []) {
+    if (!r.email) continue;
+    for (const scenario of rappelsClickCollectDus(r, todayStr)) {
+      // verrou : jamais deux fois le même rappel pour la même réservation
+      const { error: lockErr } = await supabase.from('email_sent')
+        .insert({ reservation_id: r.id, scenario, sent_at: new Date().toISOString() });
+      if (lockErr) continue;
+      const l = r.lang === 'en' || r.lang === 'es' ? r.lang : 'fr';
+      const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+      const pt = getPointRetrait(r.point_retrait_id || '') || null;
+      const lieu = pt ? `${pt.nom} — ${pt.adresse}` : String(r.adresse || '').replace(/^CLICK & COLLECT — /, '');
+      const o = (pt && pt.ouverture) || [9, 19];
+      const heures = T(`de ${o[0]}h à ${o[1]}h`, `${o[0]}:00–${o[1]}:00`, `de ${o[0]}:00 a ${o[1]}:00`);
+      const itin = pt ? `https://www.google.com/maps/dir/?api=1&destination=${pt.lat},${pt.lng}` : '';
+      const retrait = scenario === 'cc_rappel_retrait';
+      const subject = retrait
+        ? T('Demain : retrait de votre climatiseur', 'Tomorrow: pick up your air conditioner', 'Mañana: recogida de tu aire acondicionado')
+        : T('Demain : retour de votre climatiseur', 'Tomorrow: return your air conditioner', 'Mañana: devolución de tu aire acondicionado');
+      const texte = retrait
+        ? T(`Votre climatiseur vous attend demain au point <b>${esc(lieu)}</b>, ouvert ${heures}. Venez avec ce QR code et votre pièce d’identité.`,
+            `Your air conditioner is waiting for you tomorrow at <b>${esc(lieu)}</b>, open ${heures}. Bring this QR code and your ID.`,
+            `Tu aire acondicionado te espera mañana en <b>${esc(lieu)}</b>, abierto ${heures}. Trae este código QR y tu documento de identidad.`)
+        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}. Want to keep it? Extend at <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
+      const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
+<h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
+<p>${texte}</p>
+${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
+${retrait ? `<p><img src="${imageQrRemise(r.id, r.ref, 220)}" width="220" height="220" alt="QR code"></p>` : ''}
+<p style="color:#4B5873;font-size:13px">${T('Référence', 'Reference', 'Referencia')} : ${esc(r.ref || '')} · Loc’Air · locair.fr</p></div>`;
+      const res = await sendBrevoEmail({ to: r.email, subject, html, senderName: "Loc'Air" });
+      if (!res.ok) {
+        await supabase.from('email_sent').delete().eq('reservation_id', r.id).eq('scenario', scenario).then(() => {}, () => {});
+        continue;
+      }
+      await supabase.from('email_log').insert({ reservation_id: r.id, scenario, canal: 'email', destinataire: r.email, modele: scenario, statut: 'envoye' }).then(() => {}, () => {});
+      envoyes++;
+    }
+  }
+  return envoyes;
+}
