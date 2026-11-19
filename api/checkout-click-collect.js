@@ -24,6 +24,7 @@ const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
 const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite } = require('./_lib/clickCollect');
+const { lireDevis } = require('./_lib/tarifDynamique');
 
 const JOURS_MAX = 90;
 const clip = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
@@ -84,17 +85,22 @@ module.exports = async (req, res) => {
   }
 
   const supabase = getSupabase();
-  // Prix (avec la règle du prix fort à 80 % d'occupation) et stock du point :
+  // Prix (tarification dynamique, _lib/tarifDynamique.js) et stock du point :
   // même calcul que celui affiché sur la page (api/click-collect-prix.js).
   let prix;
   try { prix = await prixClickCollect(supabase, point, dateDebut, duree, pricing); }
   catch (e) { console.error('[CC prix]', e.message); return res.status(503).json({ error: 'Impossible de calculer le prix. Réessayez dans un instant.' }); }
   if (prix.libresAuPoint < 1) return res.status(409).json({ error: 'Ce point de retrait est complet à ces dates. Choisissez un autre point ou d’autres dates.' });
-  const amountCents = prix.totalCents;
+  // Prix garanti 30 min : si le client a un devis signé (prix affiché sur la
+  // page), il ne paie jamais plus que ce devis ; si le prix a baissé depuis,
+  // il paie le prix plus bas. Toujours entre le barème et le plafond.
+  const garanti = lireDevis(data.devis, { point: point.id, debut: dateDebut, jours: duree });
+  let amountCents = prix.totalCents;
+  if (garanti) amountCents = Math.max(prix.normalCents, Math.min(prix.totalCents, garanti));
   if (!amountCents || amountCents < 5000) return res.status(400).json({ error: 'Montant invalide.' });
-  // Le prix vu par le client ne doit jamais changer sans qu'il le sache.
+  // Sans devis valable : le prix vu par le client ne doit jamais changer sans qu'il le sache.
   const vu = parseInt(data.prix_vu_cents, 10);
-  if (Number.isFinite(vu) && vu !== amountCents) {
+  if (!garanti && Number.isFinite(vu) && vu !== amountCents) {
     return res.status(409).json({ error: 'Le prix vient de changer pour ces dates (forte demande). Vérifiez le nouveau prix avant de payer.', nouveauPrixCents: amountCents, majore: prix.majore });
   }
 
@@ -161,7 +167,8 @@ module.exports = async (req, res) => {
         campagne: clip(data.campagne, 400),
         piece_identite: pi.type || 'apres_paiement',
         lang: data.lang === 'en' ? 'en' : 'fr',
-        prix_fort: prix.majore ? `oui (+${prix.majorationPct} %)` : 'non',
+        prix_fort: amountCents > prix.normalCents ? `oui (+${Math.round((amountCents / prix.normalCents - 1) * 100)} %)` : 'non',
+        tarif_dynamique: JSON.stringify({ s: prix.signaux, m: prix.multiplicateur, r: prix.raisons, devis: !!garanti }).slice(0, 480),
       },
     }, { idempotencyKey: `cc-${ref}-${amountCents}-${dateDebut}-${point.id}` });
 

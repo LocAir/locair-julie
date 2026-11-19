@@ -1,6 +1,5 @@
 // Prix affiché AVANT le paiement pour une location Click & Collect : prix
-// normal, ou prix fort (+25 %) si 80 % des appareils de la ville sont déjà
-// réservés à ces dates — même calcul que le paiement (_lib/clickCollect.js),
+// normal ou majoré par la tarification dynamique (_lib/tarifDynamique.js) — même calcul que le paiement (_lib/clickCollect.js),
 // donc le client voit exactement ce qu'il paiera. Dit aussi si le point
 // choisi est complet.
 const { getSupabase } = require('./_lib/supabase');
@@ -8,6 +7,7 @@ const { getPricingConfig } = require('./_lib/pricing');
 const { isValidDate, todayParis } = require('./_lib/dates');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { prixClickCollect } = require('./_lib/clickCollect');
+const { signerDevis } = require('./_lib/tarifDynamique');
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -26,6 +26,9 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       totalCents: p.totalCents, normalCents: p.normalCents, majore: p.majore,
       majorationPct: p.majorationPct, complet: p.libresAuPoint < 1,
+      raisons: p.raisons || [],
+      // prix garanti 30 min (voir _lib/tarifDynamique.js)
+      devis: signerDevis({ point: point.id, debut, jours, cents: p.totalCents }),
     });
   } catch (e) {
     console.error('[click-collect-prix]', e.message);
