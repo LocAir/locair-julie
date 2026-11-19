@@ -175,7 +175,7 @@ module.exports = async (req, res) => {
       prenom, nom, email, tel,
       adresse: adresseResa.slice(0, 500),
       installation: 'Click & Collect (retrait par le client)',
-      instructions_acces: `CLICK & COLLECT : déposer l'appareil (avec son kit de fenêtre) au point « ${point.nom} » (${point.adresse}). Le client vient le chercher le ${dateDebut} et le rapporte au même point. Récupération = reprendre l'appareil au point.`.slice(0, 1000),
+      instructions_acces: `CLICK & COLLECT : déposer l'appareil (sans kit de fenêtre : non fourni en Click & Collect) au point « ${point.nom} » (${point.adresse}). Le client vient le chercher le ${dateDebut} et le rapporte au même point. Récupération = reprendre l'appareil au point.`.slice(0, 1000),
       creneau: 'Retrait au point, aux horaires d’ouverture',
       date_debut: dateDebut,
       date_fin: dateFin,
