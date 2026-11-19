@@ -11,6 +11,7 @@ const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { todayParis } = require('./_lib/dates');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { imageQrRemise } = require('./_lib/clickCollect');
+const { getPointRetrait } = require('./_lib/pointsRetrait');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
 // climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
@@ -730,8 +731,8 @@ const handler = async (req, res) => {
           // « livraison » ni « notre technicien arrive ».
           const dateStr = d ? d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = meta.lang === 'en'
-            ? `Loc'Air - Click & Collect booking confirmed.${d ? ' Pick-up on ' + d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' at ' + meta.point_nom : ''}. We'll call you to set the time. Questions? +33 6 63 79 87 56.`
-            : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. On vous appelle pour fixer l'heure. Une question ? 06 63 79 87 56.`;
+            ? `Loc'Air - Click & Collect booking confirmed.${d ? ' Pick-up on ' + d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' at ' + meta.point_nom : ''}. Go straight to the shop during opening hours with your QR code (sent by email) and your ID.`
+            : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. Rendez-vous directement au point aux horaires d'ouverture, avec votre QR code (reçu par email) et votre pièce d'identité.`;
         } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
@@ -804,22 +805,31 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
     const T = (fr, eng) => (en ? eng : fr);
     const fmt = (iso) => iso ? new Date(iso + 'T12:00:00Z').toLocaleDateString(en ? 'en-GB' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '';
     const adressePoint = String(resa.adresse || '').replace(/^CLICK & COLLECT — /, '');
+    // Le point (horaires, position, photos) : on accompagne le client jusqu'au comptoir.
+    const pt = getPointRetrait(resa.point_retrait_id || meta.point_id || '') || null;
+    const o = (pt && pt.ouverture) || [9, 19];
+    const hh = (x) => (en ? (x > 12 ? `${x - 12}pm` : `${x}${x === 12 ? 'pm' : 'am'}`) : `${x}h`);
+    const horaires = T(`ouvert de ${hh(o[0])} à ${hh(o[1])}`, `open ${hh(o[0])}–${hh(o[1])}`);
+    const itineraire = pt ? `https://www.google.com/maps/dir/?api=1&destination=${pt.lat},${pt.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adressePoint)}`;
+    const photo = pt && pt.photos && pt.photos[0] ? `https://www.locair.fr${pt.photos[0]}` : '';
     const lignes = [
       [T('Point de retrait', 'Pick-up point'), adressePoint],
-      [T('Retrait', 'Pick-up'), fmt(resa.date_debut) + T(' — heure confirmée par téléphone', ' — time confirmed by phone')],
+      [T('Retrait', 'Pick-up'), fmt(resa.date_debut) + ' — ' + horaires],
       [T('Retour au même point', 'Return to the same point'), fmt(resa.date_fin)],
       [T('Payé', 'Paid'), amount + T(' (sans livraison, sans caution)', ' (no delivery fee, no deposit)')],
       [T('Référence', 'Reference'), resa.ref || ''],
     ].map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#4B5873;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0"><b>${esc(v)}</b></td></tr>`).join('');
     const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('C’est réservé', 'You’re booked')}, ${esc(resa.prenom)} !</h2>
-<p>${T('Votre climatiseur mobile vous attend. On vous appelle pour fixer l’heure du retrait.', 'Your portable air conditioner is waiting for you. We’ll call you to set the pick-up time.')}</p>
+<p>${T('Votre climatiseur mobile est réservé à votre nom. <b>Le ' + esc(fmt(resa.date_debut)) + ', rendez-vous directement au point de retrait</b>, aux horaires d’ouverture.', 'Your portable air conditioner is reserved in your name. <b>On ' + esc(fmt(resa.date_debut)) + ', go straight to the pick-up point</b> during opening hours.')}</p>
+${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${esc(pt.nom)}" style="width:100%;max-width:520px;border-radius:12px"></p>` : ''}
+<p style="margin:14px 0"><a href="${esc(itineraire)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions')}</a></p>
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
 <p style="margin:18px 0 6px"><b>${T('Votre QR code de retrait', 'Your pick-up QR code')}</b> — ${T('montrez-le au comptoir, avec votre pièce d’identité :', 'show it at the counter with your ID:')}</p>
 <p style="margin:0 0 6px"><img src="${imageQrRemise(resa.id, resa.ref, 220)}" width="220" height="220" alt="QR code"></p>
 <p style="color:#4B5873;font-size:13px;margin:0 0 14px">${T('Code de réservation', 'Booking code')} : <b>${esc(resa.ref || '')}</b></p>
 <p>${T('Pensez à venir en voiture : l’appareil vous est remis avec son kit de fenêtre, sans perçage.', 'Come by car: the unit is handed over with its no-drill window kit.')}</p>
-<p>${T('Une question ?', 'Any question?')} <a href="tel:+33663798756">+33 6 63 79 87 56</a> · ${T('7j/7, 8h–20h', '7 days, 8am–8pm')}.</p>
+<p>${T('Une question ? Écrivez à Julie, notre assistante, sur', 'Any question? Chat with Julie, our assistant, on')} <a href="https://www.locair.fr/click-and-collect">locair.fr/click-and-collect</a>.</p>
 <p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
     const r = await sendBrevoEmail({ to: resa.email, subject: T(`Click & Collect confirmé — retrait le ${fmt(resa.date_debut)}`, `Click & Collect confirmed — pick-up on ${fmt(resa.date_debut)}`), html, senderName: "Loc'Air" });
     if (!r.ok) await supabase.from('email_sent').delete().eq('reservation_id', resa.id).eq('scenario', 'confirmation_click_collect').then(() => {}, () => {});

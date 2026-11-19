@@ -463,12 +463,34 @@ body:not(.en-etape) .nav-tel{background:rgba(255,255,255,.16);border:1px solid r
 
 /* Julie aux couleurs Loc'Air, au-dessus des barres du bas */
 #jw-btn{background:var(--vif)!important;box-shadow:0 6px 20px -4px rgba(26,94,219,.55)!important;right:16px!important}
-body.en-etape #jw-btn{bottom:96px!important}
+body:has([data-ecran="dates"]:not([hidden])) #jw-btn{bottom:96px!important}
 #jw-panel{right:12px!important}
 button.nav-tel{border:0;cursor:pointer;font:inherit;font-weight:700}
 .lien-chat{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--vif);text-decoration:underline;cursor:pointer}
 button.vcarte.autre{font-family:var(--font)}
 .localiser[hidden]{display:none}
+
+/* ── ÉCRAN FINAL : on accompagne le client jusqu'au retrait ── */
+.suite-t{font-family:var(--font);font-weight:900;font-size:22px;letter-spacing:-.02em;text-align:left;margin:22px 0 12px}
+.parcours{list-style:none;counter-reset:pc;text-align:left;display:grid;gap:0;margin:0 0 14px;padding:0}
+.parcours>li{counter-increment:pc;position:relative;padding:0 0 22px 46px}
+.parcours>li::before{content:counter(pc);position:absolute;left:0;top:-2px;width:32px;height:32px;border-radius:50%;background:var(--vif);color:#fff;font:800 15px/32px var(--font);text-align:center}
+.parcours>li:not(:last-child)::after{content:"";position:absolute;left:15px;top:34px;bottom:4px;width:2px;background:var(--line)}
+.parcours>li>b{display:block;font-size:16.5px;line-height:1.35;margin-bottom:6px}
+.parcours>li>span{display:block;font-size:14px;color:var(--ink-2)}
+.pc-point{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--o-2);margin-top:6px}
+.pc-photos{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px;margin:-4px -4px 12px}
+.pc-photos[hidden]{display:none}
+.pc-photos img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block}
+.pc-nom{font-weight:800;font-size:17px;margin:0}
+.pc-adr{margin:2px 0 0;color:var(--ink-2);font-size:14.5px}
+.pc-h{margin:4px 0 12px;font-size:14px;font-weight:700;color:var(--ok)}
+.pc-point .alts{grid-template-columns:1fr;gap:8px;margin:0}
+.parcours .qr-remise{margin:8px 0 0}
+.pc-paye{font-size:13px;color:var(--ink-3);text-align:center;margin:0 0 10px}
+/* photos du point : fiche de la carte et liste des points */
+.gf-photo{display:block;width:calc(100% + 28px);margin:-14px -14px 10px;aspect-ratio:16/7;object-fit:cover;border-radius:20px 20px 0 0}
+.carte-img{width:58px;height:58px;flex:none;border-radius:12px;object-fit:cover}
 
 /* ── ONGLETS + PAGE PARTENAIRE (FR / EN) ── */
 .onglets{display:inline-flex;gap:4px;padding:4px;border-radius:var(--r-f);background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);margin-bottom:16px}
@@ -794,7 +816,7 @@ body.a-cook{padding-bottom:72px}
       <p class="avert" id="avert-ex" hidden></p>
       <div class="carte-pts" id="carte-pts" aria-hidden="true" hidden></div>
       <div class="cartes" id="points"></div>
-      <p class="note-bas"><span lang="fr">Disponibilité confirmée par téléphone avant votre passage.</span><span lang="en">Availability confirmed by phone before you come.</span></p>
+      <p class="note-bas"><span lang="fr">Votre climatiseur est réservé à votre nom dès le paiement.</span><span lang="en">Your air conditioner is reserved in your name as soon as you pay.</span></p>
     </section>
 
     <!-- ══ 3. VOS DATES (calendrier, comme Airbnb) ══ -->
@@ -842,7 +864,7 @@ body.a-cook{padding-bottom:72px}
         <div>
           <label class="champ-l" for="tel"><span lang="fr">Téléphone</span><span lang="en">Phone</span></label>
           <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
-          <p class="aide" id="tel-aide"><span lang="fr">Pour vous appeler et fixer l’heure du retrait.</span><span lang="en">So we can call you and set your pick-up time.</span></p>
+          <p class="aide" id="tel-aide"><span lang="fr">Pour vous prévenir en cas d’imprévu avant le retrait.</span><span lang="en">So we can reach you if anything changes before pick-up.</span></p>
         </div>
         <label class="coche"><input type="checkbox" id="cgv"><span><span lang="fr">J’accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer">conditions de location</a> et d’utilisation, et un prélèvement seulement si je rends l’appareil en retard.</span><span lang="en">I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer">rental terms</a> (in French) and terms of use, and a charge only if I return the unit late.</span></span></label>
         <p class="msg msg-erreur" id="resa-err" role="alert" hidden></p>
@@ -869,7 +891,6 @@ body.a-cook{padding-bottom:72px}
       <div class="merci-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
       <h2 id="t-merci" tabindex="-1"><span lang="fr">C’est réservé,</span><span lang="en">You’re booked,</span> <em id="m-prenom"></em>&nbsp;!</h2>
       <p class="dire" id="m-texte"></p>
-      <figure class="qr-remise" id="m-qr" hidden><img id="m-qr-img" width="200" height="200" alt="Votre QR code de retrait"><figcaption><span lang="fr">Votre QR code de retrait : montrez-le au comptoir avec votre pièce d’identité. Il est aussi dans votre email.</span><span lang="en">Your pick-up QR code: show it at the counter with your ID. It’s also in your email.</span></figcaption></figure>
       <form class="id-apres" id="m-id" hidden novalidate>
         <h3><span lang="fr">Dernière étape : votre pièce d’identité</span><span lang="en">Last step: your ID</span></h3>
         <p class="aide"><span lang="fr">Obligatoire pour récupérer l’appareil. Ajoutez-la maintenant, vous irez plus vite au comptoir.</span><span lang="en">Required to pick up the unit. Add it now and you’ll be faster at the counter.</span></p>
@@ -886,11 +907,36 @@ body.a-cook{padding-bottom:72px}
         <button type="submit" class="btn" id="id-envoyer"><span lang="fr">Envoyer ma pièce d’identité</span><span lang="en">Send my ID</span></button>
       </form>
       <p class="msg msg-ok" id="m-id-ok" role="status" hidden></p>
-      <dl class="recap" id="m-recap"></dl>
-      <div class="alts">
-        <a class="btn" id="m-itin" href="#" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><span lang="fr">Itinéraire</span><span lang="en">Directions</span></a>
-        <a class="btn-2" id="m-agenda" href="#" download="retrait-locair.ics"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span lang="fr">Agenda</span><span lang="en">Calendar</span></a>
-      </div>
+      <!-- ON ACCOMPAGNE LE CLIENT JUSQU'AU RETRAIT : 4 étapes simples -->
+      <h3 class="suite-t"><span lang="fr">Et maintenant&nbsp;?</span><span lang="en">What happens next?</span></h3>
+      <ol class="parcours">
+        <li>
+          <b id="m-quand"></b>
+          <div class="pc-point">
+            <div class="pc-photos" id="m-photos" hidden></div>
+            <p class="pc-nom" id="m-pnom"></p>
+            <p class="pc-adr" id="m-padr"></p>
+            <p class="pc-h" id="m-ph"></p>
+            <div class="alts">
+              <a class="btn" id="m-itin" href="#" target="_blank" rel="noopener noreferrer" data-mesure="cc_itineraire"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><span lang="fr">Itinéraire</span><span lang="en">Directions</span></a>
+              <a class="btn-2" id="m-agenda" href="#" download="retrait-locair.ics"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span lang="fr">Ajouter à l’agenda</span><span lang="en">Add to calendar</span></a>
+            </div>
+          </div>
+        </li>
+        <li>
+          <b><span lang="fr">Au comptoir, montrez ce QR code et votre pièce d’identité.</span><span lang="en">At the counter, show this QR code and your ID.</span></b>
+          <figure class="qr-remise" id="m-qr" hidden><img id="m-qr-img" width="200" height="200" alt="QR code"><figcaption><span lang="fr">Il est aussi dans votre email.</span><span lang="en">It’s also in your email.</span></figcaption></figure>
+        </li>
+        <li>
+          <b><span lang="fr">Vous repartez avec votre climatiseur et son kit de fenêtre, sans perçage.</span><span lang="en">You leave with your air conditioner and its no-drill window kit.</span></b>
+          <span><span lang="fr">Venez de préférence en voiture.</span><span lang="en">Coming by car is best.</span></span>
+        </li>
+        <li>
+          <b id="m-retour"></b>
+          <span><span lang="fr">Au même point, aux horaires d’ouverture.</span><span lang="en">To the same point, during opening hours.</span></span>
+        </li>
+      </ol>
+      <p class="pc-paye" id="m-paye"></p>
       <p class="note-bas"><span lang="fr">Une question&nbsp;?</span><span lang="en">Any question?</span> <button type="button" class="lien-chat ouvrir-chat"><span lang="fr">Écrivez à Julie, notre assistante</span><span lang="en">Chat with Julie, our assistant</span></button></p>
     </section>
 
@@ -1220,7 +1266,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('points').innerHTML = liste.map(function(p, k){
       var d = pos ? dist(km(pos, p)) + ' · ' : '';
       var tags = (pos && k === 0 ? '<span class="badge badge-proche">' + L('Le plus proche', 'Nearest') + '</span>' : '') + (p.exemple ? '<span class="badge badge-ex">' + L('Exemple', 'Example') + '</span>' : '');
-      return '<button type="button" class="carte" data-point="' + esc(p.id) + '" data-k="' + k + '"><span class="carte-txt">' +
+      return '<button type="button" class="carte" data-point="' + esc(p.id) + '" data-k="' + k + '">' + ((p.photos || [])[0] ? '<img class="carte-img" src="' + esc(p.photos[0]) + '" alt="" loading="lazy" decoding="async">' : '') + '<span class="carte-txt">' +
         (tags ? '<span class="etiquettes">' + tags + '</span>' : '') +
         '<span class="carte-t"><span class="lettre" aria-hidden="true">' + LETTRES[k] + '</span>' + esc(p.nom) + '</span>' +
         '<span class="carte-s">' + d + esc(p.adresse) + '</span><span class="carte-s">' + esc(horairesTexte(p)) + '</span>' +
@@ -1657,15 +1703,25 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       'SUMMARY:' + L('Retour climatiseur Loc\'Air — ', 'Return Loc\'Air air conditioner — ') + p.nom,'LOCATION:' + p.adresse,'END:VEVENT','END:VCALENDAR'];
     return URL.createObjectURL(new Blob([t.join('\r\n')], {type:'text/calendar'}));
   }
-  var ICONES = ['<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>','<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>','<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>','<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 7a7 7 0 100 10M4 10h9M4 14h9"/></svg>'];
   function merci(sansNav){
     var p = etat.point, n = jours(), c = etat.client || {};
     $('m-prenom').textContent = c.prenom || '';
-    $('m-texte').textContent = L('Paiement reçu. On vous appelle' + (c.tel ? ' au ' + c.tel : '') + ' pour fixer l’heure du retrait (7j/7, 8h–20h). Confirmation envoyée' + (c.email ? ' à ' + c.email : '') + '.', 'Payment received. We’ll call you' + (c.tel ? ' on ' + c.tel : '') + ' to set your pick-up time (7 days, 8am–8pm). Confirmation sent' + (c.email ? ' to ' + c.email : '') + '.');
+    $('m-texte').textContent = L('Paiement reçu : votre climatiseur est réservé à votre nom. Confirmation envoyée' + (c.email ? ' à ' + c.email : '') + '.', 'Payment received: your air conditioner is reserved in your name. Confirmation sent' + (c.email ? ' to ' + c.email : '') + '.');
     if(etat.remise && etat.remise.qr){ $('m-qr-img').src = etat.remise.qr; $('m-qr').hidden = false; }
     $('m-id').hidden = !etat.idtok; $('m-id-ok').hidden = true;
-    $('m-recap').innerHTML = [['Point', p.nom + ' — ' + p.adresse], [L('Retrait', 'Pick-up'), lisible(etat.debut)], [L('Retour', 'Return'), lisible(etat.fin) + ' (' + n + L(' jours)', ' days)')], [L('Payé', 'Paid'), euros(etat.montant || total())]]
-      .map(function(x, i){ return '<div' + (i === 3 ? ' class="total"' : '') + '><dt>' + ICONES[i] + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('');
+    /* étape 1 : quand et où aller, en clair */
+    var o = p.ouverture || [9, 19], hh = function(x){ return langue() === 'en' ? (x > 12 ? (x - 12) + 'pm' : x + (x === 12 ? 'pm' : 'am')) : x + 'h'; };
+    var auj = etat.debut === dans(0);
+    $('m-quand').textContent = auj ? L('Aujourd’hui, rendez-vous directement à cette adresse :', 'Today, go straight to this address:')
+      : L('Le ' + lisible(etat.debut) + ', rendez-vous directement à cette adresse :', 'On ' + lisible(etat.debut) + ', go straight to this address:');
+    $('m-pnom').textContent = p.nom + (p.exemple ? L(' (exemple)', ' (example)') : '');
+    $('m-padr').textContent = p.adresse;
+    $('m-ph').textContent = (auj ? ouverture(p).txt : L('Ouvert de ', 'Open ') + hh(o[0]) + L(' à ', '–') + hh(o[1]) + L(' ce jour-là', ' that day')) || horairesTexte(p);
+    var ph = (p.photos || []).slice(0, 2);
+    $('m-photos').innerHTML = ph.map(function(src, i){ return '<img src="' + esc(src) + '" alt="' + esc(p.nom + (i ? L(' — intérieur', ' — inside') : L(' — devanture', ' — shopfront'))) + '" loading="lazy" decoding="async">'; }).join('');
+    $('m-photos').hidden = !ph.length;
+    $('m-retour').textContent = L('Le retour : le ' + lisible(etat.fin) + ' (' + n + ' jours).', 'Return: ' + lisible(etat.fin) + ' (' + n + ' days).');
+    $('m-paye').textContent = L('Payé : ', 'Paid: ') + euros(etat.montant || total()) + (etat.ref ? ' · ' + L('réf. ', 'ref. ') + etat.ref : '');
     $('m-itin').href = 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng;
     try{ $('m-agenda').href = ics(); }catch(e){ $('m-agenda').hidden = true; }
     if(sansNav) return;
@@ -1707,7 +1763,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var plusProche = gc.pos && gc.proche === k;
     var ov = ouverture(p);
     var f = $('gc-fiche');
-    f.innerHTML = '<button type="button" class="gf-x" aria-label="' + L('Fermer', 'Close') + '">×</button>' +
+    var ph1 = (p.photos || [])[0];
+    f.innerHTML = (ph1 ? '<img class="gf-photo" src="' + esc(ph1) + '" alt="' + esc(p.nom) + '" decoding="async">' : '') + '<button type="button" class="gf-x" aria-label="' + L('Fermer', 'Close') + '">×</button>' +
       ((plusProche || p.exemple) ? '<span class="gf-tags">' + (plusProche ? '<span class="badge badge-proche">' + L('Le plus proche', 'Nearest') + '</span>' : '') + (p.exemple ? '<span class="badge badge-ex">' + L('Exemple', 'Example') + '</span>' : '') + '</span>' : '') +
       '<h3>' + esc(p.nom) + '</h3><p>' + (d ? esc(d) + ' · ' : '') + esc(p.adresse) + '</p><p>' + esc(horairesTexte(p)) + '</p>' +
       (ov.txt ? '<span class="ouvert ' + (ov.ouvert ? 'oui' : 'non') + '">' + esc(ov.txt) + '</span>' : '') +
