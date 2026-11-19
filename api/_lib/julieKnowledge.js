@@ -23,6 +23,14 @@ const PRODUITS = `### Climatiseur mobile
 - Livraison J+1 ou Express 2 h selon dispo · Durée minimum : 7 jours
 - Réservation : https://locair.fr/reservation-climatiseur
 
+### Click & Collect (climatiseur mobile à retirer soi-même)
+- Page : https://locair.fr/click-and-collect
+- Le client réserve et paie en ligne, à toute heure, puis récupère son climatiseur mobile chez un commerçant partenaire près de chez lui (point de retrait), aux horaires de ce point, et le rapporte au même point à la fin.
+- Même prix par jour que le climatiseur mobile (dès 12 €/j, dégressif), 7 jours minimum, 0 € de livraison, aucune caution. À certaines dates très demandées, le prix peut être plus élevé : le prix exact s'affiche toujours avant de payer.
+- Pièce d'identité (carte recto-verso ou passeport) : ajoutée juste après le paiement, et vérifiée au comptoir avec le QR code de retrait reçu par email.
+- Les points de retrait sont en cours d'ouverture : si le paiement en ligne n'est pas encore ouvert pour un point (marqué « Exemple »), le client peut réserver par WhatsApp.
+- Un commerçant qui veut devenir point de retrait : onglet « Devenez point de retrait » en bas de la page Click & Collect.
+
 ### PortaSplit réversible A++
 - Avec engagement 6 mois : 99 €/mois + 229 € à la souscription (installation offerte)
 - Sans engagement (location courte durée) : 29 €/jour, à partir de 7 jours, livraison 30 €
