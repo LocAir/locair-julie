@@ -323,14 +323,16 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     if (r && r.source_channel === 'click_collect') {
       const { getPointRetrait } = require('./pointsRetrait');
       const pt = getPointRetrait(r.point_retrait_id || '');
-      const dRetour = r.date_fin ? new Date(r.date_fin + 'T12:00:00Z').toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '—';
+      const dRetour = r.date_fin ? new Date(r.date_fin + 'T12:00:00Z').toLocaleDateString(lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '—';
       cc = { nom: pt ? pt.nom : '', adresse: pt ? pt.adresse : String(r.adresse || '').replace(/^CLICK & COLLECT — /, ''), retour: dRetour };
     }
   }
 
   const sig = await getSignature(supabase);
   const escCC = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const html = cc ? withSignature(lang === 'en'
+  const html = cc ? withSignature(lang === 'es'
+    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">¡Ampliación confirmada, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} día(s) más</b> · pagado ${escCC(amount)}.</p><p>Devuelve el aire acondicionado al punto <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) el <b>${escCC(cc.retour)}</b>, en su horario de apertura.</p><p>Tu reserva: <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`
+    : lang === 'en'
     ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Extension confirmed, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} extra day(s)</b> · paid ${escCC(amount)}.</p><p>Bring the air conditioner back to <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) on <b>${escCC(cc.retour)}</b>, during opening hours.</p><p>Your booking: <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`
     : `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Prolongation confirmée, ${escCC(prenom)} !</h2><p><b>${Number(jours) || 1} jour(s) en plus</b> · payé ${escCC(amount)}.</p><p>Rapportez le climatiseur au point <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) le <b>${escCC(cc.retour)}</b>, aux horaires d’ouverture.</p><p>Votre réservation : <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`, sig)
   : withSignature(tplProlongConfirmation({
@@ -340,7 +342,8 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     lienEspaceClient: 'https://www.locair.fr/client',
   }), sig);
   const jNum = Number(jours) || 1;
-  const subject = lang === 'en' ? `Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
+  const subject = lang === 'es' ? `Ampliación confirmada — ${jNum} día${jNum > 1 ? 's' : ''} más`
+    : lang === 'en' ? `Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
     : lang === 'zh' ? `续租已确认 — 已延长 ${jNum} 天`
     : lang === 'ru' ? `Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
     : `Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
@@ -372,7 +375,9 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     if (!smsLockErr) {
       let smsProlongContent;
       if (cc) {
-        smsProlongContent = lang === 'en'
+        smsProlongContent = lang === 'es'
+          ? `Loc'Air - Tu ampliación de ${jNum} día${jNum > 1 ? 's' : ''} está confirmada. Devuelve el aparato a ${cc.nom} el ${cc.retour}, en su horario de apertura.`
+          : lang === 'en'
           ? `Loc'Air - Your ${jNum}-day extension is confirmed. Bring the unit back to ${cc.nom} on ${cc.retour}, during opening hours.`
           : `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Rapportez l'appareil au point ${cc.nom} le ${cc.retour}, aux horaires d'ouverture.`;
       } else if (lang === 'en') {
