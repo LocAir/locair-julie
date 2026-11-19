@@ -40,6 +40,9 @@ module.exports = async (req, res) => {
       date_debut: r.date_debut, date_fin: r.date_fin,
       point: String(r.adresse || '').replace(/^CLICK & COLLECT — /, ''),
       remis_at: r.remis_at || null,
+      // La photo de la pièce n'est jamais envoyée au commerçant : seulement
+      // l'information « reçue en ligne ou non », pour qu'il sache quoi vérifier.
+      piece_recue: Array.isArray(r.piece_identite_paths) ? r.piece_identite_paths.length > 0 : /identites\//.test(r.instructions_acces || ''),
     };
     if (b.action !== 'valider') return res.status(200).json({ reservation: fiche });
 

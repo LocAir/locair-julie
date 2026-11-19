@@ -1083,6 +1083,24 @@ html[data-style="brut"] .ugc-play{border-radius:0;border:2.5px solid var(--noir)
 .t-note small{font-weight:500;color:var(--ink-2);font-size:12.5px}
 html[data-style="brut"] .t-confiance{border-top:2.5px dashed var(--noir);font-family:var(--mono);text-transform:uppercase;font-size:12px}
 html[data-style="brut"] .t-ok::before{border-radius:0;background-color:#fff;border:2px solid var(--noir)}
+.paie-inline{margin-top:4px}
+.paie-inline[hidden]{display:none}
+.paie-inline .stripe-el{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:14px;min-height:120px}
+.paie-inline .securise{display:flex;align-items:center;gap:6px}
+.paie-inline .securise svg{width:14px;height:14px;stroke:var(--ink-3);fill:none;stroke-width:2}
+/* dates en un geste */
+.vite{display:grid;gap:8px;margin:0 0 6px}
+.vite[hidden],.vite-ou[hidden]{display:none}
+.vite-b{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;align-items:center;text-align:left;width:100%;border:2px solid var(--vif);background:var(--paper);border-radius:18px;padding:14px 16px;cursor:pointer;box-shadow:0 8px 20px -12px rgba(26,94,219,.6);transition:transform .14s,background .14s}
+.vite-b:hover{background:var(--vif-clair)}
+.vite-b:active{transform:scale(.98)}
+.vite-b b{font-size:17px;font-weight:800;color:var(--ink)}
+.vite-b small{grid-row:2;font-size:13px;color:var(--ink-2)}
+.vite-p{grid-row:1/3;grid-column:2;font-size:22px;font-weight:900;letter-spacing:-.03em;color:var(--vif-d)}
+.vite-ou{text-align:center;font-size:13px;color:var(--ink-3);margin:8px 0 6px}
+html[data-style="brut"] .vite-b{border-radius:0;border:2.5px solid var(--noir);box-shadow:4px 4px 0 var(--noir)}
+html[data-style="brut"] .vite-b b{text-transform:uppercase}
+html[data-style="brut"] .vite-p{font-family:var(--mono);color:var(--noir)}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -1142,7 +1160,7 @@ html[data-style="brut"] .t-ok::before{border-radius:0;background-color:#fff;bord
     <div class="suivi-l">
       <button type="button" class="retour" id="retour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span lang="fr">Retour</span><span lang="en">Back</span></button>
       <ol class="etapes" id="etapes" aria-label="Étapes">
-        <li data-e="point"><span lang="fr">Point</span><span lang="en">Pick-up</span></li><li data-e="dates">Dates</li><li data-e="infos"><span lang="fr">Infos</span><span lang="en">Details</span></li><li data-e="paiement"><span lang="fr">Paiement</span><span lang="en">Payment</span></li>
+        <li data-e="point"><span lang="fr">Point</span><span lang="en">Pick-up</span></li><li data-e="dates">Dates</li><li data-e="infos"><span lang="fr">Paiement</span><span lang="en">Payment</span></li>
       </ol>
     </div>
     <p class="resume" id="resume" aria-live="polite" hidden></p>
@@ -1421,6 +1439,8 @@ html[data-style="brut"] .t-ok::before{border-radius:0;background-color:#fff;bord
     <section class="ecran etape avec-barre" data-ecran="dates" aria-labelledby="t-dates" hidden>
       <h2 id="t-dates" tabindex="-1"><span lang="fr">Vos <em>dates</em></span><span lang="en">Your <em>dates</em></span></h2>
       <p class="point-choisi" id="point-choisi" hidden></p>
+      <div class="vite" id="vite" hidden></div>
+      <p class="vite-ou" id="vite-ou" hidden><span lang="fr">ou choisissez vos dates</span><span lang="en">or pick your dates</span></p>
       <p class="dire" id="dates-dire">Touchez le jour du retrait, puis le jour du retour.</p>
       <div class="sel-dates" aria-live="polite">
         <button type="button" class="sel" id="sel-debut"><small><span lang="fr">Retrait</span><span lang="en">Pick-up</span></small><b>Choisir</b></button>
@@ -1463,6 +1483,11 @@ html[data-style="brut"] .t-ok::before{border-radius:0;background-color:#fff;bord
           <label class="champ-l" for="tel"><span lang="fr">Téléphone</span><span lang="en">Phone</span></label>
           <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
           <p class="aide" id="tel-aide"><span lang="fr">Pour vous prévenir en cas d’imprévu avant le retrait.</span><span lang="en">So we can reach you if anything changes before pick-up.</span></p>
+        </div>
+        <div class="paie-inline" id="paie-inline" hidden>
+          <p class="champ-l"><span lang="fr">Paiement</span><span lang="en">Payment</span></p>
+          <div id="stripe-inline" class="stripe-el"><p class="charge"><span lang="fr">Chargement du paiement sécurisé…</span><span lang="en">Loading secure payment…</span></p></div>
+          <p class="aide securise"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg><span lang="fr">Paiement sécurisé par Stripe · rien n’est bloqué sur votre carte</span><span lang="en">Secure payment by Stripe · nothing held on your card</span></p>
         </div>
         <label class="coche"><input type="checkbox" id="cgv"><span><span lang="fr">J’accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer">conditions de location</a> et d’utilisation, et un prélèvement seulement si je rends l’appareil en retard.</span><span lang="en">I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer">rental terms</a> (in French) and terms of use, and a charge only if I return the unit late.</span></span></label>
         <p class="msg msg-erreur" id="resa-err" role="alert" hidden></p>
@@ -2079,7 +2104,31 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       .catch(function(){});
   }
   function dureeNom(j, fr){ return langue() === 'en' ? ({7:'1 week', 14:'2 weeks', 30:'1 month'}[j] || j + ' days') : fr; }
+  /* ── DATES EN UN GESTE : « Aujourd'hui » / « Demain » + la durée choisie
+     dans les tarifs (7 jours sinon). Un toucher = dates posées + écran
+     suivant. Jours fermés du point respectés ; « Aujourd'hui » seulement
+     si le point est ouvert aujourd'hui et ferme dans plus d'une heure. */
+  function majVite(){
+    var v = $('vite'), p = etat.point; if(!v) return;
+    if(!p){ v.hidden = $('vite-ou').hidden = true; return; }
+    var n = etat.dureeSimu >= JOURS_MIN ? Math.min(etat.dureeSimu, JOURS_MAX) : JOURS_MIN, o = p.ouverture || [9, 19], m = maintenantParis();
+    var choix = [];
+    if(!ferme(dans(0)) && m.h < o[1] - 1) choix.push([dans(0), L('Aujourd’hui', 'Today')]);
+    var dem = prochainOuvert(dans(1));
+    choix.push([dem, dem === dans(1) ? L('Demain', 'Tomorrow') : court(dem)]);
+    v.innerHTML = choix.map(function(c){
+      var fin = prochainOuvert(plus(c[0], n)), j = ecart(c[0], fin);
+      return '<button type="button" class="vite-b" data-deb="' + c[0] + '" data-fin="' + fin + '"><b>' + c[1] + ' · ' + j + L(' jours', ' days') + '</b><small>' + L('retour le ', 'back on ') + esc(court(fin)) + '</small><span class="vite-p">' + euros(prix(j)) + '</span></button>';
+    }).join('');
+    v.hidden = $('vite-ou').hidden = false;
+  }
+  $('vite').addEventListener('click', function(e){
+    var b = e.target.closest('[data-deb]'); if(!b) return;
+    etat.debut = b.dataset.deb; etat.fin = b.dataset.fin; etat.secret = null; etat.dureeVoulue = 0;
+    vibre(); window.mesurer('cc_dates_rapides'); demanderPrix(); sauver('dates'); suite('infos');
+  });
   function majPointChoisi(){
+    majVite();
     var p = etat.point, el = $('point-choisi'); if(!p){ el.hidden = true; return; }
     var d = etat.pos ? ' · ' + dist(km(etat.pos, p)).replace(/^À/, 'à') : '';
     el.innerHTML = '<span>' + L('Point de retrait : ', 'Pick-up point: ') + '<b>' + esc(p.nom) + '</b>' + esc(d) + '</span><button type="button" id="changer-point">' + L('Changer', 'Change') + '</button>';
@@ -2153,8 +2202,10 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('r-date').textContent = court(etat.debut) + ' → ' + court(etat.fin) + ' · ' + n + L(' j', ' d');
     $('r-prix').textContent = euros(total());
     $('wa').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(messageWA());
-    $('envoyer').textContent = p.exemple ? L('Réserver par WhatsApp', 'Book on WhatsApp') : L('Continuer vers le paiement · ', 'Continue to payment · ') + euros(total());
-    if(etat.client){ ['prenom','nom','email','tel'].forEach(function(k){ if(!$(k).value && etat.client[k]) $(k).value = etat.client[k]; }); }
+    $('envoyer').textContent = p.exemple ? L('Réserver par WhatsApp', 'Book on WhatsApp') : (inl.ok ? L('Payer ', 'Pay ') : L('Continuer vers le paiement · ', 'Continue to payment · ')) + euros(total());
+    monterInline();
+    var memo = etat.client; if(!memo){ try{ memo = JSON.parse(localStorage.getItem('locair_cc_client') || 'null'); }catch(e){} }
+    if(memo){ ['prenom','nom','email','tel'].forEach(function(k){ if(!$(k).value && memo[k]) $(k).value = memo[k]; }); }
   }
   $('recap').addEventListener('click', function(e){
     var b = e.target.closest('[data-modif]'); if(!b) return;
@@ -2264,6 +2315,35 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function telValide(v){ var d = v.replace(/\D/g, ''); return d.length >= 8 && d.length <= 15; }
   function invalide(id, msg){ $(id).setAttribute('aria-invalid', 'true'); $(id).focus(); if(msg){ var e = $('resa-err'); e.textContent = msg; e.hidden = false; } }
 
+  /* ── PAIEMENT SUR LE MÊME ÉCRAN que les coordonnées ──
+     La carte (et Apple Pay / Google Pay) s'affiche sous le formulaire, avec
+     le montant de la réservation. Au clic sur « Payer » : vérification de la
+     carte, création du paiement par le serveur (prix revérifié), puis
+     confirmation. Si Stripe ne se charge pas ici, on garde l'ancien écran
+     « Paiement » en secours. */
+  var inl = {ok:false, el:null, montant:0, essai:false};
+  function montantCents(){ return Math.round(total() * 100); }
+  function monterInline(){
+    var boite = $('paie-inline');
+    if(!etat.point || etat.point.exemple){ boite.hidden = true; return; }
+    if(inl.ok){ if(inl.montant !== montantCents()){ inl.montant = montantCents(); try{ inl.el.update({amount:inl.montant}); }catch(e){} } return; }
+    if(inl.essai) return;
+    boite.hidden = false;
+    /* le module de carte mesure la largeur disponible : on attend que
+       l'écran soit vraiment affiché, sinon il se dessine tout étroit */
+    if(ecrans.infos.hidden || !boite.offsetWidth){ clearTimeout(inl.t); inl.t = setTimeout(monterInline, 80); return; }
+    inl.essai = true;
+    chargerStripe().then(function(st){
+      stripe = st; inl.montant = montantCents();
+      inl.el = st.elements({mode:'payment', amount:inl.montant, currency:'eur', setupFutureUsage:'off_session', locale:langue(),
+        appearance:{theme:'stripe', variables:{colorPrimary:'#1A5EDB', colorText:'#0E1726', fontFamily:'DM Sans, system-ui, sans-serif', borderRadius:'12px'}}});
+      $('stripe-inline').innerHTML = '';
+      var pe = inl.el.create('payment', {layout:{type:'tabs', defaultCollapsed:false}});
+      pe.on('ready', function(){ inl.ok = true; remplirRecap(); });
+      pe.on('loaderror', function(){ boite.hidden = true; inl.ok = false; remplirRecap(); });
+      pe.mount('#stripe-inline');
+    }).catch(function(){ boite.hidden = true; inl.ok = false; });
+  }
   $('form').addEventListener('submit', function(e){
     e.preventDefault();
     var err = $('resa-err'), btn = $('envoyer'); err.hidden = true;
@@ -2279,9 +2359,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(!telValide(c.tel)){ $('tel-aide').className = 'aide err'; $('tel-aide').textContent = L('Ce numéro semble incomplet. Exemple : 06 12 34 56 78.', 'This number looks incomplete. Include your country code, e.g. +44 7700 900123.'); return invalide('tel'); }
     if(!$('cgv').checked){ $('cgv').closest('.coche').classList.add('err'); err.textContent = L('Merci d’accepter les conditions pour continuer.', 'Please accept the terms to continue.'); err.hidden = false; $('cgv').focus(); return; }
     etat.client = c; sauver('infos');
-    btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = L('Préparation du paiement…', 'Preparing payment…');
+    btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = inl.ok ? L('Paiement en cours…', 'Processing payment…') : L('Préparation du paiement…', 'Preparing payment…');
     chargerStripe().catch(function(){});
-    Promise.resolve().then(function(){
+    (inl.ok ? inl.el.submit().then(function(r){ if(r.error){ var x = new Error(r.error.message || ''); x.carte = true; throw x; } }) : Promise.resolve()).then(function(){
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
         prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), lang:langue(),
         cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, _ref:etat.ref || '', campagne:campagne
@@ -2292,9 +2372,20 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
       etat.secret = r.j.clientSecret; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
       window._ccValeur = etat.montant; window.mesurer('cc_vers_paiement');
-      aller('paiement'); monterPaiement();
+      if(!inl.ok){ aller('paiement'); monterPaiement(); return; }
+      if(Math.round(etat.montant * 100) !== inl.montant){ inl.montant = Math.round(etat.montant * 100); inl.el.update({amount:inl.montant}); }
+      sauver('paiement');
+      return stripe.confirmPayment({elements:inl.el, clientSecret:etat.secret, redirect:'if_required',
+        confirmParams:{return_url: location.origin + location.pathname + '?retour=paiement'}
+      }).then(function(r){
+        if(r.error){ var x = new Error(r.error.message || L('Le paiement n’est pas passé.', 'Payment didn’t go through.')); x.carte = true; throw x; }
+        if(r.paymentIntent && (r.paymentIntent.status === 'succeeded' || r.paymentIntent.status === 'processing')){
+          try{ localStorage.setItem('locair_cc_client', JSON.stringify(c)); }catch(e){}
+          paye();
+        }
+      });
     }).catch(function(x){
-      err.innerHTML = esc(x.message || L('Le paiement n’a pas pu être préparé.', 'Payment could not be prepared.')) + L(' Vous pouvez aussi réserver sur ', ' You can also book on ') + '<a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>.';
+      err.innerHTML = x.carte ? esc(x.message) : esc(x.message || L('Le paiement n’a pas pu être préparé.', 'Payment could not be prepared.')) + L(' Vous pouvez aussi réserver sur ', ' You can also book on ') + '<a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>.';
       err.hidden = false;
     }).then(function(){ btn.disabled = false; btn.removeAttribute('aria-busy'); remplirRecap(); });
   });
@@ -2339,6 +2430,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
         $('pay-err').textContent = r.error.message || L('Le paiement n’est pas passé.', 'Payment didn’t go through.'); $('pay-err').hidden = false;
         b.disabled = false; b.removeAttribute('aria-busy'); b.textContent = L('Réessayer · ', 'Try again · ') + euros(etat.montant);
       } else if(r.paymentIntent && (r.paymentIntent.status === 'succeeded' || r.paymentIntent.status === 'processing')){
+        try{ localStorage.setItem('locair_cc_client', JSON.stringify(etat.client)); }catch(e){}
         paye();
       }
     });
@@ -2529,7 +2621,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     }, {threshold:.45}).observe(sec);
   })();
   $('tf-exemples').addEventListener('click', function(e){ var b = e.target.closest('[data-tfj]'); if(!b) return; $('tf-jours').value = b.dataset.tfj; majSimu(); vibre(); });
-  $('tf-cta').addEventListener('click', function(){ etat.dureeVoulue = +$('tf-jours').value; window.mesurer('cc_tarif_duree'); });
+  $('tf-cta').addEventListener('click', function(){ etat.dureeVoulue = etat.dureeSimu = +$('tf-jours').value; window.mesurer('cc_tarif_duree'); });
 
   /* ── BANDEAU CHALEUR : vraie prévision de la semaine (Open-Meteo, via
      /api/meteo-semaine). Affiché seulement à partir de 25 °C : jamais de
