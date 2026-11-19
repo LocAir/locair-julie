@@ -779,6 +779,10 @@ html[data-style="brut"] .cmt-cta{border-radius:0;border:2.5px solid var(--noir);
   .cmt-etapes p{font-size:13.5px}
   .cmt-etapes li::before{top:8px;left:8px;width:24px;height:24px;font-size:12px;line-height:24px}
 }
+.nav .espace{margin-left:auto}
+html[data-style="brut"] .espace-btn{border-radius:0!important;border:2px solid currentColor}
+html[data-style="brut"] .espace-menu{border-radius:0;border:2.5px solid var(--noir);box-shadow:5px 5px 0 var(--noir)}
+html[data-style="brut"] .espace-menu a{border-radius:0;text-transform:uppercase}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -798,6 +802,13 @@ html[data-style="brut"] .cmt-cta{border-radius:0;border:2.5px solid var(--noir);
   <div class="col">
     <button type="button" class="burger" id="burger" aria-expanded="false" aria-controls="tiroir"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="sr"><span lang="fr">Menu</span><span lang="en">Menu</span></span></button>
     <span class="nav-logo" aria-label="Loc’Air">Loc<em>’Air</em></span>
+    <div class="espace" id="espace">
+      <button type="button" class="espace-btn" id="espace-btn" aria-haspopup="true" aria-expanded="false" aria-controls="espace-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span class="sr"><span lang="fr">Mon espace</span><span lang="en">My account</span></span></button>
+      <div class="espace-menu" id="espace-menu" hidden>
+        <a href="/client"><b><span lang="fr">Espace client</span><span lang="en">Customer area</span></b><small><span lang="fr">Ma réservation, ma facture</span><span lang="en">My booking, my invoice</span></small></a>
+        <a href="/partenaire"><b><span lang="fr">Espace partenaire</span><span lang="en">Partner area</span></b><small><span lang="fr">Commerçants : commissions, remises</span><span lang="en">Shops: commissions, hand-overs</span></small></a>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -1211,6 +1222,16 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     c.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     var b = document.getElementById('localiser'); if(b) setTimeout(function(){ b.focus({ preventScroll: true }); }, 450);
   });
+})();
+
+/* Bonhomme en haut à droite : espace client / espace partenaire. */
+(function(){
+  var b = document.getElementById('espace-btn'), m = document.getElementById('espace-menu');
+  if(!b || !m) return;
+  function fermer(){ m.hidden = true; b.setAttribute('aria-expanded', 'false'); }
+  b.addEventListener('click', function(e){ e.stopPropagation(); var o = m.hidden; m.hidden = !o; b.setAttribute('aria-expanded', String(o)); if(o) m.querySelector('a').focus(); });
+  document.addEventListener('click', function(e){ if(!m.hidden && !m.contains(e.target)) fermer(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !m.hidden){ fermer(); b.focus(); } });
 })();
 
 /* Menu (hamburger) : s'ouvre par la gauche ; Échap, le voile ou un choix le ferment. */
