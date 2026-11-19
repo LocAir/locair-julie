@@ -25,6 +25,15 @@ const PW = 595.28;   // largeur page
 const PH = 841.89;   // hauteur page
 const W  = PW - 2*M; // largeur utile = 495.28
 
+// Adresse du client sur les documents. En Click & Collect, « adresse » est
+// celle du point de retrait : l'adresse du client est dans adresse_client
+// (ou, avant la migration du 20/11, dans les consignes).
+function adresseLocataire(reservation) {
+  if (reservation.source_channel !== 'click_collect') return reservation.adresse || '—';
+  const m = String(reservation.instructions_acces || '').match(/ADRESSE CLIENT : ([^|]+)/);
+  return reservation.adresse_client || (m ? m[1].trim() : '') || '—';
+}
+
 function renderPdf(draw) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: M });
@@ -318,7 +327,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version, pri
     doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.body)
       .text(locataireNom + entreprise, rx, bY + 22, { width: halfW - 20 });
     doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
-      .text(reservation.adresse || '—', rx, bY + 35, { width: halfW - 20 })
+      .text(adresseLocataire(reservation), rx, bY + 35, { width: halfW - 20 })
       .text(reservation.email || '', rx, bY + 47, { width: halfW - 20 });
 
     doc.x = M;
@@ -430,7 +439,7 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
       clientLines.push(['Raison sociale', reservation.raison_sociale]);
       clientLines.push(['SIRET client', reservation.siret || '—']);
     }
-    clientLines.push(['Adresse', reservation.adresse || '—']);
+    clientLines.push(['Adresse', adresseLocataire(reservation)]);
     clientLines.push(['Email', reservation.email || '—']);
     drawClientBox(doc, clientLines);
 
@@ -590,7 +599,7 @@ function generateFactureVentePdf({ reservation, appareil, numero, montantCents, 
       clientLines.push(['Raison sociale', reservation.raison_sociale]);
       clientLines.push(['SIRET client', reservation.siret || '—']);
     }
-    clientLines.push(['Adresse', reservation.adresse || '—']);
+    clientLines.push(['Adresse', adresseLocataire(reservation)]);
     clientLines.push(['Email', reservation.email || '—']);
     drawClientBox(doc, clientLines);
 

@@ -1022,6 +1022,10 @@ html[data-style="brut"] .ugc-play{border-radius:0;border:2.5px solid var(--noir)
 .t-ok{display:inline-flex;align-items:center;gap:6px;color:var(--ok)}
 .t-ok::before{content:"";width:18px;height:18px;border-radius:50%;background:#E8F6EE url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230F7A3D' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E") center/11px no-repeat}
 .t-sep{color:var(--ink-3)}
+.adr-boite{position:relative}
+.adr-liste{position:absolute;left:0;right:0;top:calc(100% - 22px);z-index:20;list-style:none;margin:0;padding:6px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 30px -12px rgba(11,30,68,.35)}
+.adr-liste li{padding:11px 12px;border-radius:10px;cursor:pointer;font-size:15px;min-height:44px;box-sizing:border-box}
+.adr-liste li[aria-selected="true"],.adr-liste li:hover{background:var(--mist)}
 .stock-bas{margin:10px 0 16px;padding:9px 12px;border-radius:12px;background:#FFF4E5;color:#8A4B00;font-size:14px;font-weight:700}
 .t-ok{white-space:nowrap}
 .t-et{color:#F5B301}
@@ -1509,6 +1513,12 @@ h1 em,h2 em,h3 em{font-style:normal;font-weight:900}
           <label class="champ-l" for="tel"><span lang="fr">Téléphone</span><span lang="en">Phone</span><span lang="es">Teléfono</span></label>
           <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
           <p class="aide" id="tel-aide"><span lang="fr">Pour vous prévenir en cas d’imprévu avant le retrait.</span><span lang="en">So we can reach you if anything changes before pick-up.</span><span lang="es">Para avisarte si algo cambia antes de la recogida.</span></p>
+        </div>
+        <div class="adr-boite">
+          <label class="champ-l" for="adr"><span lang="fr">Adresse postale</span><span lang="en">Home address</span><span lang="es">Dirección postal</span></label>
+          <input class="champ" id="adr" name="adr" type="text" autocomplete="street-address" enterkeyhint="done" required maxlength="200" placeholder="12 rue de France, 06000 Nice" aria-describedby="adr-aide" aria-autocomplete="list" aria-controls="adr-liste">
+          <ul class="adr-liste" id="adr-liste" role="listbox" hidden></ul>
+          <p class="aide" id="adr-aide"><span lang="fr">Elle figure sur votre contrat de location. En France ou à l’étranger.</span><span lang="en">It appears on your rental contract. In France or abroad.</span><span lang="es">Aparece en tu contrato de alquiler. En Francia o en el extranjero.</span></p>
         </div>
         <div class="paie-inline" id="paie-inline" hidden>
           <p class="champ-l"><span lang="fr">Paiement</span><span lang="en">Payment</span><span lang="es">Pago</span></p>
@@ -2246,7 +2256,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('cal').innerHTML = html;
     $('plus-mois').hidden = etat.mois >= MOIS_MAX;
     var p = etat.point;
-    $('cal-note').textContent = p ? p.nom + ' · ' + horairesTexte(p) + (p.fermes && p.fermes.length ? L(' · jours barrés : point fermé', ' · crossed-out days: point closed') : '') + L('. On vous confirme l’heure par téléphone.', '. We’ll confirm the time by phone.') : '';
+    $('cal-note').textContent = p ? p.nom + ' · ' + horairesTexte(p) + (p.fermes && p.fermes.length ? L(' · jours barrés : point fermé', ' · crossed-out days: point closed') : '') + L('. Venez quand vous voulez aux horaires d’ouverture.', '. Come any time during opening hours.', '. Ven cuando quieras en el horario de apertura.') : '';
     majSelection();
   }
   /* Prix réel demandé au serveur pour ces dates et ce point (règle du prix
@@ -2380,7 +2390,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('envoyer').textContent = p.exemple ? L('Réserver par WhatsApp', 'Book on WhatsApp') : (inl.ok ? L('Payer ', 'Pay ') : L('Continuer vers le paiement · ', 'Continue to payment · ')) + euros(total());
     monterInline();
     var memo = etat.client; if(!memo){ try{ memo = JSON.parse(localStorage.getItem('locair_cc_client') || 'null'); }catch(e){} }
-    if(memo){ ['prenom','nom','email','tel'].forEach(function(k){ if(!$(k).value && memo[k]) $(k).value = memo[k]; }); }
+    if(memo){ ['prenom','nom','email','tel'].forEach(function(k){ if(!$(k).value && memo[k]) $(k).value = memo[k]; }); if(!$('adr').value && memo.adresse) $('adr').value = memo.adresse; }
   }
   $('recap').addEventListener('click', function(e){
     var b = e.target.closest('[data-modif]'); if(!b) return;
@@ -2393,7 +2403,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   $('tel').addEventListener('input', function(){
     var v = this.value, d = v.replace(/\D/g, '');
     if(/^0\d*$/.test(d) && d.length <= 10 && v.indexOf('+') < 0){ this.value = d.replace(/(\d{2})(?=\d)/g, '$1 '); }
-    if(this.getAttribute('aria-invalid')){ this.removeAttribute('aria-invalid'); $('tel-aide').className = 'aide'; $('tel-aide').textContent = L('Pour vous appeler et fixer l’heure du retrait.', 'So we can call you and set your pick-up time.'); }
+    if(this.getAttribute('aria-invalid')){ this.removeAttribute('aria-invalid'); $('tel-aide').className = 'aide'; $('tel-aide').textContent = L('Pour vous prévenir en cas d’imprévu avant le retrait.', 'So we can reach you if anything changes before pick-up.', 'Para avisarte si algo cambia antes de la recogida.'); }
   });
   /* coche verte quand un champ est bon (au départ du champ), rien de rouge
      tant que la personne tape */
@@ -2532,6 +2542,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(!c.nom) return invalide('nom', L('Indiquez votre nom.', 'Please enter your last name.'));
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return invalide('email', L('Cette adresse email semble incomplète.', 'This email address looks incomplete.'));
     if(!telValide(c.tel)){ $('tel-aide').className = 'aide err'; $('tel-aide').textContent = L('Ce numéro semble incomplet. Exemple : 06 12 34 56 78.', 'This number looks incomplete. Include your country code, e.g. +44 7700 900123.'); return invalide('tel'); }
+    var adr = $('adr').value.trim(); c.adresse = adr;
+    if(adr.length < 8 || !/\d/.test(adr) && adr.split(/\s+/).length < 3) return invalide('adr', L('Indiquez votre adresse postale complète.', 'Please enter your full home address.', 'Indica tu dirección postal completa.'));
     if(!$('cgv').checked){ $('cgv').closest('.coche').classList.add('err'); err.textContent = L('Merci d’accepter les conditions pour continuer.', 'Please accept the terms to continue.'); err.hidden = false; $('cgv').focus(); return; }
     etat.client = c; sauver('infos');
     var vuCents = montantCents(), cleVue = clePrix();
@@ -2544,7 +2556,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     (inl.ok ? inl.el.submit().then(function(r){ if(r.error){ var x = new Error(r.error.message || ''); x.carte = true; throw x; } }) : Promise.resolve()).then(function(){
       if(reprise) return {ok:true, j:{clientSecret:etat.secret, ref:etat.ref, amountCents:vuCents, remise:etat.remise, identite:etat.idtok}, reprise:true};
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
+        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, adresse_client:c.adresse, point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
         cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, campagne:campagne
       })}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
     })
@@ -2576,6 +2588,37 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       err.hidden = false;
     }).then(function(){ btn.disabled = false; btn.removeAttribute('aria-busy'); remplirRecap(); });
   });
+
+  /* adresse : suggestions de la Base Adresse Nationale (France). Saisie libre
+     toujours possible (adresse à l'étranger). Rien n'est envoyé avant 4 lettres. */
+  (function(){
+    var champ = $('adr'), liste = $('adr-liste'), minuteur = null, n = 0, choix = -1;
+    function fermer(){ liste.hidden = true; liste.innerHTML = ''; choix = -1; champ.setAttribute('aria-expanded', 'false'); }
+    function surligner(k){ [].forEach.call(liste.children, function(li, i){ li.setAttribute('aria-selected', String(i === k)); }); choix = k; }
+    champ.addEventListener('input', function(){
+      champ.removeAttribute('aria-invalid'); clearTimeout(minuteur); var q = champ.value.trim();
+      if(q.length < 4){ fermer(); return; }
+      minuteur = setTimeout(function(){
+        var mon = ++n;
+        fetch('https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&lat=43.70&lon=7.26&q=' + encodeURIComponent(q))
+          .then(function(r){ return r.json(); }).then(function(j){
+            if(mon !== n) return;
+            var f = (j && j.features) || []; if(!f.length){ fermer(); return; }
+            liste.innerHTML = f.map(function(x, i){ return '<li role="option" id="adr-o' + i + '" aria-selected="false">' + esc(x.properties.label) + '</li>'; }).join('');
+            liste.hidden = false; champ.setAttribute('aria-expanded', 'true');
+          }).catch(fermer);
+      }, 220);
+    });
+    liste.addEventListener('mousedown', function(e){ var li = e.target.closest('li'); if(!li) return; e.preventDefault(); champ.value = li.textContent; fermer(); });
+    champ.addEventListener('keydown', function(e){
+      if(liste.hidden) return; var m = liste.children.length;
+      if(e.key === 'ArrowDown'){ e.preventDefault(); surligner((choix + 1) % m); }
+      else if(e.key === 'ArrowUp'){ e.preventDefault(); surligner((choix - 1 + m) % m); }
+      else if(e.key === 'Enter' && choix >= 0){ e.preventDefault(); champ.value = liste.children[choix].textContent; fermer(); }
+      else if(e.key === 'Escape'){ fermer(); }
+    });
+    champ.addEventListener('blur', function(){ setTimeout(fermer, 150); });
+  })();
 
   /* ── 5. paiement Stripe (Payment Element) ── */
   var stripeP = null, stripe = null, elements = null;

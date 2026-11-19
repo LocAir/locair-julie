@@ -52,6 +52,10 @@ module.exports = async (req, res) => {
   if (!prenom || !nom) return res.status(400).json({ error: 'Prénom et nom requis.' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Adresse email invalide.' });
   if (tel.replace(/\D/g, '').length < 9) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
+  // Adresse postale du client : pour le contrat, et pour pouvoir le joindre
+  // par courrier si l'appareil n'est jamais rendu.
+  const adresseClient = clip(data.adresse_client, 200);
+  if (adresseClient.length < 8) return res.status(400).json({ error: 'Adresse postale requise.', code: 'adresse_invalide' });
 
   // Pièce d'identité : carte (recto + verso) ou passeport. Elle est en
   // principe ajoutée APRÈS le paiement (api/click-collect-identite.js), pour
@@ -200,8 +204,16 @@ module.exports = async (req, res) => {
       point_retrait_id: point.id,
       partenaire_id: partenaireId,
       partenaire_commission_cents: commissionCents,
+      adresse_client: adresseClient,
     };
     let { data: resa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single();
+    // Colonne adresse_client pas encore créée (migration du 20/11 à passer) :
+    // l'adresse part dans les consignes, rien n'est perdu.
+    if (insertErr && /adresse_client/.test(insertErr.message || '')) {
+      delete ligne.adresse_client;
+      ligne.instructions_acces = `${ligne.instructions_acces} | ADRESSE CLIENT : ${adresseClient}`.slice(0, 1000);
+      ({ data: resa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single());
+    }
     // Colonne piece_identite_paths pas encore créée en base (migration SQL à
     // passer par le propriétaire) : on enregistre quand même la réservation,
     // les chemins de la pièce d'identité partant dans les consignes, pour ne
