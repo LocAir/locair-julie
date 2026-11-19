@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Retrait et retour — Loc’Air</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1A5EDB">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
+<!-- Page ouverte par le QR code collé chez le commerçant (Click & Collect).
+     Le client s'identifie (numéro de commande + code à 4 chiffres), puis le
+     commerçant confirme la remise ou le retour avec son code partenaire.
+     Serveur : api/cc-comptoir.js. -->
+<style>
+:root{--vif:#1A5EDB;--vif-d:#0D3FA0;--ink:#0E1726;--ink-2:#4B5873;--line:#E3E9F4;--mist:#F2F6FD;--ok:#0F7A3D;--err:#B42318;--paper:#fff}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--mist);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.haut{display:flex;align-items:center;justify-content:space-between;padding:14px max(16px,env(safe-area-inset-left));max-width:560px;margin:0 auto}
+.logo{font-weight:900;font-size:22px;letter-spacing:-.04em;color:var(--vif);text-decoration:none}.logo em{font-style:italic}
+.langues{display:flex;background:#fff;border:1px solid var(--line);border-radius:100px;padding:3px}
+.langues button{border:0;background:none;font:800 13px 'DM Sans',sans-serif;color:var(--ink-2);min-width:44px;min-height:36px;border-radius:100px;cursor:pointer}
+.langues button[aria-pressed="true"]{background:var(--vif);color:#fff}
+main{max-width:560px;margin:0 auto;padding:8px 16px 48px}
+h1{font-size:clamp(28px,8vw,38px);font-weight:900;letter-spacing:-.035em;line-height:1.05;margin:18px 0 6px}
+.sous{color:var(--ink-2);font-size:16px;line-height:1.5;margin:0 0 22px}
+.carte{background:var(--paper);border-radius:22px;padding:22px;box-shadow:0 1px 2px rgba(11,30,68,.05),0 12px 32px -16px rgba(11,30,68,.22)}
+label{display:block;font-weight:800;font-size:15px;margin:0 0 6px}
+input{width:100%;font:500 18px 'DM Sans',sans-serif;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);outline:none}
+input:focus{border-color:var(--vif);box-shadow:0 0 0 4px rgba(26,94,219,.15)}
+input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
+.champ{margin-bottom:16px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:56px;border:0;border-radius:100px;background:var(--vif);color:#fff;font:800 17px 'DM Sans',sans-serif;cursor:pointer;margin-top:6px}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.vert{background:var(--ok)}
+.msg{margin:14px 0 0;padding:12px 14px;border-radius:12px;font-size:15px;line-height:1.45}
+.msg.err{background:#FEE4E2;color:var(--err)}
+.msg.info{background:#FFF4E5;color:#8A4B00}
+.point{display:flex;gap:10px;align-items:center;background:#fff;border-radius:16px;padding:12px 14px;margin:0 0 18px;font-size:14.5px;color:var(--ink-2)}
+.point b{color:var(--ink)}
+.nom{font-size:clamp(30px,9vw,42px);font-weight:900;letter-spacing:-.035em;line-height:1.05;margin:4px 0 6px}
+.ligne{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:15.5px}
+.ligne span{color:var(--ink-2)}
+.badge{display:inline-block;padding:6px 12px;border-radius:100px;font-weight:800;font-size:14px}
+.badge.ok{background:#E8F6EE;color:var(--ok)}
+.badge.att{background:#FFF4E5;color:#8A4B00}
+.tendre{margin:18px 0 0;text-align:center;font-weight:800;color:var(--vif-d)}
+.commercant{margin-top:20px;padding-top:20px;border-top:2px dashed var(--line)}
+.commercant h2{font-size:19px;margin:0 0 8px}
+.commercant p{margin:0 0 14px;color:var(--ink-2);font-size:15px;line-height:1.45}
+.fini{text-align:center;padding:36px 22px}
+.fini .rond{width:84px;height:84px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.fini svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.fini h2{font-size:28px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px}
+.fini p{color:var(--ink-2);margin:0;font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):not([data-l="es"]) [lang="es"],html[data-l="en"] [lang="fr"],html[data-l="en"] [lang="es"],html[data-l="es"] [lang="fr"],html[data-l="es"] [lang="en"]{display:none}
+</style>
+</head>
+<body>
+<header class="haut">
+  <a class="logo" href="/click-and-collect">Loc<em>’Air</em></a>
+  <div class="langues" role="group" aria-label="Langue / Language / Idioma"><button type="button" data-l="fr" aria-pressed="true">FR</button><button type="button" data-l="en" aria-pressed="false">EN</button><button type="button" data-l="es" aria-pressed="false">ES</button></div>
+</header>
+<main>
+  <!-- 1. le client s'identifie -->
+  <section id="e-id">
+    <h1><span lang="fr">Retirer ou rendre votre climatiseur</span><span lang="en">Pick up or return your air conditioner</span><span lang="es">Recoge o devuelve tu aire acondicionado</span></h1>
+    <p class="sous"><span lang="fr">Tapez votre numéro de commande et votre code à 4 chiffres. Ils sont dans votre email et votre SMS de confirmation.</span><span lang="en">Enter your order number and your 4-digit code. You’ll find them in your confirmation email and text.</span><span lang="es">Escribe tu número de pedido y tu código de 4 cifras. Están en tu email y tu SMS de confirmación.</span></p>
+    <p class="point" id="point" hidden></p>
+    <form class="carte" id="f-id" novalidate>
+      <div class="champ"><label for="ref"><span lang="fr">Numéro de commande</span><span lang="en">Order number</span><span lang="es">Número de pedido</span></label>
+        <input id="ref" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CC-XXXXXXXX" maxlength="40"></div>
+      <div class="champ"><label for="pin"><span lang="fr">Code à 4 chiffres</span><span lang="en">4-digit code</span><span lang="es">Código de 4 cifras</span></label>
+        <input id="pin" class="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••"></div>
+      <button class="btn" id="b-id" type="submit"><span lang="fr">Voir ma réservation</span><span lang="en">See my booking</span><span lang="es">Ver mi reserva</span></button>
+      <p class="msg err" id="m-id" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <!-- 2. la réservation, à montrer au commerçant -->
+  <section id="e-resa" hidden>
+    <div class="carte">
+      <p style="margin:0;color:var(--ink-2);font-weight:700"><span lang="fr">Réservation</span><span lang="en">Booking</span><span lang="es">Reserva</span> <span id="r-ref"></span></p>
+      <p class="nom" id="r-nom"></p>
+      <div class="ligne"><span><span lang="fr">Location</span><span lang="en">Rental</span><span lang="es">Alquiler</span></span><b id="r-dates"></b></div>
+      <div class="ligne"><span><span lang="fr">Pièce d’identité</span><span lang="en">ID</span><span lang="es">Documento</span></span><span id="r-piece"></span></div>
+      <p class="tendre" id="r-tendre"><span lang="fr">Tendez votre téléphone au commerçant.</span><span lang="en">Hand your phone to the shopkeeper.</span><span lang="es">Dale tu teléfono al comerciante.</span></p>
+      <p class="msg info" id="r-info" hidden></p>
+
+      <form class="commercant" id="f-com" novalidate hidden>
+        <h2><span lang="fr">Pour le commerçant</span><span lang="en">For the shopkeeper</span><span lang="es">Para el comerciante</span></h2>
+        <p id="r-consigne"></p>
+        <div class="champ"><label for="code-com"><span lang="fr">Votre code partenaire</span><span lang="en">Your partner code</span><span lang="es">Tu código de colaborador</span></label>
+          <input id="code-com" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••••"></div>
+        <button class="btn vert" id="b-com" type="submit"></button>
+        <p class="msg err" id="m-com" role="alert" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- 3. c'est fait -->
+  <section id="e-fini" hidden>
+    <div class="carte fini">
+      <div class="rond"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2 id="f-titre"></h2>
+      <p id="f-texte"></p>
+    </div>
+  </section>
+</main>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var q = new URLSearchParams(location.search), POINT = (q.get('p') || '').slice(0, 60), etat = {ref:'', pin:'', resa:null};
+  function langue(){ var l = document.documentElement.getAttribute('data-l'); return l === 'en' || l === 'es' ? l : 'fr'; }
+  function L(fr, en, es){ var l = langue(); return l === 'en' ? en : l === 'es' ? es : fr; }
+  function choisir(l){
+    if(l !== 'en' && l !== 'es') l = 'fr';
+    document.documentElement.setAttribute('data-l', l); document.documentElement.lang = l;
+    [].forEach.call(document.querySelectorAll('.langues button'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.l === l)); });
+    try{ localStorage.setItem('locair_cc_langue', l); }catch(e){}
+    if(etat.resa) afficher(etat.resa);
+  }
+  [].forEach.call(document.querySelectorAll('.langues button'), function(b){ b.onclick = function(){ choisir(b.dataset.l); }; });
+  var lg = null; try{ lg = localStorage.getItem('locair_cc_langue'); }catch(e){}
+  choisir(lg || (/^en/i.test(navigator.language || '') ? 'en' : /^es/i.test(navigator.language || '') ? 'es' : 'fr'));
+
+  function date(iso){ var p = String(iso || '').split('-'); return p.length === 3 ? new Date(+p[0], p[1] - 1, +p[2]).toLocaleDateString(langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR', {weekday:'short', day:'numeric', month:'short'}) : ''; }
+  function erreur(el, t){ el.textContent = t; el.hidden = !t; }
+
+  /* nom du point (affiché pour rassurer : « vous êtes bien chez … ») */
+  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){
+    var p = ((j && j.points) || []).filter(function(x){ return x.id === POINT; })[0];
+    if(p){ var el = $('point'); el.innerHTML = '📍 <span>' + L('Vous êtes chez ', 'You’re at ', 'Estás en ') + '<b></b></span>'; el.querySelector('b').textContent = p.nom; el.hidden = false; }
+  }).catch(function(){});
+
+  /* réservation gardée sur ce téléphone après le paiement : pré-remplie */
+  try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && mr.ref){ $('ref').value = mr.ref; if(mr.pin) $('pin').value = mr.pin; } }catch(e){}
+
+  function appel(corps){
+    corps.point = POINT; corps.ref = etat.ref; corps.pin = etat.pin; corps.lang = langue();
+    return fetch('/api/cc-comptoir', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corps)})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
+  }
+
+  $('f-id').addEventListener('submit', function(e){
+    e.preventDefault();
+    etat.ref = $('ref').value.trim().toUpperCase().replace(/\s+/g, ''); etat.pin = $('pin').value.replace(/\D/g, '');
+    if(!etat.ref || etat.pin.length !== 4) return erreur($('m-id'), L('Indiquez votre numéro de commande et votre code à 4 chiffres.', 'Enter your order number and your 4-digit code.', 'Indica tu número de pedido y tu código de 4 cifras.'));
+    if(!POINT) return erreur($('m-id'), L('Scannez le QR code affiché au comptoir.', 'Scan the QR code at the counter.', 'Escanea el código QR del mostrador.'));
+    var b = $('b-id'); b.disabled = true; erreur($('m-id'), '');
+    appel({action:'voir'}).then(function(r){
+      b.disabled = false;
+      if(!r.ok || !r.j.reservation) return erreur($('m-id'), r.j.error || L('Réservation introuvable.', 'Booking not found.', 'Reserva no encontrada.'));
+      etat.resa = r.j.reservation; afficher(etat.resa);
+      $('e-id').hidden = true; $('e-resa').hidden = false; window.scrollTo(0, 0);
+    }).catch(function(){ b.disabled = false; erreur($('m-id'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
+
+  function afficher(r){
+    $('r-ref').textContent = r.ref || etat.ref;
+    $('r-nom').textContent = ((r.prenom || '') + ' ' + (r.nom || '')).trim();
+    $('r-dates').textContent = date(r.date_debut) + ' → ' + date(r.date_fin);
+    var pc = $('r-piece'); pc.className = 'badge ' + (r.piece_recue ? 'ok' : 'att');
+    pc.textContent = r.piece_recue ? L('Reçue en ligne', 'Received online', 'Recibido online') : L('À vérifier au comptoir', 'Check at the counter', 'Comprobar en el mostrador');
+    var info = $('r-info'), f = $('f-com'), btn = $('b-com'), nom = $('r-nom').textContent;
+    info.hidden = true; f.hidden = true; etat.action = null;
+    if(r.sans_commercant){ info.textContent = L('Ce point n’est pas encore relié à un commerçant : la remise ne peut pas être confirmée ici. Écrivez à Julie sur locair.fr.', 'This point isn’t linked to a shop yet, so the handover can’t be confirmed here. Chat with Julie on locair.fr.', 'Este punto aún no está vinculado a un comercio: la entrega no se puede confirmar aquí. Escribe a Julie en locair.fr.'); info.hidden = false; return; }
+    if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; $('r-tendre').hidden = true; return; }
+    $('r-tendre').hidden = false;
+    if(r.peut_remettre){
+      etat.action = 'valider';
+      $('r-consigne').textContent = L('Vérifiez la pièce d’identité originale : le nom doit être ' + nom + '. Remettez l’appareil (sans kit fenêtre), puis tapez votre code.', 'Check the original ID: the name must be ' + nom + '. Hand over the unit (no window kit), then enter your code.', 'Comprueba el documento original: el nombre debe ser ' + nom + '. Entrega el aparato (sin kit de ventana) y escribe tu código.');
+      btn.textContent = L('Confirmer la remise', 'Confirm handover', 'Confirmar la entrega'); f.hidden = false;
+    } else if(r.peut_rendre){
+      etat.action = 'rendre';
+      $('r-consigne').textContent = L('Vérifiez que l’appareil est complet (appareil, gaine, télécommande), puis tapez votre code.', 'Check the unit is complete (unit, hose, remote), then enter your code.', 'Comprueba que el aparato está completo (aparato, tubo, mando) y escribe tu código.');
+      btn.textContent = L('Confirmer le retour', 'Confirm return', 'Confirmar la devolución'); f.hidden = false;
+    } else {
+      info.textContent = r.remise_message || L('Rien à faire aujourd’hui pour cette réservation.', 'Nothing to do today for this booking.', 'Nada que hacer hoy con esta reserva.'); info.hidden = false;
+    }
+  }
+
+  $('f-com').addEventListener('submit', function(e){
+    e.preventDefault();
+    var code = $('code-com').value.trim(); if(!code) return erreur($('m-com'), L('Tapez votre code partenaire.', 'Enter your partner code.', 'Escribe tu código de colaborador.'));
+    var b = $('b-com'); b.disabled = true; erreur($('m-com'), '');
+    var action = etat.action;
+    appel({action:action, code_commercant:code}).then(function(r){
+      b.disabled = false; $('code-com').value = '';
+      if(!r.ok) return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
+      if(action === 'valider'){ $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!'); $('f-texte').textContent = L('Remise confirmée. Rapportez l’appareil ici le ', 'Handover confirmed. Bring the unit back here on ', 'Entrega confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.'; }
+      else { $('f-titre').textContent = L('Retour confirmé, merci !', 'Return confirmed, thank you!', '¡Devolución confirmada, gracias!'); $('f-texte').textContent = L('Votre location est terminée. À bientôt chez Loc’Air.', 'Your rental is over. See you soon at Loc’Air.', 'Tu alquiler ha terminado. Hasta pronto en Loc’Air.'); }
+    }).catch(function(){ b.disabled = false; erreur($('m-com'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
+})();
+</script>
+</body>
+</html>

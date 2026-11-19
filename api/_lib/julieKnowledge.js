@@ -28,7 +28,8 @@ const PRODUITS = `### Climatiseur mobile
 - Le client réserve et paie en ligne, à toute heure, puis récupère son climatiseur mobile chez un commerçant partenaire près de chez lui (point de retrait), aux horaires de ce point, et le rapporte au même point à la fin.
 - Prix Click & Collect (différent de la livraison) : 150 € les 7 jours en temps normal ; les durées plus longues suivent la même proportion (le prix exact de chaque durée s'affiche sur la page). Tarification dynamique : de 139 € à 189 € les 7 jours selon la demande (chaleur, stock), jamais en dehors. 7 jours minimum, aucune caution. Pas de livraison : le client vient chercher l'appareil au point (ne pas présenter ça comme « livraison gratuite »).
 - Le kit de fenêtre n'est PAS fourni en Click & Collect (seulement l'appareil) : ne jamais le promettre.
-- Pièce d'identité (carte recto-verso ou passeport) : ajoutée juste après le paiement, et vérifiée au comptoir avec le QR code de retrait reçu par email.
+- Pièce d'identité (carte ou passeport) : toujours montrée en original au comptoir. L'envoyer en ligne juste après le paiement est facultatif (ça va plus vite au comptoir).
+- Au comptoir, deux façons : montrer le QR code reçu par email (le commerçant le scanne), OU scanner le QR code affiché chez le commerçant et taper son numéro de commande + son code à 4 chiffres (dans l'email et le SMS de confirmation). Le commerçant confirme avec son propre code. Même chose pour le retour.
 - Les points de retrait sont en cours d'ouverture : si le paiement en ligne n'est pas encore ouvert pour un point (marqué « Exemple »), le client peut réserver par WhatsApp.
 - Un commerçant qui veut devenir point de retrait : onglet « Devenez point de retrait » en bas de la page Click & Collect.
 

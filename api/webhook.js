@@ -10,7 +10,7 @@ const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, gen
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { todayParis } = require('./_lib/dates');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
-const { imageQrRemise } = require('./_lib/clickCollect');
+const { imageQrRemise, pinClient } = require('./_lib/clickCollect');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
@@ -735,6 +735,11 @@ const handler = async (req, res) => {
             : meta.lang === 'en'
             ? `Loc'Air - Click & Collect booking confirmed.${d ? ' Pick-up on ' + d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' at ' + meta.point_nom : ''}. Go straight to the shop during opening hours with your QR code (sent by email) and your ID.`
             : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. Rendez-vous directement au point aux horaires d'ouverture, avec votre QR code (reçu par email) et votre pièce d'identité.`;
+          // Numéro de commande + code à 4 chiffres : pour le retrait au comptoir.
+          const pinCC = pinClient(confirmedResa.id, confirmedResa.ref);
+          smsConfirmationContent += meta.lang === 'es' ? ` Pedido ${confirmedResa.ref} · código ${pinCC}.`
+            : meta.lang === 'en' ? ` Order ${confirmedResa.ref} · code ${pinCC}.`
+            : ` Commande ${confirmedResa.ref} · code ${pinCC}.`;
         } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
@@ -830,7 +835,7 @@ ${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
 <p style="margin:18px 0 6px"><b>${T('Votre QR code de retrait', 'Your pick-up QR code', 'Tu código QR de recogida')}</b> — ${T('montrez-le au comptoir, avec votre pièce d’identité :', 'show it at the counter with your ID:', 'muéstralo en el mostrador, con tu documento de identidad:')}</p>
 <p style="margin:0 0 6px"><img src="${imageQrRemise(resa.id, resa.ref, 220)}" width="220" height="220" alt="QR code"></p>
-<p style="color:#4B5873;font-size:13px;margin:0 0 14px">${T('Code de réservation', 'Booking code', 'Código de reserva')} : <b>${esc(resa.ref || '')}</b></p>
+<p style="margin:0 0 14px;padding:12px 14px;background:#EFF4FD;border-radius:12px;font-size:15px">${T('Au comptoir, vous pouvez aussi scanner le QR code du commerçant et taper :', 'At the counter, you can also scan the shop’s QR code and enter:', 'En el mostrador, también puedes escanear el código QR del comercio y escribir:')}<br>${T('Numéro de commande', 'Order number', 'Número de pedido')} : <b>${esc(resa.ref || '')}</b> · ${T('Code', 'Code', 'Código')} : <b style="letter-spacing:.15em">${pinClient(resa.id, resa.ref)}</b></p>
 <p>${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.')}</p>
 <p>${T('Une question ? Écrivez à Julie, notre assistante, sur', 'Any question? Chat with Julie, our assistant, on', '¿Alguna pregunta? Escribe a Julie, nuestra asistente, en')} <a href="https://www.locair.fr/click-and-collect">locair.fr/click-and-collect</a>.</p>
 <p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
