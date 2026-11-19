@@ -824,7 +824,7 @@ html[data-style="brut"] .av-grille p{font-family:var(--mono);font-size:12px;text
   body [data-ecran="ville"] .tarifs>.col{max-width:1160px;padding-left:40px;padding-right:40px}
   .tarifs>.col{display:grid;grid-template-columns:1.1fr 1fr;column-gap:24px;grid-template-areas:"t t" "s s" "p e" "p i" "p n" "c c"}
   .tarifs .cmt-cta{width:100%;max-width:420px;justify-self:center}.tarifs h2{grid-area:t}.tf-sous{grid-area:s}.tf-paliers{grid-area:p;margin:0}.tf-exemples{grid-area:e}.tf-inclus{grid-area:i;align-self:start}.tf-note{grid-area:n;align-self:start}.tarifs .cmt-cta{grid-area:c}
-  .tf-paliers li{height:230px}.tf-paliers b{font-size:26px}
+  .tf-paliers{align-items:stretch}.tf-paliers li{height:auto;min-height:230px}.tf-barre{flex:0 0 auto;height:calc(var(--h) * .72)}.tf-paliers b{font-size:26px}
 }
 html[data-style="brut"] .tarifs h2{text-transform:uppercase}
 html[data-style="brut"] .tf-sous,html[data-style="brut"] .tf-note,html[data-style="brut"] .tf-j,html[data-style="brut"] .tf-d,html[data-style="brut"] .tf-paliers small,html[data-style="brut"] .tf-ex small{font-family:var(--mono);text-transform:uppercase;letter-spacing:.02em}
@@ -833,6 +833,33 @@ html[data-style="brut"] .tf-barre{border-radius:0;background:var(--noir)!importa
 html[data-style="brut"] .tf-paliers li:first-child .tf-barre{background:var(--vif)!important}
 html[data-style="brut"] .tf-paliers b,html[data-style="brut"] .tf-ex b{font-family:var(--mono);color:var(--noir)}
 html[data-style="brut"] .tf-inclus li{border-radius:0;border:2px solid var(--noir);background:#fff;color:var(--noir);font-family:var(--mono);text-transform:uppercase;font-size:11.5px}
+
+/* ── TARIFS : simulateur ── */
+.tf-simu{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:18px 16px;margin-bottom:14px}
+.tf-q{display:flex;align-items:baseline;justify-content:space-between;font-weight:800;font-size:16px;margin-bottom:10px}
+.tf-q output{font-size:22px;font-weight:900;color:var(--vif);letter-spacing:-.02em}
+#tf-jours{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:10px;background:linear-gradient(90deg,var(--vif) var(--p,0%),#DCE7FB var(--p,0%));outline-offset:6px;margin:4px 0 14px;cursor:pointer}
+#tf-jours::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid var(--vif);box-shadow:0 4px 10px rgba(11,30,68,.25)}
+#tf-jours::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid var(--vif);box-shadow:0 4px 10px rgba(11,30,68,.25)}
+.tf-raccourcis{display:flex;gap:6px;margin-bottom:14px}
+.tf-raccourcis button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:var(--r-f);font:700 13.5px var(--font);color:var(--ink-2);padding:8px 6px;cursor:pointer}
+.tf-raccourcis button[aria-pressed="true"]{background:var(--vif);border-color:var(--vif);color:#fff}
+.tf-res{border-top:2px dashed var(--line);padding-top:12px}
+.tf-total{display:block;font-size:44px;font-weight:900;letter-spacing:-.05em;line-height:1;color:var(--vif-d)}
+.tf-res small{font-size:13.5px;color:var(--ink-2)}
+.tf-eco{margin:8px 0 0;font-size:14px;color:var(--ink-2)}
+.tf-eco b{color:var(--ok)}
+.tf-paliers li{opacity:.4;transition:opacity .2s}
+.tf-paliers li.on{opacity:1}
+@media(min-width:1000px){.tarifs>.col{grid-template-areas:"t t" "s s" "p e" "p i" "p n" "c c"}.tf-simu{grid-area:e;margin:0 0 12px}}
+html[data-style="brut"] .tf-simu{border-radius:0;border:2.5px solid var(--noir);box-shadow:5px 5px 0 var(--noir)}
+html[data-style="brut"] #tf-jours{border-radius:0;background:linear-gradient(90deg,var(--noir) var(--p,0%),#ddd var(--p,0%))}
+html[data-style="brut"] #tf-jours::-webkit-slider-thumb{border-radius:0;border-color:var(--noir)}
+html[data-style="brut"] .tf-raccourcis button{border-radius:0;border:2px solid var(--noir);font-family:var(--mono);text-transform:uppercase;font-size:11.5px}
+html[data-style="brut"] .tf-raccourcis button[aria-pressed="true"]{background:var(--noir);border-color:var(--noir)}
+html[data-style="brut"] .tf-total,html[data-style="brut"] .tf-q output{font-family:var(--mono);color:var(--noir)}
+html[data-style="brut"] .tf-q{text-transform:uppercase}
+html[data-style="brut"] .tf-eco,html[data-style="brut"] .tf-res small{font-family:var(--mono);text-transform:uppercase;font-size:12px}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -1019,7 +1046,15 @@ html[data-style="brut"] .tf-inclus li{border-radius:0;border:2px solid var(--noi
       <h2 id="t-tarifs"><span lang="fr">Des tarifs simples</span><span lang="en">Simple pricing</span></h2>
       <p class="tf-sous"><span lang="fr">Un prix par jour qui baisse avec la durée. Rien d’autre à payer.</span><span lang="en">A daily price that drops the longer you keep it. Nothing else to pay.</span></p>
       <ol class="tf-paliers" id="tf-paliers"></ol>
-      <div class="tf-exemples" id="tf-exemples"></div>
+      <div class="tf-simu">
+        <label class="tf-q" for="tf-jours"><span lang="fr">Combien de jours&nbsp;?</span><span lang="en">How many days?</span> <output id="tf-n" for="tf-jours">7</output></label>
+        <input type="range" id="tf-jours" min="7" max="90" step="1" value="7">
+        <div class="tf-raccourcis" id="tf-exemples"></div>
+        <div class="tf-res">
+          <div><span class="tf-total" id="tf-total"></span><small id="tf-parj"></small></div>
+          <p class="tf-eco" id="tf-eco"></p>
+        </div>
+      </div>
       <ul class="tf-inclus">
         <li><span lang="fr">0 € de livraison</span><span lang="en">€0 delivery</span></li>
         <li><span lang="fr">0 € de caution</span><span lang="en">€0 deposit</span></li>
@@ -1027,7 +1062,7 @@ html[data-style="brut"] .tf-inclus li{border-radius:0;border:2px solid var(--noi
         <li><span lang="fr">Prolongation en ligne</span><span lang="en">Extend online</span></li>
       </ul>
       <p class="tf-note" id="tf-note"></p>
-      <a class="cmt-cta" href="#choix" data-vers-choix><span lang="fr">Voir le prix à mes dates</span><span lang="en">See the price for my dates</span> ↑</a>
+      <a class="cmt-cta" href="#choix" data-vers-choix id="tf-cta"></a>
     </div></section>
 
     <!-- ══ AVANTAGES (uniquement des faits vrais) ══ -->
@@ -1697,18 +1732,30 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function dessinerTarifs(){
     var ol = $('tf-paliers'); if(!ol) return;
     var deb = 1, max = PALIERS[0][1];
-    ol.innerHTML = PALIERS.map(function(pl){
-      var fin = pl[0], t;
-      if(!isFinite(fin)) t = L('Dès le ' + deb + 'e jour', 'From day ' + deb);
-      else t = L('Jours ' + deb + ' à ' + fin, 'Days ' + deb + '–' + fin);
-      deb = fin + 1;
-      return '<li><span class="tf-barre" style="--h:' + Math.round(pl[1] / max * 100) + '%"></span><b>' + euros(pl[1]) + '</b><small>' + L('/jour', '/day') + '</small><span class="tf-j">' + t + '</span></li>';
+    ol.innerHTML = PALIERS.map(function(pl, k){
+      var fin = pl[0], t = !isFinite(fin) ? L('Dès le ' + deb + 'e jour', 'From day ' + deb) : L('Jours ' + deb + ' à ' + fin, 'Days ' + deb + '–' + fin);
+      var li = '<li data-deb="' + deb + '"><span class="tf-barre" style="--h:' + Math.round(pl[1] / max * 100) + '%"></span><b>' + euros(pl[1]) + '</b><small>' + L('/jour', '/day') + '</small><span class="tf-j">' + t + '</span></li>';
+      deb = fin + 1; return li;
     }).join('');
-    $('tf-exemples').innerHTML = DUREES.map(function(d){
-      var tot = prix(d[0]);
-      return '<div class="tf-ex"><span class="tf-d">' + dureeNom(d[0], d[1]) + '</span><b>' + euros(tot) + '</b><small>' + L('soit ', '') + euros(Math.round(tot / d[0] * 100) / 100) + L('/jour', '/day') + '</small></div>';
-    }).join('');
+    $('tf-exemples').innerHTML = DUREES.map(function(d){ return '<button type="button" data-tfj="' + d[0] + '">' + dureeNom(d[0], d[1]) + '</button>'; }).join('');
+    var r = $('tf-jours'); r.min = JOURS_MIN; r.max = JOURS_MAX; if(+r.value < JOURS_MIN) r.value = JOURS_MIN;
     $('tf-note').textContent = L('Minimum ' + JOURS_MIN + ' jours. À certaines dates très demandées, le prix peut être plus élevé : le prix exact s’affiche toujours avant de payer.', 'Minimum ' + JOURS_MIN + ' days. On some very busy dates the price can be higher: the exact price is always shown before you pay.');
+    majSimu();
+  }
+  function majSimu(){
+    var r = $('tf-jours'); if(!r) return;
+    var n = +r.value, tot = prix(n), plein = Math.round(PALIERS[0][1] * n * 100) / 100, eco = Math.round((plein - tot) * 100) / 100;
+    $('tf-n').textContent = n + L(' jours', ' days');
+    $('tf-total').textContent = euros(tot);
+    $('tf-parj').textContent = L('au total · soit ', 'in total · ') + euros(Math.round(tot / n * 100) / 100) + L('/jour', '/day');
+    var liv = POINTS.map(function(p){ return +p.livraison || 0; }).filter(function(x){ return x > 0; });
+    var livMin = liv.length ? Math.min.apply(null, liv) : 0;
+    $('tf-eco').innerHTML = (eco > 0 ? '<b>' + L('Vous économisez ', 'You save ') + euros(eco) + '</b>' + L(' par rapport au plein tarif.', ' compared with the full daily rate.') + ' ' : '') +
+      (livMin ? L('Et la livraison à domicile (dès ' + euros(livMin) + ') ne vous coûte rien.', 'And home delivery (from ' + euros(livMin) + ') costs you nothing.') : '');
+    [].forEach.call($('tf-paliers').children, function(li){ li.classList.toggle('on', +li.dataset.deb <= n); });
+    [].forEach.call($('tf-exemples').children, function(b){ b.setAttribute('aria-pressed', String(+b.dataset.tfj === n)); });
+    r.style.setProperty('--p', ((n - r.min) / (r.max - r.min) * 100) + '%');
+    $('tf-cta').textContent = L('Réserver ' + n + ' jours · ' + euros(tot), 'Book ' + n + ' days · ' + euros(tot)) + ' ↑';
   }
 
 
@@ -1812,7 +1859,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   $('cal').addEventListener('click', function(e){
     var b = e.target.closest('[data-s]'); if(!b || b.disabled) return;
     var s = b.dataset.s; msgCal('');
-    if(!etat.debut || etat.fin || s <= etat.debut){ etat.debut = s; etat.fin = null; }
+    if(!etat.debut || etat.fin || s <= etat.debut){ etat.debut = s; etat.fin = null; if(etat.dureeVoulue >= JOURS_MIN){ etat.fin = prochainOuvert(plus(s, etat.dureeVoulue)); etat.dureeVoulue = 0; } }
     else {
       var n = ecart(etat.debut, s);
       if(n < JOURS_MIN){ msgCal(L('7 jours minimum : retour à partir du ', '7 days minimum: return from ') + lisible(prochainOuvert(plus(etat.debut, JOURS_MIN))) + '.'); return; }
@@ -2201,6 +2248,10 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     setTimeout(function(){ var c = $('choix'); if(c) c.scrollIntoView({behavior:doux(), block:'start'}); }, 60);
   });
 
+  $('tf-jours').addEventListener('input', majSimu);
+  $('tf-exemples').addEventListener('click', function(e){ var b = e.target.closest('[data-tfj]'); if(!b) return; $('tf-jours').value = b.dataset.tfj; majSimu(); vibre(); });
+  $('tf-cta').addEventListener('click', function(){ etat.dureeVoulue = +$('tf-jours').value; window.mesurer('cc_tarif_duree'); });
+
   /* ── démarrage : points, prix, puis reprise là où le client en était ── */
   function demarrer(){
     var lg = null; try{ lg = localStorage.getItem('locair_cc_langue'); }catch(e){}
@@ -2230,7 +2281,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   }
   fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; })
     .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (menu ☰ → Aide).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (bubble, bottom right).'); $('loc-err').hidden = false; })
-    .then(demarrer).then(function(){ if(POINTS.length) gcQuandVisible(); });
+    .then(demarrer).then(function(){ majSimu(); if(POINTS.length) gcQuandVisible(); });
   majPrixTextes();
   fetch('/api/pricing-config').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
     var c = j && j.pricing; if(!c) return;
