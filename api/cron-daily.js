@@ -1327,6 +1327,15 @@ ${retrait ? `<p><img src="${imageQrRemise(r.id, r.ref, 220)}" width="220" height
       }
       await supabase.from('email_log').insert({ reservation_id: r.id, scenario, canal: 'email', destinataire: r.email, modele: scenario, statut: 'envoye' }).then(() => {}, () => {});
       envoyes++;
+      // La veille du retour : aussi un SMS, avec le lien pour prolonger en un geste.
+      if (!retrait && r.tel) {
+        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
+        const nomPoint = pt ? pt.nom : 'votre point de retrait';
+        const sms = T(`Loc'Air : votre location se termine demain. Envie de garder votre climatiseur ? Prolongez en 1 clic : ${lien} Sinon, rapportez-le demain au point ${nomPoint}.`,
+          `Loc'Air: your rental ends tomorrow. Want to keep your air conditioner? Extend in 1 tap: ${lien} Otherwise, bring it back tomorrow to ${nomPoint}.`,
+          `Loc'Air: tu alquiler termina mañana. ¿Quieres quedarte el aire acondicionado? Amplía en 1 clic: ${lien} Si no, devuélvelo mañana en ${nomPoint}.`);
+        await sendBrevoSms({ to: r.tel, content: sms }).catch((e) => console.error('[SMS rappel retour CC]', e.message));
+      }
     }
   }
   return envoyes;
