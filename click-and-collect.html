@@ -1014,6 +1014,34 @@ html[data-style="brut"] .av-sous{font-family:var(--mono);text-transform:uppercas
 .t-lieu svg{width:14px;height:14px;flex:none;stroke:var(--vif);fill:none;stroke-width:2.2}
 html[data-style="brut"] .t-lieu{font-family:var(--mono);text-transform:uppercase;font-size:11px;color:var(--noir)}
 html[data-style="brut"] .t-lieu svg{stroke:var(--noir)}
+
+/* ── TARIFS ÉPURÉS : un chiffre, un curseur, un bouton ── */
+.tarifs.epure>.col{display:block!important;max-width:560px}
+.tarifs.epure h2{text-align:center;margin-bottom:18px}
+.tarifs.epure .tf-simu{padding:26px 22px 22px;text-align:center;border-radius:28px;box-shadow:0 24px 50px -28px rgba(11,30,68,.35)}
+.tarifs.epure .tf-q{justify-content:center;gap:8px;font-size:17px;font-weight:700;color:var(--ink-2)}
+.tarifs.epure .tf-q output{font-size:17px}
+.tarifs.epure .tf-raccourcis{justify-content:center}
+.tarifs.epure .tf-res{border:0;padding:4px 0 0}
+.tarifs.epure .tf-total{font-size:clamp(64px,18vw,92px);letter-spacing:-.06em}
+.tarifs.epure .tf-res small{display:block;font-size:16px;margin-top:4px}
+.tarifs.epure .tf-eco{min-height:22px;margin:6px 0 0}
+/* paliers : une simple ligne de 4 prix, le palier en cours en bleu */
+.tarifs.epure .tf-paliers{all:unset;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:18px 0 18px;padding:4px;background:var(--mist);border-radius:14px;list-style:none}
+.tarifs.epure .tf-paliers li{all:unset;display:flex;flex-direction:column;align-items:center;padding:8px 2px;border-radius:10px;opacity:1!important;transform:none!important;transition:background .2s,color .2s}
+.tarifs.epure .tf-paliers .tf-barre,.tarifs.epure .tf-paliers .tf-ici,.tarifs.epure .tf-paliers small{display:none}
+.tarifs.epure .tf-paliers b{font-size:16px;font-weight:900;color:var(--ink)}
+.tarifs.epure .tf-paliers .tf-j{font-size:10.5px;font-weight:700;color:var(--ink-3);margin:0}
+.tarifs.epure .tf-paliers li.actuel{background:var(--vif)}
+.tarifs.epure .tf-paliers li.actuel b,.tarifs.epure .tf-paliers li.actuel .tf-j{color:#fff}
+.tarifs.epure .cmt-cta{margin:0 auto;width:100%;max-width:none}
+.tarifs.epure .tf-note{text-align:center;margin:14px auto 0;max-width:46ch;font-size:12.5px}
+html[data-style="brut"] .tarifs.epure .tf-simu{border-radius:0}
+html[data-style="brut"] .tarifs.epure .tf-paliers{border-radius:0;background:#fff;border:2px solid var(--noir)}
+html[data-style="brut"] .tarifs.epure .tf-paliers li{border-radius:0}
+html[data-style="brut"] .tarifs.epure .tf-paliers li.actuel{background:var(--noir)}
+html[data-style="brut"] .tarifs.epure .tf-paliers b{font-family:var(--mono)}
+@media(min-width:1000px){body [data-ecran="ville"] .tarifs.epure>.col{max-width:620px}}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -1198,27 +1226,21 @@ html[data-style="brut"] .t-lieu svg{stroke:var(--noir)}
     </div></section>
 
     <!-- ══ TARIFS (calculés depuis le barème en base, jamais écrits en dur) ══ -->
-    <section class="tarifs" aria-labelledby="t-tarifs"><div class="col">
-      <h2 id="t-tarifs"><span lang="fr">Des tarifs simples</span><span lang="en">Simple pricing</span></h2>
-      <p class="tf-sous"><span lang="fr">Un prix par jour qui baisse avec la durée. Rien d’autre à payer.</span><span lang="en">A daily price that drops the longer you keep it. Nothing else to pay.</span></p>
-      <ol class="tf-paliers" id="tf-paliers"></ol>
+    <section class="tarifs epure" aria-labelledby="t-tarifs"><div class="col">
+      <h2 id="t-tarifs"><span lang="fr">Combien ça coûte&nbsp;?</span><span lang="en">How much is it?</span></h2>
       <div class="tf-simu">
-        <label class="tf-q" for="tf-jours"><span lang="fr">Combien de jours&nbsp;?</span><span lang="en">How many days?</span> <output id="tf-n" for="tf-jours">7</output></label>
-        <input type="range" id="tf-jours" min="7" max="90" step="1" value="7">
+        <label class="tf-q" for="tf-jours"><span lang="fr">Pour</span><span lang="en">For</span> <output id="tf-n" for="tf-jours">7</output></label>
+        <input type="range" id="tf-jours" min="7" max="90" step="1" value="7" aria-label="Nombre de jours">
         <div class="tf-raccourcis" id="tf-exemples"></div>
         <div class="tf-res">
-          <div><span class="tf-total" id="tf-total"></span><small id="tf-parj"></small></div>
+          <span class="tf-total" id="tf-total"></span>
+          <small id="tf-parj"></small>
           <p class="tf-eco" id="tf-eco"></p>
         </div>
+        <ol class="tf-paliers" id="tf-paliers" aria-label="Prix par jour selon la durée"></ol>
+        <a class="cmt-cta" href="#choix" data-vers-choix id="tf-cta"></a>
       </div>
-      <ul class="tf-inclus">
-        <li><span lang="fr">0 € de caution</span><span lang="en">€0 deposit</span></li>
-        <li><span lang="fr">Kit de fenêtre inclus</span><span lang="en">Window kit included</span></li>
-        <li><span lang="fr">Prolongation en ligne</span><span lang="en">Extend online</span></li>
-        <li><span lang="fr">Facture par email</span><span lang="en">Invoice by email</span></li>
-      </ul>
       <p class="tf-note" id="tf-note"></p>
-      <a class="cmt-cta" href="#choix" data-vers-choix id="tf-cta"></a>
     </div></section>
 
     <!-- ══ AVANTAGES (uniquement des faits vrais) ══ -->
@@ -1934,7 +1956,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     }).join('');
     $('tf-exemples').innerHTML = DUREES.map(function(d){ return '<button type="button" data-tfj="' + d[0] + '">' + dureeNom(d[0], d[1]) + '</button>'; }).join('');
     var r = $('tf-jours'); r.min = JOURS_MIN; r.max = JOURS_MAX; if(+r.value < JOURS_MIN) r.value = JOURS_MIN;
-    $('tf-note').textContent = L('Minimum ' + JOURS_MIN + ' jours. À certaines dates très demandées, le prix peut être plus élevé : le prix exact s’affiche toujours avant de payer.', 'Minimum ' + JOURS_MIN + ' days. On some very busy dates the price can be higher: the exact price is always shown before you pay.');
+    $('tf-note').textContent = L(JOURS_MIN + ' jours minimum · sans caution · facture par email · le prix exact s’affiche avant de payer (il peut être plus élevé aux dates très demandées).', JOURS_MIN + ' days minimum · no deposit · invoice by email · the exact price is shown before you pay (it can be higher on very busy dates).');
     majSimu();
   }
   function majSimu(){
@@ -1942,7 +1964,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var n = +r.value, tot = prix(n), plein = Math.round(PALIERS[0][1] * n * 100) / 100, eco = Math.round((plein - tot) * 100) / 100;
     $('tf-n').textContent = n + L(' jours', ' days');
     $('tf-total').textContent = euros(tot);
-    $('tf-parj').textContent = L('au total · soit ', 'in total · ') + euros(Math.round(tot / n * 100) / 100) + L('/jour', '/day');
+    $('tf-parj').textContent = L('soit ', '') + euros(Math.round(tot / n * 100) / 100) + L(' par jour', ' a day');
     $('tf-eco').innerHTML = eco > 0 ? '<b>' + L('Vous économisez ', 'You save ') + euros(eco) + '</b>' + L(' par rapport au plein tarif.', ' compared with the full daily rate.') : L('Le prix par jour baisse dès le 8e jour.', 'The daily price drops from day 8.');
     [].forEach.call($('tf-paliers').children, function(li){ var a = +li.dataset.deb, b = +li.dataset.fin; li.classList.toggle('on', a <= n); li.classList.toggle('actuel', a <= n && n <= b); });
     [].forEach.call($('tf-exemples').children, function(b){ b.setAttribute('aria-pressed', String(+b.dataset.tfj === n)); });

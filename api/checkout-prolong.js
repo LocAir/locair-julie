@@ -6,6 +6,8 @@ const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
+const { getPointRetrait, pointFermeLe } = require('./_lib/pointsRetrait');
+const { occupationParPoint } = require('./_lib/clickCollect');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -104,7 +106,7 @@ module.exports = async (req, res) => {
     // et ne se rattache jamais à la bonne réservation. Même filtre déjà en
     // place côté admin (admin-reservations.js, action 'lookup_prolongation').
     let origQuery = supabase
-      .from('reservations').select('id, city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, partenaire_id')
+      .from('reservations').select('*')
       .ilike('email', String(data.email).trim())
       .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee');
@@ -160,6 +162,23 @@ module.exports = async (req, res) => {
     if (!amountCents || amountCents <= 0) {
       await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
       return res.status(400).json({ error: 'Montant invalide' });
+    }
+    // Click & Collect : l'appareil est rendu au point de retrait. On vérifie
+    // que CE point a encore un appareil libre sur la période ajoutée (le
+    // stock d'un point est petit et fixe) et qu'il est ouvert le jour du
+    // nouveau retour. Sans ça, une prolongation pourrait prendre l'appareil
+    // déjà promis à un autre client du même point.
+    if (orig?.source_channel === 'click_collect') {
+      const point = getPointRetrait(orig.point_retrait_id || '');
+      if (point) {
+        if (pointFermeLe(point, extDateFin)) {
+          return res.status(400).json({ error: `Le point « ${point.nom} » est fermé ce jour-là : choisissez un autre jour de retour.` });
+        }
+        const occ = await occupationParPoint(supabase, [point], extDateDebut, extDateFin);
+        if ((occ[point.id] || 0) + qty > (point.stock || 0)) {
+          return res.status(409).json({ error: 'Plus d’appareil libre à votre point de retrait sur ces dates. Rapportez l’appareil à la date prévue, ou écrivez-nous pour trouver une solution.' });
+        }
+      }
     }
     // Commission partenaire : reprend le taux de la réservation d'origine.
     if (orig?.partenaire_id) {
@@ -238,7 +257,7 @@ module.exports = async (req, res) => {
       tel:                      (data.tel             || '').slice(0, 50),
       tel_secondaire:           orig?.tel_secondaire || null,
       hors_zone:                orig?.hors_zone || false,
-      adresse:                  (data.adresse_origine || '').slice(0, 500),
+      adresse:                  (orig?.source_channel === 'click_collect' ? (orig.adresse || '') : (data.adresse_origine || '')).slice(0, 500),
       // Champs d'accès copiés depuis la réservation d'origine — nécessaires
       // pour que le transporteur puisse accéder au logement lors de la récupération.
       etage:                    orig?.etage               || null,
@@ -269,6 +288,9 @@ module.exports = async (req, res) => {
       // Commission partenaire : héritée du taux de la réservation d'origine.
       partenaire_id:            orig?.partenaire_id || null,
       partenaire_commission_cents: partenaireCommissionCents,
+      // Click & Collect : la prolongation reste rattachée au même point (stock
+      // du point, pas de rappels de récupération à domicile).
+      ...(orig?.source_channel === 'click_collect' ? { source_channel: 'click_collect', point_retrait_id: orig.point_retrait_id || null } : {}),
       lang:                     ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
     }).select('id, ref').single();
 
