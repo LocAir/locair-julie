@@ -134,7 +134,9 @@ module.exports = async (req, res) => {
     return res.status(503).json({ error: 'Impossible de vérifier la disponibilité. Réessayez dans un instant.' });
   }
 
-  const ref = clip(data._ref, 40) || ('CC-' + Date.now().toString(36).toUpperCase());
+  // Référence toujours créée ici, jamais reprise du navigateur : réutiliser
+  // celle d'un essai précédent (carte refusée) bloquait tout nouveau paiement.
+  const ref = 'CC-' + Array.from(require('crypto').randomBytes(8), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
   const adresseResa = `CLICK & COLLECT — ${point.nom} — ${point.adresse}`;
 
   try {
@@ -170,7 +172,7 @@ module.exports = async (req, res) => {
         prix_fort: amountCents !== prix.normalCents ? `${amountCents > prix.normalCents ? '+' : ''}${Math.round((amountCents / prix.normalCents - 1) * 100)} % (base ${prix.normalCents / 100} €)` : 'non',
         tarif_dynamique: JSON.stringify({ s: prix.signaux, m: prix.multiplicateur, r: prix.raisons, devis: !!garanti }).slice(0, 480),
       },
-    }, { idempotencyKey: `cc-${ref}-${amountCents}-${dateDebut}-${point.id}` });
+    }, { idempotencyKey: `cc-${ref}` });
 
     const ligne = {
       city_id: city.id,

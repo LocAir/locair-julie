@@ -2,6 +2,7 @@ const { sendBrevoEmail } = require('./brevo');
 const tpl = require('./emailTemplates');
 const { addDays } = require('./dates');
 const { getEffectiveDateFin, getActiveRecuperationMission } = require('./dateFin');
+const { scenarioInterditClickCollect } = require('./emailSchedule');
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -164,6 +165,9 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
 
   const { data: reservation } = await supabase.from('reservations').select('*').eq('id', reservationId).maybeSingle();
   if (!reservation) return { sent: false, reason: 'no_reservation' };
+  // Click & Collect : jamais de message « livraison / technicien /
+  // récupération à domicile » (voir SCENARIOS_DOMICILE, _lib/emailSchedule.js).
+  if (scenarioInterditClickCollect(reservation, scenario)) return { sent: false, reason: 'click_collect' };
 
   if (!(await isScenarioActive(supabase, scenario))) return { sent: false, reason: 'scenario_disabled' };
   if (await wasScenarioSkipped(supabase, reservationId, scenario)) return { sent: false, reason: 'skipped_by_admin' };

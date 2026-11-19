@@ -6,6 +6,14 @@ const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/rate
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
 const { verifyClientToken } = require('./_lib/auth');
+const { getPointRetrait } = require('./_lib/pointsRetrait');
+const { estClickCollect, preparerProlongationCC, champsLigneCC } = require('./_lib/prolongCC');
+
+// Colonnes lues sur la réservation d'origine. '*' plutôt qu'une liste :
+// une location Click & Collect a besoin de source_channel, point_retrait_id
+// et rendu_at, qui peuvent ne pas encore exister en base (migrations à
+// passer à la main) — une liste nommée ferait alors échouer la requête.
+const COLONNES_ORIG = '*';
 
 function diffDays(startStr, endStr) {
   return Math.round(
@@ -86,7 +94,7 @@ module.exports = async (req, res) => {
 
   let q = supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, lang, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
+    .select(COLONNES_ORIG)
     .ilike('email', normalizedEmail)
     .or('source.is.null,source.neq.site_prolongation')
     .eq('statut', 'confirmee')
@@ -96,7 +104,7 @@ module.exports = async (req, res) => {
   if (ref && ref.trim()) {
     q = supabase
       .from('reservations')
-      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, lang, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
+      .select(COLONNES_ORIG)
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
       .or('source.is.null,source.neq.site_prolongation')
@@ -137,7 +145,10 @@ module.exports = async (req, res) => {
   // et l'espace client partaient toujours en français, même pour les clients
   // anglais/chinois/russes (req.body.lang absent de prolongation.html, et `lang`
   // absent du SELECT et de l'INSERT).
-  const lang = ['fr','en','zh','ru'].includes(req.body?.lang) ? req.body.lang : (orig.lang || 'fr');
+  const estCC = estClickCollect(orig);
+  // Click & Collect : le client peut aussi être en espagnol.
+  const languesOk = estCC ? ['fr', 'en', 'es'] : ['fr','en','zh','ru'];
+  const lang = languesOk.includes(req.body?.lang) ? req.body.lang : (orig.lang || 'fr');
 
   const origDays  = diffDays(orig.date_debut, orig.date_fin);
   const totalDays = diffDays(orig.date_debut, new_date_fin);
@@ -156,11 +167,24 @@ module.exports = async (req, res) => {
   const baseCents    = safeDelta * (orig.quantite || 1) * 100;
   // Pas de code promo sur une prolongation — réservé aux nouvelles commandes
   // passées sur le site (voir checkout.js, _lib/promo.js).
-  const amountCents  = baseCents;
+  let amountCents  = baseCents;
 
-  // Commission partenaire : reprend le taux de la réservation d'origine.
+  // Click & Collect : même règles que checkout-prolong.js (prix Click &
+  // Collect, point ouvert le jour du retour, appareil libre au point,
+  // commission au taux du point) — voir _lib/prolongCC.js. Sans ça, la
+  // prolongation était facturée au barème livraison et devenait une
+  // location « à domicile » (mission de récupération, mauvais emails).
   let partenaireCommissionCents = 0;
-  if (orig.partenaire_id) {
+  if (estCC) {
+    const cc = await preparerProlongationCC(supabase, {
+      orig, debut: orig.date_fin, fin: new_date_fin, qty: orig.quantite || 1,
+      montantDomicileCents: baseCents, pricing,
+    });
+    if (!cc.ok) return res.status(cc.status).json({ error: cc.error });
+    amountCents = cc.amountCents;
+    partenaireCommissionCents = cc.commissionCents;
+  } else if (orig.partenaire_id) {
+    // Commission partenaire : reprend le taux de la réservation d'origine.
     const { data: pt } = await supabase.from('partenaires')
       .select('taux_commission_pct').eq('id', orig.partenaire_id).maybeSingle();
     if (pt) partenaireCommissionCents = Math.round(amountCents * pt.taux_commission_pct / 100);
@@ -202,14 +226,19 @@ module.exports = async (req, res) => {
         total_days:        String(totalDays),
         date_debut:        orig.date_debut,
         date_fin_initiale: orig.date_fin,
-        date_recuperation: (()=>{const r=addDays(new_date_fin,1);const[ry,rm,rd]=r.split('-');return rd+'/'+rm+'/'+ry;})(),
+        // Click & Collect : pas de récupération, le client rapporte
+        // l'appareil au point le jour de fin (date_fin elle-même).
+        date_recuperation: estCC
+          ? (()=>{const[ry,rm,rd]=new_date_fin.split('-');return rd+'/'+rm+'/'+ry;})()
+          : (()=>{const r=addDays(new_date_fin,1);const[ry,rm,rd]=r.split('-');return rd+'/'+rm+'/'+ry;})(),
         customer_id:       customerId,
         lang:              lang,
+        ...(estCC ? { mode_origine: 'click_collect', point_id: String(orig.point_retrait_id || '').slice(0, 100) } : {}),
       },
     }, { idempotencyKey: `prolong-pay-${orig.id}-${new_date_fin}` });
     intentId = intent.id;
 
-    const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
+    const ligne = {
       city_id:                  orig.city_id,
       ref:                      `PROLONG-${intent.id.slice(-8)}`,
       stripe_payment_intent_id: intent.id,
@@ -257,7 +286,17 @@ module.exports = async (req, res) => {
       // Commission partenaire : héritée du taux de la réservation d'origine.
       partenaire_id:            orig.partenaire_id || null,
       partenaire_commission_cents: partenaireCommissionCents,
-    }).select('id').single();
+      // Click & Collect : la prolongation reste rattachée au même point
+      // (stock du point, aucune mission, aucun rappel « à domicile »).
+      ...(estCC ? champsLigneCC(orig) : {}),
+    };
+    let { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single();
+    // Colonne point_retrait_id pas encore créée (migration du 18/11 pas
+    // passée) : on garde source_channel, qui suffit à éviter les missions.
+    if (insertErr && estCC && /point_retrait_id/.test(insertErr.message || '')) {
+      delete ligne.point_retrait_id;
+      ({ data: insertedResa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single());
+    }
 
     if (insertErr) {
       console.error('[prolong-pay insert]', insertErr.message);
@@ -281,6 +320,8 @@ module.exports = async (req, res) => {
       amountCents,
       jours,
       newDateFin: new_date_fin,
+      // Click & Collect : l'écran de confirmation parle du retour au point.
+      ...(estCC ? { click_collect: { point_nom: (getPointRetrait(orig.point_retrait_id || '') || {}).nom || String(orig.adresse || '').replace(/^CLICK & COLLECT — /, '').split(' — ')[0] } } : {}),
     });
   } catch (err) {
     console.error('[prolong-pay stripe]', err.message);

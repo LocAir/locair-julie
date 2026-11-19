@@ -786,6 +786,17 @@ async function confirmReservation(supabase, resa) {
     }
   }
 
+  // Click & Collect (réservation ou prolongation) : le client vient chercher
+  // l'appareil au point de retrait et le rapporte au même point. Donc :
+  //   - aucune mission livraison/récupération, aucun transporteur prévenu ;
+  //   - aucun appareil pris dans la flotte de livraison (assign_appareils) :
+  //     le stock d'un point est un stock figé, compté à part par
+  //     _lib/clickCollect.js (occupationParPoint) ;
+  //   - pas d'alerte « sous-effectif » ni « stock épuisé » de la ville, qui
+  //     concernent uniquement la flotte de livraison.
+  // On s'arrête ici, juste après le passage en « confirmée ».
+  if (resa.source_channel === 'click_collect') return resa;
+
   await assignAppareils(supabase, resa, staleOriginalId);
 
   // Validation automatique immédiate des appareils assignés — supprime l'étape
@@ -917,7 +928,28 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
     .eq('stripe_payment_intent_id', paymentIntentId)
     .maybeSingle();
   if (error || !resa) return null;
-  return confirmReservation(supabase, resa);
+  // Paiement réussi sur une réservation passée « annulée » : ça arrive quand
+  // une première carte a été refusée puis qu'une deuxième passe sur le même
+  // paiement. Le client a payé : on la remet en attente pour la confirmer,
+  // et on prévient l'admin de vérifier le stock (l'appareil a pu être
+  // proposé à quelqu'un d'autre entre-temps).
+  if (resa.statut === 'annulee') {
+    const { data: revived } = await supabase.from('reservations')
+      .update({ statut: 'en_attente' }).eq('id', resa.id).eq('statut', 'annulee').select('id');
+    if (revived && revived.length) {
+      resa.statut = 'en_attente';
+      await pushToAdmin(supabase, {
+        title: 'Paiement réussi après un échec',
+        body: `Dossier ${resa.ref || resa.id} : la réservation était annulée, le client a finalement payé. Elle est confirmée — vérifiez qu'un appareil est bien disponible.`,
+        tag: `revive-${resa.id}`,
+      }).catch(() => {});
+    }
+  }
+  const out = await confirmReservation(supabase, resa);
+  // Statut à jour pour l'appelant (le webhook n'envoie SMS et email de
+  // confirmation que pour une réservation réellement confirmée).
+  if (out && out.statut === 'en_attente') out.statut = 'confirmee';
+  return out;
 }
 
 module.exports = {
