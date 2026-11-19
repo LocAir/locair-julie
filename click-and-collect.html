@@ -422,6 +422,18 @@ body:not(.en-etape) .nav-tel{background:rgba(255,255,255,.16);border:1px solid r
 .pied-part{border:0;background:none;font:700 14px var(--font);color:var(--vif);cursor:pointer;margin-bottom:10px;padding:6px}
 .pied-part:hover{text-decoration:underline}
 
+/* Pièce d'identité après le paiement + point choisi sur l'écran des dates */
+.id-apres{text-align:left;background:var(--paper);border:2px solid var(--vif);border-radius:20px;padding:18px 16px;margin:4px 0 18px;box-shadow:var(--o-2)}
+.id-apres[hidden]{display:none}
+.id-apres h3{font-family:var(--font);font-weight:800;font-size:18px;margin-bottom:4px}
+.id-apres>.aide{margin-bottom:12px}
+.id-apres .btn{width:100%;margin-top:12px}
+.msg-ok{color:var(--ok,#0F7A3D);background:#E8F6EE;margin:0 0 16px;text-align:left}
+.point-choisi{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);background:var(--paper);border:1px solid var(--line);border-radius:var(--r-f);padding:8px 8px 8px 14px;margin:0 0 12px}
+.point-choisi b{color:var(--ink)}
+.point-choisi span{flex:1;min-width:0}
+.point-choisi button{border:0;background:var(--vif-clair);color:var(--vif-d);font:700 13px var(--font);border-radius:var(--r-f);padding:7px 12px;cursor:pointer}
+
 /* ── ONGLETS + PAGE PARTENAIRE (FR / EN) ── */
 .onglets{display:inline-flex;gap:4px;padding:4px;border-radius:var(--r-f);background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);margin-bottom:16px}
 .onglets button{border:0;background:none;color:#fff;font-size:13.5px;font-weight:700;padding:7px 14px;border-radius:var(--r-f)}
@@ -742,6 +754,7 @@ body.a-cook{padding-bottom:72px}
     <!-- ══ 3. VOS DATES (calendrier, comme Airbnb) ══ -->
     <section class="ecran etape avec-barre" data-ecran="dates" aria-labelledby="t-dates" hidden>
       <h2 id="t-dates" tabindex="-1"><span lang="fr">Vos <em>dates</em></span><span lang="en">Your <em>dates</em></span></h2>
+      <p class="point-choisi" id="point-choisi" hidden></p>
       <p class="dire" id="dates-dire">Touchez le jour du retrait, puis le jour du retour.</p>
       <div class="sel-dates" aria-live="polite">
         <button type="button" class="sel" id="sel-debut"><small><span lang="fr">Retrait</span><span lang="en">Pick-up</span></small><b>Choisir</b></button>
@@ -785,17 +798,8 @@ body.a-cook{padding-bottom:72px}
           <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
           <p class="aide" id="tel-aide"><span lang="fr">Pour vous appeler et fixer l’heure du retrait.</span><span lang="en">So we can call you and set your pick-up time.</span></p>
         </div>
-        <fieldset class="identite">
-          <legend class="champ-l"><span lang="fr">Pièce d’identité</span><span lang="en">ID document</span></legend>
-          <div class="choix-pi" role="radiogroup" aria-label="Type de pièce">
-            <label><input type="radio" name="pi" value="cni" checked><span><span lang="fr">Carte d’identité</span><span lang="en">ID card</span></span></label>
-            <label><input type="radio" name="pi" value="passeport"><span><span lang="fr">Passeport</span><span lang="en">Passport</span></span></label>
-          </div>
-          <div class="faces" id="faces"></div>
-          <p class="aide"><span lang="fr">Vérifiée au retrait. Gardée de façon privée, supprimée 30 jours après la location.</span><span lang="en">Checked at pick-up. Kept private, deleted 30 days after the rental.</span></p>
-        </fieldset>
         <label class="coche"><input type="checkbox" id="cgv"><span><span lang="fr">J’accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer">conditions de location</a> et d’utilisation, et un prélèvement seulement si je rends l’appareil en retard.</span><span lang="en">I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer">rental terms</a> (in French) and terms of use, and a charge only if I return the unit late.</span></span></label>
-        <p class="msg msg-erreur" id="form-err" role="alert" hidden></p>
+        <p class="msg msg-erreur" id="resa-err" role="alert" hidden></p>
         <button type="submit" class="btn" id="envoyer">Continuer vers le paiement</button>
         <p class="mentions"><span lang="fr">Aucune caution. Vos coordonnées servent uniquement à cette réservation. <a href="/confidentialite">Confidentialité</a></span><span lang="en">No deposit. Your details are only used for this booking. <a href="/confidentialite">Privacy</a></span></p>
       </form>
@@ -820,6 +824,22 @@ body.a-cook{padding-bottom:72px}
       <h2 id="t-merci" tabindex="-1"><span lang="fr">C’est réservé,</span><span lang="en">You’re booked,</span> <em id="m-prenom"></em>&nbsp;!</h2>
       <p class="dire" id="m-texte"></p>
       <figure class="qr-remise" id="m-qr" hidden><img id="m-qr-img" width="200" height="200" alt="Votre QR code de retrait"><figcaption><span lang="fr">Votre QR code de retrait : montrez-le au comptoir avec votre pièce d’identité. Il est aussi dans votre email.</span><span lang="en">Your pick-up QR code: show it at the counter with your ID. It’s also in your email.</span></figcaption></figure>
+      <form class="id-apres" id="m-id" hidden novalidate>
+        <h3><span lang="fr">Dernière étape : votre pièce d’identité</span><span lang="en">Last step: your ID</span></h3>
+        <p class="aide"><span lang="fr">Obligatoire pour récupérer l’appareil. Ajoutez-la maintenant, vous irez plus vite au comptoir.</span><span lang="en">Required to pick up the unit. Add it now and you’ll be faster at the counter.</span></p>
+        <fieldset class="identite">
+          <legend class="sr"><span lang="fr">Pièce d’identité</span><span lang="en">ID document</span></legend>
+          <div class="choix-pi" role="radiogroup" aria-label="Type de pièce">
+            <label><input type="radio" name="pi" value="cni" checked><span><span lang="fr">Carte d’identité</span><span lang="en">ID card</span></span></label>
+            <label><input type="radio" name="pi" value="passeport"><span><span lang="fr">Passeport</span><span lang="en">Passport</span></span></label>
+          </div>
+          <div class="faces" id="faces"></div>
+          <p class="aide"><span lang="fr">Vérifiée au retrait. Gardée de façon privée, supprimée 30 jours après la location.</span><span lang="en">Checked at pick-up. Kept private, deleted 30 days after the rental.</span></p>
+        </fieldset>
+        <p class="msg msg-erreur" id="form-err" role="alert" hidden></p>
+        <button type="submit" class="btn" id="id-envoyer"><span lang="fr">Envoyer ma pièce d’identité</span><span lang="en">Send my ID</span></button>
+      </form>
+      <p class="msg msg-ok" id="m-id-ok" role="status" hidden></p>
       <dl class="recap" id="m-recap"></dl>
       <div class="alts">
         <a class="btn" id="m-itin" href="#" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><span lang="fr">Itinéraire</span><span lang="en">Directions</span></a>
@@ -939,7 +959,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{
       sessionStorage.setItem(CLE_ETAT, JSON.stringify({
         ecran:nom, ville:etat.ville, point:etat.point && etat.point.id, liste:etat.liste.map(function(p){ return p.id; }),
-        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, montant:etat.montant, remise:etat.remise
+        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, montant:etat.montant, remise:etat.remise, idtok:etat.idtok
       }));
     }catch(e){}
   }
@@ -1237,7 +1257,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       var pos = {lat:r.coords.latitude, lng:r.coords.longitude};
       var tri = POINTS.slice().sort(function(a, c){ return km(pos, a) - km(pos, c); }).slice(0, 4);
       etat.ville = tri[0].ville;
-      dessinerPoints(tri, pos); aller('point');
+      dessinerPoints(tri, pos); window.mesurer('cc_geoloc');
+      choisirPoint(tri[0]);
     }, function(){
       b.removeAttribute('aria-busy'); b.innerHTML = LOC_TXT;
       err.textContent = L('Position indisponible. Choisissez votre ville ci-dessous.', 'Location unavailable. Please choose your town below.'); err.hidden = false;
@@ -1308,7 +1329,15 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       .catch(function(){});
   }
   function dureeNom(j, fr){ return langue() === 'en' ? ({7:'1 week', 14:'2 weeks', 30:'1 month'}[j] || j + ' days') : fr; }
+  function majPointChoisi(){
+    var p = etat.point, el = $('point-choisi'); if(!p){ el.hidden = true; return; }
+    var d = etat.pos ? ' · ' + dist(km(etat.pos, p)).replace(/^À/, 'à') : '';
+    el.innerHTML = '<span>' + L('Point de retrait : ', 'Pick-up point: ') + '<b>' + esc(p.nom) + '</b>' + esc(d) + '</span><button type="button" id="changer-point">' + L('Changer', 'Change') + '</button>';
+    el.hidden = false;
+  }
+  $('point-choisi').addEventListener('click', function(e){ if(e.target.closest('#changer-point')) revenirA('point'); });
   function majSelection(){
+    majPointChoisi();
     var deb = $('sel-debut'), fin = $('sel-fin');
     deb.querySelector('b').textContent = etat.debut ? court(etat.debut) : L('Choisir', 'Select');
     fin.querySelector('b').textContent = etat.fin ? court(etat.fin) : (etat.debut ? L('Choisir', 'Select') : '—');
@@ -1484,11 +1513,11 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     return out.join(' · ');
   })();
   function telValide(v){ var d = v.replace(/\D/g, ''); return d.length >= 8 && d.length <= 15; }
-  function invalide(id, msg){ $(id).setAttribute('aria-invalid', 'true'); $(id).focus(); if(msg){ var e = $('form-err'); e.textContent = msg; e.hidden = false; } }
+  function invalide(id, msg){ $(id).setAttribute('aria-invalid', 'true'); $(id).focus(); if(msg){ var e = $('resa-err'); e.textContent = msg; e.hidden = false; } }
 
   $('form').addEventListener('submit', function(e){
     e.preventDefault();
-    var err = $('form-err'), btn = $('envoyer'); err.hidden = true;
+    var err = $('resa-err'), btn = $('envoyer'); err.hidden = true;
     if(etat.point.exemple){
       /* point fictif : pas de paiement possible, on passe par WhatsApp */
       err.innerHTML = L('Ce point de retrait est un exemple : le paiement en ligne n’y est pas encore ouvert. Réservez sur ', 'This pick-up point is an example: online payment isn’t open there yet. Book on ') + '<a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' + L(' ou au ', ' or call ') + '<a href="tel:+33663798756">+33 6 63 79 87 56</a>.';
@@ -1499,26 +1528,20 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(!c.nom) return invalide('nom', L('Indiquez votre nom.', 'Please enter your last name.'));
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return invalide('email', L('Cette adresse email semble incomplète.', 'This email address looks incomplete.'));
     if(!telValide(c.tel)){ $('tel-aide').className = 'aide err'; $('tel-aide').textContent = L('Ce numéro semble incomplet. Exemple : 06 12 34 56 78.', 'This number looks incomplete. Include your country code, e.g. +44 7700 900123.'); return invalide('tel'); }
-    if(!piecesPretes()){
-      [].forEach.call($('faces').querySelectorAll('.face:not(.ok)'), function(x){ x.classList.add('err'); });
-      err.textContent = typePiece() === 'cni' ? L('Ajoutez le recto et le verso de votre carte d’identité.', 'Please add the front and back of your ID card.') : L('Ajoutez la page photo de votre passeport.', 'Please add the photo page of your passport.');
-      err.hidden = false; $('faces').scrollIntoView({block:'center', behavior:doux()}); return;
-    }
     if(!$('cgv').checked){ $('cgv').closest('.coche').classList.add('err'); err.textContent = L('Merci d’accepter les conditions pour continuer.', 'Please accept the terms to continue.'); err.hidden = false; $('cgv').focus(); return; }
     etat.client = c; sauver('infos');
-    btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = L('Envoi de la pièce d’identité…', 'Uploading your ID…');
+    btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = L('Préparation du paiement…', 'Preparing payment…');
     chargerStripe().catch(function(){});
-    envoyerPieces().then(function(piece){
-      btn.textContent = L('Préparation du paiement…', 'Preparing payment…');
+    Promise.resolve().then(function(){
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(), piece_identite:piece, prix_vu_cents:Math.round(total() * 100), lang:langue(),
+        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), lang:langue(),
         cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, _ref:etat.ref || '', campagne:campagne
       })});
     }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); })
     .then(function(r){
       if(r.j.nouveauPrixCents){ etat.prix = {cle:clePrix(), totalCents:r.j.nouveauPrixCents, majore:r.j.majore, normalCents:prix(jours()) * 100, majorationPct:25}; remplirRecap(); majResume('infos'); }
       if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
-      etat.secret = r.j.clientSecret; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null;
+      etat.secret = r.j.clientSecret; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
       window._ccValeur = etat.montant; window.mesurer('cc_vers_paiement');
       aller('paiement'); monterPaiement();
     }).catch(function(x){
@@ -1594,6 +1617,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('m-prenom').textContent = c.prenom || '';
     $('m-texte').textContent = L('Paiement reçu. On vous appelle' + (c.tel ? ' au ' + c.tel : '') + ' pour fixer l’heure du retrait (7j/7, 8h–20h). Confirmation envoyée' + (c.email ? ' à ' + c.email : '') + '.', 'Payment received. We’ll call you' + (c.tel ? ' on ' + c.tel : '') + ' to set your pick-up time (7 days, 8am–8pm). Confirmation sent' + (c.email ? ' to ' + c.email : '') + '.');
     if(etat.remise && etat.remise.qr){ $('m-qr-img').src = etat.remise.qr; $('m-qr').hidden = false; }
+    $('m-id').hidden = !etat.idtok; $('m-id-ok').hidden = true;
     $('m-recap').innerHTML = [['Point', p.nom + ' — ' + p.adresse], [L('Retrait', 'Pick-up'), lisible(etat.debut)], [L('Retour', 'Return'), lisible(etat.fin) + ' (' + n + L(' jours)', ' days)')], [L('Payé', 'Paid'), euros(etat.montant || total())]]
       .map(function(x, i){ return '<div' + (i === 3 ? ' class="total"' : '') + '><dt>' + ICONES[i] + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('');
     $('m-itin').href = 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng;
@@ -1603,6 +1627,28 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{ sessionStorage.removeItem(CLE_ETAT); }catch(e){}
   }
 
+  /* Pièce d'identité APRÈS le paiement (écran « C'est réservé ») */
+  $('m-id').addEventListener('submit', function(e){
+    e.preventDefault();
+    var err = $('form-err'), btn = $('id-envoyer'), tok = etat.idtok; err.hidden = true;
+    if(!tok) return;
+    if(!piecesPretes()){
+      [].forEach.call($('faces').querySelectorAll('.face:not(.ok)'), function(x){ x.classList.add('err'); });
+      err.textContent = typePiece() === 'cni' ? L('Ajoutez le recto et le verso de votre carte d’identité.', 'Please add the front and back of your ID card.') : L('Ajoutez la page photo de votre passeport.', 'Please add the photo page of your passport.');
+      err.hidden = false; return;
+    }
+    btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = L('Envoi…', 'Sending…');
+    envoyerPieces().then(function(piece){
+      return fetch('/api/click-collect-identite', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:tok.id, code:tok.code, type:piece.type, paths:piece.paths})})
+        .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ if(!r.ok && r.status !== 409) throw new Error(j.error || ''); }); });
+    }).then(function(){
+      etat.idtok = null; $('m-id').hidden = true; vibre(); window.mesurer('cc_identite');
+      var ok = $('m-id-ok'); ok.textContent = L('Pièce d’identité reçue. Montrez-la aussi au comptoir avec votre QR code.', 'ID received. Show it at the counter too, with your QR code.'); ok.hidden = false;
+    }).catch(function(x){
+      err.textContent = x.message || L('Envoi impossible. Réessayez, ou apportez votre pièce au retrait.', 'Upload failed. Try again, or bring your ID at pick-up.'); err.hidden = false;
+    }).then(function(){ btn.disabled = false; btn.removeAttribute('aria-busy'); btn.textContent = L('Envoyer ma pièce d’identité', 'Send my ID'); });
+  });
+
   /* ── démarrage : points, prix, puis reprise là où le client en était ── */
   function demarrer(){
     var lg = null; try{ lg = localStorage.getItem('locair_cc_langue'); }catch(e){}
@@ -1611,13 +1657,13 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var sv = relire(), q = new URLSearchParams(location.search);
     if(sv){
       etat.ville = sv.ville; etat.point = parId(sv.point); etat.liste = (sv.liste || []).map(parId).filter(Boolean);
-      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.montant = sv.montant; etat.remise = sv.remise || null;
+      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.montant = sv.montant; etat.remise = sv.remise || null; etat.idtok = sv.idtok || null;
     }
     /* retour d'une banque (3-D Secure) : Stripe ajoute redirect_status */
     if(q.get('retour') === 'paiement' && sv && etat.point && etat.debut && etat.fin){
       try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){}
       if(q.get('redirect_status') === 'succeeded'){ paye(); return; }
-      aller('infos'); var e = $('form-err'); e.textContent = L('Le paiement n’a pas été validé par votre banque. Vous pouvez réessayer.', 'Your bank didn’t approve the payment. You can try again.'); e.hidden = false; return;
+      aller('infos'); var e = $('resa-err'); e.textContent = L('Le paiement n’a pas été validé par votre banque. Vous pouvez réessayer.', 'Your bank didn’t approve the payment. You can try again.'); e.hidden = false; return;
     }
     var h = (location.hash || '').slice(1);
     /* lien direct à envoyer aux commerçants : #partenaire (ou #partner = anglais) */

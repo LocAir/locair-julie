@@ -76,8 +76,14 @@ function codeRemise(reservationId, ref) {
 function lienRemise(reservationId, ref) {
   return `https://www.locair.fr/partenaire?remise=${reservationId}.${codeRemise(reservationId, ref)}`;
 }
+// Code pour ajouter la pièce d'identité APRÈS le paiement (écran « C'est
+// réservé ») : seul le navigateur qui vient de payer le connaît.
+function codeIdentite(reservationId, ref) {
+  const secret = process.env.TRANSPORTEUR_SECRET || '';
+  return crypto.createHmac('sha256', secret).update(`identite:${reservationId}:${ref || ''}`).digest('hex').slice(0, 24);
+}
 function imageQrRemise(reservationId, ref, taille = 240) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${taille}x${taille}&margin=8&data=${encodeURIComponent(lienRemise(reservationId, ref))}`;
 }
 
-module.exports = { prixClickCollect, occupationParPoint, codeRemise, lienRemise, imageQrRemise, SEUIL_PRIX_FORT, MAJORATION_PCT };
+module.exports = { prixClickCollect, occupationParPoint, codeRemise, lienRemise, imageQrRemise, codeIdentite, SEUIL_PRIX_FORT, MAJORATION_PCT };
