@@ -729,7 +729,9 @@ const handler = async (req, res) => {
           // Click & Collect : le client vient chercher l'appareil — jamais
           // « livraison » ni « notre technicien arrive ».
           const dateStr = d ? d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
-          smsConfirmationContent = `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. On vous appelle pour fixer l'heure. Une question ? 06 63 79 87 56.`;
+          smsConfirmationContent = meta.lang === 'en'
+            ? `Loc'Air - Click & Collect booking confirmed.${d ? ' Pick-up on ' + d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' at ' + meta.point_nom : ''}. We'll call you to set the time. Questions? +33 6 63 79 87 56.`
+            : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. On vous appelle pour fixer l'heure. Une question ? 06 63 79 87 56.`;
         } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
@@ -797,26 +799,29 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
       .insert({ reservation_id: resa.id, scenario: 'confirmation_click_collect', sent_at: new Date().toISOString() });
     if (lockErr) return; // déjà envoyé (ou en cours) par une autre instance
     const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const fmt = (iso) => iso ? new Date(iso + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '';
+    // Email dans la langue choisie par le client sur la page (fr / en).
+    const en = (resa.lang || meta.lang) === 'en';
+    const T = (fr, eng) => (en ? eng : fr);
+    const fmt = (iso) => iso ? new Date(iso + 'T12:00:00Z').toLocaleDateString(en ? 'en-GB' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '';
     const adressePoint = String(resa.adresse || '').replace(/^CLICK & COLLECT — /, '');
     const lignes = [
-      ['Point de retrait', adressePoint],
-      ['Retrait', fmt(resa.date_debut) + ' — heure confirmée par téléphone'],
-      ['Retour au même point', fmt(resa.date_fin)],
-      ['Payé', amount + ' (sans livraison, sans caution)'],
-      ['Référence', resa.ref || ''],
+      [T('Point de retrait', 'Pick-up point'), adressePoint],
+      [T('Retrait', 'Pick-up'), fmt(resa.date_debut) + T(' — heure confirmée par téléphone', ' — time confirmed by phone')],
+      [T('Retour au même point', 'Return to the same point'), fmt(resa.date_fin)],
+      [T('Payé', 'Paid'), amount + T(' (sans livraison, sans caution)', ' (no delivery fee, no deposit)')],
+      [T('Référence', 'Reference'), resa.ref || ''],
     ].map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#4B5873;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0"><b>${esc(v)}</b></td></tr>`).join('');
     const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
-<h2 style="color:#1A5EDB;margin:0 0 12px">C’est réservé, ${esc(resa.prenom)} !</h2>
-<p>Votre climatiseur mobile vous attend. On vous appelle pour fixer l’heure du retrait.</p>
+<h2 style="color:#1A5EDB;margin:0 0 12px">${T('C’est réservé', 'You’re booked')}, ${esc(resa.prenom)} !</h2>
+<p>${T('Votre climatiseur mobile vous attend. On vous appelle pour fixer l’heure du retrait.', 'Your portable air conditioner is waiting for you. We’ll call you to set the pick-up time.')}</p>
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
-<p style="margin:18px 0 6px"><b>Votre QR code de retrait</b> — montrez-le au comptoir, avec votre pièce d’identité :</p>
-<p style="margin:0 0 6px"><img src="${imageQrRemise(resa.id, resa.ref, 220)}" width="220" height="220" alt="QR code de retrait"></p>
-<p style="color:#4B5873;font-size:13px;margin:0 0 14px">Code de réservation : <b>${esc(resa.ref || '')}</b></p>
-<p>Pensez à venir en voiture : l’appareil vous est remis avec son kit de fenêtre, sans perçage.</p>
-<p>Une question ? <a href="tel:+33663798756">06 63 79 87 56</a> · 7j/7, 8h–20h.</p>
+<p style="margin:18px 0 6px"><b>${T('Votre QR code de retrait', 'Your pick-up QR code')}</b> — ${T('montrez-le au comptoir, avec votre pièce d’identité :', 'show it at the counter with your ID:')}</p>
+<p style="margin:0 0 6px"><img src="${imageQrRemise(resa.id, resa.ref, 220)}" width="220" height="220" alt="QR code"></p>
+<p style="color:#4B5873;font-size:13px;margin:0 0 14px">${T('Code de réservation', 'Booking code')} : <b>${esc(resa.ref || '')}</b></p>
+<p>${T('Pensez à venir en voiture : l’appareil vous est remis avec son kit de fenêtre, sans perçage.', 'Come by car: the unit is handed over with its no-drill window kit.')}</p>
+<p>${T('Une question ?', 'Any question?')} <a href="tel:+33663798756">+33 6 63 79 87 56</a> · ${T('7j/7, 8h–20h', '7 days, 8am–8pm')}.</p>
 <p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
-    const r = await sendBrevoEmail({ to: resa.email, subject: `Click & Collect confirmé — retrait le ${fmt(resa.date_debut)}`, html, senderName: "Loc'Air" });
+    const r = await sendBrevoEmail({ to: resa.email, subject: T(`Click & Collect confirmé — retrait le ${fmt(resa.date_debut)}`, `Click & Collect confirmed — pick-up on ${fmt(resa.date_debut)}`), html, senderName: "Loc'Air" });
     if (!r.ok) await supabase.from('email_sent').delete().eq('reservation_id', resa.id).eq('scenario', 'confirmation_click_collect').then(() => {}, () => {});
     await supabase.from('email_log').insert({
       reservation_id: resa.id, scenario: 'confirmation_click_collect', canal: 'email',

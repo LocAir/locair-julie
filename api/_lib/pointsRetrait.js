@@ -26,6 +26,8 @@
 //   commission_pct   commission du commerçant sur la location payée (15 %,
 //             décidé par le propriétaire le 18/11/2026)
 //   zone      'cote-azur' ou 'madrid' (page et langue)
+//   ouverture [heure d'ouverture, heure de fermeture] des jours ouverts,
+//             à l'heure de Paris (affiche « Ouvert · ferme à 19h »)
 const STOCK_PAR_DEFAUT = 4;
 const COMMISSION_POINT_PCT = 15;
 const POINTS_RETRAIT = [
@@ -49,6 +51,7 @@ POINTS_RETRAIT.forEach((p) => {
   if (!Number.isFinite(p.stock)) p.stock = STOCK_PAR_DEFAUT;
   if (!Number.isFinite(p.commission_pct)) p.commission_pct = COMMISSION_POINT_PCT;
   if (!p.zone) p.zone = 'cote-azur';
+  if (!Array.isArray(p.ouverture)) p.ouverture = [9, 19];
   if (!('partenaire_code' in p)) p.partenaire_code = null;
 });
 

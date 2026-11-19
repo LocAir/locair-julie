@@ -155,6 +155,7 @@ module.exports = async (req, res) => {
         customer_id: customerId,
         campagne: clip(data.campagne, 400),
         piece_identite: pi.type,
+        lang: data.lang === 'en' ? 'en' : 'fr',
         prix_fort: prix.majore ? `oui (+${prix.majorationPct} %)` : 'non',
       },
     }, { idempotencyKey: `cc-${ref}-${amountCents}-${dateDebut}-${point.id}` });
@@ -178,7 +179,7 @@ module.exports = async (req, res) => {
       statut: 'en_attente',
       source: 'site',
       source_channel: 'click_collect',
-      lang: 'fr',
+      lang: data.lang === 'en' ? 'en' : 'fr',
       type_client: 'particulier',
       cgv_accepted_at: new Date().toISOString(),
       piece_identite_paths: chemins,
