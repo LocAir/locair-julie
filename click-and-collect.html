@@ -462,7 +462,7 @@ body:not(.en-etape) .nav-tel{background:rgba(255,255,255,.16);border:1px solid r
 @media(prefers-reduced-motion:reduce){.gcarte,.gc-fiche{animation:none}}
 
 /* Julie aux couleurs Loc'Air, au-dessus des barres du bas */
-#jw-btn{background:var(--vif)!important;box-shadow:0 6px 20px -4px rgba(26,94,219,.55)!important;right:16px!important}
+#jw-btn{display:none!important;background:var(--vif)!important;box-shadow:0 6px 20px -4px rgba(26,94,219,.55)!important;right:16px!important}
 body:has([data-ecran="dates"]:not([hidden])) #jw-btn{bottom:96px!important}
 #jw-panel{right:12px!important}
 button.nav-tel{border:0;cursor:pointer;font:inherit;font-weight:700}
@@ -491,6 +491,36 @@ button.vcarte.autre{font-family:var(--font)}
 /* photos du point : fiche de la carte et liste des points */
 .gf-photo{display:block;width:calc(100% + 28px);margin:-14px -14px 10px;aspect-ratio:16/7;object-fit:cover;border-radius:20px 20px 0 0}
 .carte-img{width:58px;height:58px;flex:none;border-radius:12px;object-fit:cover}
+
+/* ── EN-TÊTE ÉPURÉ + MENU (façon Uber Eats) ── */
+.nav .col{justify-content:flex-start;gap:6px}
+.burger{width:42px;height:42px;margin-left:-8px;border:0;background:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.burger svg{width:24px;height:24px;stroke:var(--ink);fill:none;stroke-width:2.2;stroke-linecap:round}
+body:not(.en-etape) .burger svg{stroke:#fff}
+.burger:hover{background:rgba(0,0,0,.06)}
+.voile{position:fixed;inset:0;z-index:9000;background:rgba(6,18,42,.45);opacity:0;transition:opacity .25s}
+.voile.ouvert{opacity:1}
+.tiroir::before,.tiroir::after{display:none!important}
+.tiroir{align-items:stretch!important;text-align:left}
+.voile[hidden],.tiroir[hidden]{display:none}
+.tiroir{position:fixed;top:0;bottom:0;left:0;z-index:9001;align-items:stretch;width:min(86vw,340px);background:#fff;display:flex;flex-direction:column;padding:10px 16px max(20px,env(safe-area-inset-bottom));overflow-y:auto;
+  transform:translateX(-100%);transition:transform .26s cubic-bezier(.2,.8,.2,1);box-shadow:20px 0 50px -20px rgba(6,18,42,.5)}
+.tiroir.ouvert{transform:none}
+.tiroir-tete{display:flex;align-self:stretch;align-items:center;justify-content:space-between;height:52px;margin-bottom:8px;flex:none}
+.tiroir-tete .nav-logo,.tiroir-tete .nav-logo em{color:var(--vif)!important;position:static!important;font-size:22px}
+.tiroir-x{width:40px;height:40px;border:0;border-radius:50%;background:var(--mist);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tiroir-x svg{width:18px;height:18px;stroke:var(--ink);fill:none;stroke-width:2.4;stroke-linecap:round}
+.t-lien{display:block;width:100%;text-align:left;border:0;background:none;font:700 18px/1.25 var(--font);color:var(--ink);text-decoration:none;padding:13px 4px;border-radius:12px;cursor:pointer;letter-spacing:-.01em}
+.t-lien small{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin-top:2px;letter-spacing:0}
+.t-lien:hover,.t-lien:focus-visible{background:var(--mist)}
+.t-fort{background:var(--vif);color:#fff;text-align:center;padding:15px;margin:4px 0 10px}
+.t-fort:hover,.t-fort:focus-visible{background:var(--vif-d)}
+.tiroir hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+.tiroir-pied{margin-top:auto;padding-top:18px}
+.tiroir .nav-langue{margin:0!important;width:100%;display:grid!important;grid-template-columns:1fr 1fr;background:var(--mist)!important;border:0!important}
+.tiroir .nav-langue button{font-size:14px;padding:10px;color:var(--ink-2)!important}
+.tiroir .nav-langue button[aria-pressed="true"]{background:#fff!important;color:var(--ink)!important;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+@media(prefers-reduced-motion:reduce){.tiroir,.voile{transition:none}}
 
 /* ── ONGLETS + PAGE PARTENAIRE (FR / EN) ── */
 .onglets{display:inline-flex;gap:4px;padding:4px;border-radius:var(--r-f);background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);margin-bottom:16px}
@@ -636,18 +666,29 @@ body.a-cook{padding-bottom:72px}
 
 <header class="nav">
   <div class="col">
+    <button type="button" class="burger" id="burger" aria-expanded="false" aria-controls="tiroir"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="sr"><span lang="fr">Menu</span><span lang="en">Menu</span></span></button>
     <span class="nav-logo" aria-label="Loc’Air">Loc<em>’Air</em></span>
-    <div class="nav-langue" role="group" aria-label="Langue / Language"><button type="button" data-langue="fr" aria-pressed="true">FR</button><button type="button" data-langue="en" aria-pressed="false">EN</button></div>
-    <div class="espace" id="espace">
-      <button type="button" class="espace-btn" id="espace-btn" aria-haspopup="true" aria-expanded="false" aria-controls="espace-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span class="sr"><span lang="fr">Mon espace</span><span lang="en">My account</span></span></button>
-      <div class="espace-menu" id="espace-menu" hidden>
-        <a href="/client"><b><span lang="fr">Espace client</span><span lang="en">Customer area</span></b><small><span lang="fr">Ma réservation, ma facture</span><span lang="en">My booking, my invoice</span></small></a>
-        <a href="/partenaire"><b><span lang="fr">Espace partenaire</span><span lang="en">Partner area</span></b><small><span lang="fr">Commerçants : commissions, remises</span><span lang="en">Shops: commissions, hand-overs</span></small></a>
-      </div>
-    </div>
-    <button type="button" class="nav-tel ouvrir-chat" data-mesure="cc_chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/></svg><span><span lang="fr">Aide</span><span lang="en">Help</span></span></button>
   </div>
 </header>
+
+<!-- MENU (façon Uber Eats) : tout ce qui n'est pas « réserver » est rangé ici. -->
+<div class="voile" id="voile" hidden></div>
+<nav class="tiroir" id="tiroir" aria-label="Menu" hidden>
+  <div class="tiroir-tete">
+    <span class="nav-logo">Loc<em>’Air</em></span>
+    <button type="button" class="tiroir-x" id="tiroir-x"><span class="sr"><span lang="fr">Fermer le menu</span><span lang="en">Close menu</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <a class="t-lien t-fort" href="#" data-tiroir="reserver"><span lang="fr">Réserver un climatiseur</span><span lang="en">Book an air conditioner</span></a>
+  <a class="t-lien" href="/client"><span lang="fr">Ma réservation</span><span lang="en">My booking</span><small><span lang="fr">Espace client, facture</span><span lang="en">Customer area, invoice</span></small></a>
+  <button type="button" class="t-lien ouvrir-chat" data-tiroir="fermer"><span lang="fr">Aide</span><span lang="en">Help</span><small><span lang="fr">Julie répond tout de suite</span><span lang="en">Julie answers right away</span></small></button>
+  <hr>
+  <button type="button" class="t-lien" data-onglet="partenaire" data-tiroir="fermer"><span lang="fr">Devenir point de retrait</span><span lang="en">Become a pick-up point</span><small><span lang="fr">Pour les commerçants</span><span lang="en">For shops</span></small></button>
+  <a class="t-lien" href="/partenaire"><span lang="fr">Espace partenaire</span><span lang="en">Partner area</span></a>
+  <a class="t-lien" href="/qui-sommes-nous"><span lang="fr">Qui sommes-nous</span><span lang="en">About us</span></a>
+  <div class="tiroir-pied">
+    <div class="nav-langue" role="group" aria-label="Langue / Language"><button type="button" data-langue="fr" aria-pressed="true">Français</button><button type="button" data-langue="en" aria-pressed="false">English</button></div>
+  </div>
+</nav>
 
 <!-- Progression + résumé (cachés sur l'écran d'arrivée et sur « C'est noté ») -->
 <div class="suivi" id="suivi" hidden>
@@ -721,7 +762,7 @@ body.a-cook{padding-bottom:72px}
       </div>
     </div>
 
-    <footer class="pied"><div class="col"><button type="button" class="pied-part" data-onglet="partenaire"><span lang="fr">Vous êtes commerçant&nbsp;? Devenez point de retrait ›</span><span lang="en">Own a shop? Become a pick-up point ›</span></button><br>© Loc’Air · <a href="/qui-sommes-nous"><span lang="fr">Qui sommes-nous</span><span lang="en">About us</span></a> · <a href="/cgv">CGV</a> · <a href="/mentions-legales">Mentions légales</a> · <a href="/confidentialite">Confidentialité</a></div></footer>
+    <footer class="pied"><div class="col">© Loc’Air · <a href="/qui-sommes-nous"><span lang="fr">Qui sommes-nous</span><span lang="en">About us</span></a> · <a href="/cgv">CGV</a> · <a href="/mentions-legales">Mentions légales</a> · <a href="/confidentialite">Confidentialité</a></div></footer>
   </section>
 
   <!-- ══ ONGLET PARTENAIRE (FR / EN) ══════════════════════════════════════
@@ -980,14 +1021,22 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   });
 })();
 
-/* Bouton « Espace » : ouvre / ferme le petit menu (Échap et clic dehors ferment). */
+/* Menu (hamburger) : s'ouvre par la gauche ; Échap, le voile ou un choix le ferment. */
 (function(){
-  var b = document.getElementById('espace-btn'), m = document.getElementById('espace-menu');
-  if(!b || !m) return;
-  function fermer(){ m.hidden = true; b.setAttribute('aria-expanded', 'false'); }
-  b.addEventListener('click', function(e){ e.stopPropagation(); var o = m.hidden; m.hidden = !o; b.setAttribute('aria-expanded', String(o)); if(o) m.querySelector('a').focus(); });
-  document.addEventListener('click', function(e){ if(!m.hidden && !m.contains(e.target)) fermer(); });
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !m.hidden){ fermer(); b.focus(); } });
+  var b = document.getElementById('burger'), t = document.getElementById('tiroir'), v = document.getElementById('voile');
+  if(!b || !t) return;
+  function ouvrir(){ t.hidden = false; v.hidden = false; requestAnimationFrame(function(){ t.classList.add('ouvert'); v.classList.add('ouvert'); }); b.setAttribute('aria-expanded', 'true'); document.body.style.overflow = 'hidden'; document.getElementById('tiroir-x').focus(); }
+  function fermer(focus){ t.classList.remove('ouvert'); v.classList.remove('ouvert'); b.setAttribute('aria-expanded', 'false'); document.body.style.overflow = '';
+    setTimeout(function(){ if(!t.classList.contains('ouvert')){ t.hidden = true; v.hidden = true; } }, 260); if(focus) b.focus(); }
+  b.addEventListener('click', ouvrir);
+  v.addEventListener('click', function(){ fermer(true); });
+  document.getElementById('tiroir-x').addEventListener('click', function(){ fermer(true); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !t.hidden) fermer(true); });
+  t.addEventListener('click', function(e){
+    var a = e.target.closest('[data-tiroir]'); if(!a) return;
+    if(a.dataset.tiroir === 'reserver'){ e.preventDefault(); fermer(false); window.dispatchEvent(new CustomEvent('cc-reserver')); }
+    else fermer(false);
+  });
 })();
 
 /* ── MESURE : consentement, puis événements ─────────────────────────── */
@@ -1665,7 +1714,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       $('stripe-el').innerHTML = '';
       var pe = elements.create('payment', {layout:{type:'tabs', defaultCollapsed:false}, defaultValues:{billingDetails:{name:(etat.client.prenom + ' ' + etat.client.nom), email:etat.client.email, phone:etat.client.tel}}});
       pe.on('ready', function(){ $('payer').disabled = false; });
-      pe.on('loaderror', function(){ $('pay-err').textContent = L('Le paiement ne s’affiche pas. Revenez en arrière et réessayez, ou écrivez à Julie (bulle en bas à droite).', 'Payment won’t load. Go back and try again, or call +33 6 63 79 87 56.'); $('pay-err').hidden = false; });
+      pe.on('loaderror', function(){ $('pay-err').textContent = L('Le paiement ne s’affiche pas. Revenez en arrière et réessayez, ou écrivez à Julie (menu ☰ → Aide).', 'Payment won’t load. Go back and try again, or call +33 6 63 79 87 56.'); $('pay-err').hidden = false; });
       pe.mount('#stripe-el');
     }).catch(function(){
       $('pay-err').textContent = L('Le module de paiement ne se charge pas. Vérifiez votre connexion, puis réessayez.', 'Payment can’t load. Check your connection and try again.'); $('pay-err').hidden = false;
@@ -1844,6 +1893,11 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(c){ var pan = document.getElementById('jw-panel'); if(!pan || !pan.classList.contains('jw-open')) c.click(); }
   });
 
+  window.addEventListener('cc-reserver', function(){
+    if(ecrans.ville.hidden) aller('ville');
+    setTimeout(function(){ var c = $('choix'); if(c) c.scrollIntoView({behavior:doux(), block:'start'}); }, 60);
+  });
+
   /* ── démarrage : points, prix, puis reprise là où le client en était ── */
   function demarrer(){
     var lg = null; try{ lg = localStorage.getItem('locair_cc_langue'); }catch(e){}
@@ -1872,7 +1926,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     else aller('ville');
   }
   fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; })
-    .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (bulle en bas à droite).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (bubble, bottom right).'); $('loc-err').hidden = false; })
+    .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (menu ☰ → Aide).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (bubble, bottom right).'); $('loc-err').hidden = false; })
     .then(demarrer).then(function(){ if(POINTS.length) gcQuandVisible(); });
   majPrixTextes();
   fetch('/api/pricing-config').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
