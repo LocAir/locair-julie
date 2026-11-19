@@ -23,7 +23,7 @@ const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
-const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite, pinClient } = require('./_lib/clickCollect');
+const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite } = require('./_lib/clickCollect');
 const { lireDevis } = require('./_lib/tarifDynamique');
 
 const JOURS_MAX = 90;
@@ -245,8 +245,6 @@ module.exports = async (req, res) => {
       remise: { lien: lienRemise(resa.id, ref), qr: imageQrRemise(resa.id, ref) },
       // Pour ajouter la pièce d'identité juste après le paiement.
       identite: chemins.length ? null : { id: resa.id, code: codeIdentite(resa.id, ref) },
-      // code à 4 chiffres pour le retrait au comptoir (/retrait)
-      pin: pinClient(resa.id, ref),
     });
   } catch (err) {
     console.error('[CC Stripe]', err.message);

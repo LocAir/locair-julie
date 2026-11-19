@@ -1027,7 +1027,7 @@ html[data-style="brut"] .ugc-play{border-radius:0;border:2.5px solid var(--noir)
 .adr-liste li{padding:11px 12px;border-radius:10px;cursor:pointer;font-size:15px;min-height:44px;box-sizing:border-box}
 .adr-liste li[aria-selected="true"],.adr-liste li:hover{background:var(--mist)}
 .m-code{margin:12px 0 0;padding:12px 14px;border-radius:14px;background:var(--mist);font-size:14.5px;line-height:1.6;text-align:center}
-.m-code b{font-size:17px}.m-pin{letter-spacing:.18em}
+.m-code b{font-size:20px}.m-pin{letter-spacing:.06em}.m-code small{color:var(--ink-2);font-size:13px}
 .stock-bas{margin:10px 0 16px;padding:9px 12px;border-radius:12px;background:#FFF4E5;color:#8A4B00;font-size:14px;font-weight:700}
 .t-ok{white-space:nowrap}
 .t-et{color:#F5B301}
@@ -1627,7 +1627,7 @@ html:not([data-style="brut"]) .bdp-in{row-gap:36px}
         <li>
           <b><span lang="fr">Au comptoir, montrez ce QR code et votre pièce d’identité.</span><span lang="en">At the counter, show this QR code and your ID.</span><span lang="es">En el mostrador, enseña este código QR y tu documento de identidad.</span></b>
           <figure class="qr-remise" id="m-qr" hidden><img id="m-qr-img" width="200" height="200" alt="QR code"><figcaption><span lang="fr">Il est aussi dans votre email.</span><span lang="en">It’s also in your email.</span><span lang="es">También está en tu email.</span></figcaption></figure>
-          <p class="m-code" id="m-code" hidden><span lang="fr">Ou, au comptoir, scannez le QR code du commerçant et tapez :</span><span lang="en">Or, at the counter, scan the shop’s QR code and enter:</span><span lang="es">O, en el mostrador, escanea el código QR del comercio y escribe:</span><br><span lang="fr">commande</span><span lang="en">order</span><span lang="es">pedido</span> <b id="m-code-ref"></b> · <span lang="fr">code</span><span lang="en">code</span><span lang="es">código</span> <b id="m-code-pin" class="m-pin"></b></p>
+          <p class="m-code" id="m-code" hidden><span lang="fr">Votre numéro de commande, à garder jusqu’au retour :</span><span lang="en">Your order number, keep it until you return the unit:</span><span lang="es">Tu número de pedido, guárdalo hasta la devolución:</span><br><b id="m-code-ref" class="m-pin"></b><br><small><span lang="fr">Au comptoir, scannez le QR code du commerçant et tapez ce numéro.</span><span lang="en">At the counter, scan the shop’s QR code and enter this number.</span><span lang="es">En el mostrador, escanea el código QR del comercio y escribe este número.</span></small></p>
         </li>
         <li>
           <b><span lang="fr">Vous repartez avec votre climatiseur.</span><span lang="en">You leave with your air conditioner.</span><span lang="es">Te vas con tu aire acondicionado.</span></b>
@@ -1898,7 +1898,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{
       sessionStorage.setItem(CLE_ETAT, JSON.stringify({
         ecran:nom, ville:etat.ville, point:etat.point && etat.point.id, liste:etat.liste.map(function(p){ return p.id; }),
-        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, pin:etat.pin, montant:etat.montant, remise:etat.remise, idtok:etat.idtok
+        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, montant:etat.montant, remise:etat.remise, idtok:etat.idtok
       }));
     }catch(e){}
   }
@@ -2591,7 +2591,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     etat.client = c; sauver('infos');
     var vuCents = montantCents(), cleVue = clePrix();
     /* même prix et mêmes dates qu'un paiement déjà préparé (ex. après « le prix a changé ») : on le reprend */
-    if(etat.paye){ etat.paye = false; etat.secret = etat.ref = etat.pin = etat.idtok = etat.remise = null; }   /* nouvelle réservation après une réservation payée */
+    if(etat.paye){ etat.paye = false; etat.secret = etat.ref = etat.idtok = etat.remise = null; }   /* nouvelle réservation après une réservation payée */
     var reprise = inl.ok && etat.secret && etat.secretCle === cleVue && Math.round((etat.montant || 0) * 100) === vuCents;
     if(!reprise){ etat.secret = null; etat.ref = null; }
     btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = inl.ok ? L('Paiement en cours…', 'Processing payment…') : L('Préparation du paiement…', 'Preparing payment…');
@@ -2606,7 +2606,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     .then(function(r){
       if(r.j.nouveauPrixCents){ etat.prix = {cle:clePrix(), totalCents:r.j.nouveauPrixCents, majore:r.j.majore, normalCents:prix(jours()) * 100, majorationPct:r.j.majorationPct || 0}; remplirRecap(); majResume('infos'); }
       if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
-      etat.secret = r.j.clientSecret; etat.secretCle = cleVue; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; if(r.j.pin) etat.pin = r.j.pin; sauver('infos');
+      etat.secret = r.j.clientSecret; etat.secretCle = cleVue; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
       /* le serveur a un autre prix que celui affiché : on montre le nouveau prix et on laisse le client décider */
       if(inl.ok && r.j.amountCents !== vuCents){
         etat.prix = {cle:cleVue, totalCents:r.j.amountCents, majore:r.j.amountCents > prix(jours()) * 100, remise:r.j.amountCents < prix(jours()) * 100, normalCents:prix(jours()) * 100, majorationPct:0, raisons:[]};
@@ -2731,7 +2731,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('m-prenom').textContent = c.prenom || '';
     $('m-texte').textContent = L('Paiement reçu : votre climatiseur est réservé à votre nom. Confirmation envoyée' + (c.email ? ' à ' + c.email : '') + '.', 'Payment received: your air conditioner is reserved in your name. Confirmation sent' + (c.email ? ' to ' + c.email : '') + '.', 'Pago recibido: tu aire acondicionado está reservado a tu nombre. Confirmación enviada' + (c.email ? ' a ' + c.email : '') + '.');
     if(etat.remise && etat.remise.qr){ $('m-qr-img').src = etat.remise.qr; $('m-qr').hidden = false; }
-    if(etat.pin && etat.ref){ $('m-code-ref').textContent = etat.ref; $('m-code-pin').textContent = etat.pin; $('m-code').hidden = false; } else $('m-code').hidden = true;
+    if(etat.ref){ $('m-code-ref').textContent = etat.ref; $('m-code').hidden = false; } else $('m-code').hidden = true;
     $('m-id').hidden = !etat.idtok; $('m-id-ok').hidden = true;
     /* étape 1 : quand et où aller, en clair */
     var o = p.ouverture || [9, 19], hh = function(x){ return langue() === 'en' ? (x > 12 ? (x - 12) + 'pm' : x + (x === 12 ? 'pm' : 'am')) : langue() === 'es' ? x + ':00' : x + 'h'; };
@@ -2753,7 +2753,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{ sessionStorage.removeItem(CLE_ETAT); }catch(e){}
     /* gardé 24 h : si la page se recharge (souvent quand Android ouvre l'appareil photo
        pour la pièce d'identité), le client retrouve son QR code et l'envoi de la pièce */
-    try{ localStorage.setItem('locair_cc_merci', JSON.stringify({t:Date.now(), point:p.id, debut:etat.debut, fin:etat.fin, client:{prenom:c.prenom || '', email:c.email || ''}, ref:etat.ref, pin:etat.pin, montant:etat.montant, remise:etat.remise, idtok:etat.idtok})); }catch(e){}
+    try{ localStorage.setItem('locair_cc_merci', JSON.stringify({t:Date.now(), point:p.id, debut:etat.debut, fin:etat.fin, client:{prenom:c.prenom || '', email:c.email || ''}, ref:etat.ref, montant:etat.montant, remise:etat.remise, idtok:etat.idtok})); }catch(e){}
   }
 
   /* Pièce d'identité APRÈS le paiement (écran « C'est réservé ») */
@@ -3032,7 +3032,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var sv = relire(), q = new URLSearchParams(location.search);
     if(sv){
       etat.ville = sv.ville; etat.point = parId(sv.point); etat.liste = (sv.liste || []).map(parId).filter(Boolean);
-      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.pin = sv.pin || null; etat.montant = sv.montant; etat.remise = sv.remise || null; etat.idtok = sv.idtok || null;
+      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.montant = sv.montant; etat.remise = sv.remise || null; etat.idtok = sv.idtok || null;
     }
     /* retour d'une banque (3-D Secure) : Stripe ajoute redirect_status */
     if(q.get('retour') === 'paiement' && sv && etat.point && etat.debut && etat.fin){
@@ -3045,7 +3045,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(h === 'merci' && !sv){
       var mr = null; try{ mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); }catch(e){}
       if(mr && Date.now() - mr.t < 864e5 && parId(mr.point)){
-        etat.point = parId(mr.point); etat.ville = etat.point.ville; etat.debut = mr.debut; etat.fin = mr.fin; etat.client = mr.client; etat.ref = mr.ref; etat.pin = mr.pin || null; etat.montant = mr.montant; etat.remise = mr.remise; etat.idtok = mr.idtok; etat.paye = true;
+        etat.point = parId(mr.point); etat.ville = etat.point.ville; etat.debut = mr.debut; etat.fin = mr.fin; etat.client = mr.client; etat.ref = mr.ref; etat.montant = mr.montant; etat.remise = mr.remise; etat.idtok = mr.idtok; etat.paye = true;
         merci(); return;
       }
     }

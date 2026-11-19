@@ -1,20 +1,21 @@
 // Retrait et retour Click & Collect « au comptoir ».
 // Un QR code est collé chez le commerçant ; il ouvre /retrait?p=<point>.
-// 1. Le client tape son numéro de commande + son code à 4 chiffres (reçus
-//    dans l'email et le SMS de confirmation) : il voit sa réservation.
+// 1. Le client tape son numéro de commande (CC-XXXXXXXX, reçu dans l'email et
+//    le SMS de confirmation). C'est le SEUL numéro du séjour : il reste valable
+//    après une prolongation, jusqu'au retour. Il est long et tiré au hasard
+//    (32^8 possibilités) : impossible à deviner, et les essais sont limités.
 // 2. Il tend son téléphone au commerçant, qui vérifie la pièce d'identité
 //    originale et confirme avec SON code partenaire (le même que pour son
 //    espace partenaire). Sans ce code, rien n'est enregistré : un QR code
 //    pris en photo ne permet pas de déclarer une remise ou un retour de chez soi.
 //
-// POST { point, ref, pin, action: 'voir'|'valider'|'rendre', code_commercant }
+// POST { point, ref, action: 'voir'|'valider'|'rendre', code_commercant }
 // Les règles (dates, statut, colonnes) sont celles de _lib/remiseCC.js,
 // communes avec l'espace partenaire.
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual } = require('./_lib/auth');
 const { verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
-const { pinClient } = require('./_lib/clickCollect');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { agir } = require('./_lib/remiseCC');
 
@@ -29,10 +30,9 @@ module.exports = async (req, res) => {
   const lang = b.lang === 'en' || b.lang === 'es' ? b.lang : 'fr';
   const point = getPointRetrait(String(b.point || '').slice(0, 60));
   const ref = String(b.ref || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 40);
-  const pin = String(b.pin || '').replace(/\D/g, '').slice(0, 4);
   const action = ['voir', 'valider', 'rendre'].includes(b.action) ? b.action : 'voir';
   if (!point) return res.status(404).json({ error: T(lang, 'Ce QR code ne correspond à aucun point de retrait.', 'This QR code doesn’t match any pick-up point.', 'Este código QR no corresponde a ningún punto de recogida.') });
-  if (!ref || pin.length !== 4) return res.status(400).json({ error: T(lang, 'Indiquez votre numéro de commande et votre code à 4 chiffres.', 'Enter your order number and your 4-digit code.', 'Indica tu número de pedido y tu código de 4 cifras.') });
+  if (ref.length < 6) return res.status(400).json({ error: T(lang, 'Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.') });
 
   const supabase = getSupabase();
   const ip = getClientIp(req);
@@ -43,10 +43,15 @@ module.exports = async (req, res) => {
     }
     const { data: lignes } = await supabase.from('reservations').select('*')
       .eq('ref', ref).eq('source_channel', 'click_collect').order('id', { ascending: true }).limit(1);
-    const r = lignes && lignes[0];
-    if (!r || !safeEqual(pin, pinClient(r.id, r.ref))) {
+    let r = lignes && lignes[0];
+    // Numéro d'une prolongation tapé par erreur : on revient à la location d'origine.
+    if (r && r.reservation_origine_id) {
+      const { data: orig } = await supabase.from('reservations').select('*').eq('id', r.reservation_origine_id).maybeSingle();
+      if (orig) r = orig;
+    }
+    if (!r) {
       await recordFailedAttempt(supabase, cleClient);
-      return res.status(404).json({ error: T(lang, 'Numéro de commande ou code incorrect.', 'Wrong order number or code.', 'Número de pedido o código incorrecto.') });
+      return res.status(404).json({ error: T(lang, 'Numéro de commande introuvable. Vérifiez-le dans votre email de confirmation.', 'Order number not found. Check it in your confirmation email.', 'Número de pedido no encontrado. Revísalo en tu email de confirmación.') });
     }
     if ((r.point_retrait_id || '') !== point.id) {
       const prevu = getPointRetrait(r.point_retrait_id || '');
