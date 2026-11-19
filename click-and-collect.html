@@ -1057,6 +1057,16 @@ html[data-style="brut"] .tarifs.epure .tf-paliers b{font-family:var(--mono)}
 .tarifs.epure .tf-total{font-variant-numeric:tabular-nums}
 html[data-style="brut"] .tf-reperes,html[data-style="brut"] .tf-coches li{font-family:var(--mono);text-transform:uppercase;font-size:11px}
 html[data-style="brut"] .tf-coches li::before{border-radius:0;background-color:#fff;border:2px solid var(--noir)}
+
+/* ── 3 AVIS VIDÉO : alignés sur ordinateur, à faire glisser sur téléphone ── */
+.ugc-rail{grid-auto-columns:78%;scroll-padding-inline:16px}
+.ugc-play{top:50%;left:50%;right:auto;width:64px;height:64px;transform:translate(-50%,-50%);background:rgba(255,255,255,.92);box-shadow:0 10px 24px -8px rgba(0,0,0,.5);transition:transform .2s}
+.ugc-play svg{width:24px;height:24px;margin-left:4px}
+.ugc-carte:hover .ugc-play{transform:translate(-50%,-50%) scale(1.08)}
+.ugc-carte.lit .ugc-play{opacity:0}
+@media(min-width:760px){.ugc-rail{grid-auto-flow:row;grid-template-columns:repeat(3,1fr);grid-auto-columns:auto;overflow:visible}}
+@media(min-width:1000px){body [data-ecran="ville"] .ugc>.col{max-width:1000px}}
+html[data-style="brut"] .ugc-play{border-radius:0;border:2.5px solid var(--noir)}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -1269,7 +1279,7 @@ html[data-style="brut"] .tf-coches li::before{border-radius:0;background-color:#
          Mode d'emploi : ugc/LISEZMOI.md. Aperçu : ?ugc=demo ══ -->
     <section class="ugc" id="ugc" aria-labelledby="t-ugc" hidden><div class="col">
       <div class="ugc-tete">
-        <h2 id="t-ugc"><span lang="fr">Ils l’ont testé</span><span lang="en">They tried it</span></h2>
+        <h2 id="t-ugc"><span lang="fr">Ils l’ont testé, ils en parlent</span><span lang="en">They tried it, they say it</span></h2>
         <p><span lang="fr">De vrais clients, filmés avec leur téléphone.</span><span lang="en">Real customers, filmed on their phones.</span></p>
       </div>
       <div class="ugc-rail" id="ugc-rail"></div>
@@ -2546,8 +2556,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var liste = UGC.length ? UGC : (demo ? [
       {image:'/cc-ville-nice.webp', prenom:'Exemple', ville:'Nice', texte:{fr:'Texte du client ici', en:'Customer quote here'}},
       {image:'/cc-ville-antibes.webp', prenom:'Exemple', ville:'Antibes', texte:{fr:'Texte du client ici', en:'Customer quote here'}},
-      {image:'/cc-ville-cannes.webp', prenom:'Exemple', ville:'Cannes', texte:{fr:'Texte du client ici', en:'Customer quote here'}},
-      {image:'/cc-ville-menton.webp', prenom:'Exemple', ville:'Menton', texte:{fr:'Texte du client ici', en:'Customer quote here'}}
+      {image:'/cc-ville-cannes.webp', prenom:'Exemple', ville:'Cannes', texte:{fr:'Texte du client ici', en:'Customer quote here'}}
     ] : []);
     if(!liste.length) return;
     var rail = $('ugc-rail');
@@ -2565,8 +2574,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       var io = new IntersectionObserver(function(es){
         es.forEach(function(e){
           var v = e.target;
-          if(e.isIntersecting){ if(!v.src && v.dataset.src) v.src = v.dataset.src; if(!matchMedia('(prefers-reduced-motion: reduce)').matches) v.play().catch(function(){}); }
-          else v.pause();
+          if(e.isIntersecting){ if(!v.src && v.dataset.src) v.src = v.dataset.src; if(!matchMedia('(prefers-reduced-motion: reduce)').matches) v.play().then(function(){ v.parentNode.classList.add('lit'); }).catch(function(){}); }
+          else { v.pause(); v.parentNode.classList.remove('lit'); }
         });
       }, {threshold:.6});
       [].forEach.call(rail.querySelectorAll('video'), function(v){ io.observe(v); });
