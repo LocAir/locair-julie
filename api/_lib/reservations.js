@@ -315,8 +315,25 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     if (lockErr) return; // verrou déjà pris par un autre processus
   }
 
+  // Click & Collect : le client rapporte lui-même l'appareil au point de
+  // retrait — jamais « notre technicien passera le récupérer ».
+  let cc = null;
+  if (reservationId) {
+    const { data: r } = await supabase.from('reservations').select('*').eq('id', reservationId).maybeSingle();
+    if (r && r.source_channel === 'click_collect') {
+      const { getPointRetrait } = require('./pointsRetrait');
+      const pt = getPointRetrait(r.point_retrait_id || '');
+      const dRetour = r.date_fin ? new Date(r.date_fin + 'T12:00:00Z').toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '—';
+      cc = { nom: pt ? pt.nom : '', adresse: pt ? pt.adresse : String(r.adresse || '').replace(/^CLICK & COLLECT — /, ''), retour: dRetour };
+    }
+  }
+
   const sig = await getSignature(supabase);
-  const html = withSignature(tplProlongConfirmation({
+  const escCC = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = cc ? withSignature(lang === 'en'
+    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Extension confirmed, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} extra day(s)</b> · paid ${escCC(amount)}.</p><p>Bring the air conditioner back to <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) on <b>${escCC(cc.retour)}</b>, during opening hours.</p><p>Your booking: <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`
+    : `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Prolongation confirmée, ${escCC(prenom)} !</h2><p><b>${Number(jours) || 1} jour(s) en plus</b> · payé ${escCC(amount)}.</p><p>Rapportez le climatiseur au point <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) le <b>${escCC(cc.retour)}</b>, aux horaires d’ouverture.</p><p>Votre réservation : <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`, sig)
+  : withSignature(tplProlongConfirmation({
     prenom: prenom || '', nom: nom || '', jours: jours || 1,
     date_recuperation: dateRecuperation || '', creneau: creneau || '', amount, lang,
     ref_origine: refOrigine || '',
@@ -354,7 +371,11 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
       .insert({ reservation_id: reservationId, scenario: 'sms_prolongation', sent_at: new Date().toISOString() });
     if (!smsLockErr) {
       let smsProlongContent;
-      if (lang === 'en') {
+      if (cc) {
+        smsProlongContent = lang === 'en'
+          ? `Loc'Air - Your ${jNum}-day extension is confirmed. Bring the unit back to ${cc.nom} on ${cc.retour}, during opening hours.`
+          : `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Rapportez l'appareil au point ${cc.nom} le ${cc.retour}, aux horaires d'ouverture.`;
+      } else if (lang === 'en') {
         smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${dateRecuperation || '—'}${creneau ? ', time slot ' + creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
       } else if (lang === 'zh') {
         smsProlongContent = `Loc'Air - 您延长${jNum}天的续租已确认。取回日期：${dateRecuperation || '—'}${creneau ? '，时间段：' + creneau : ''}。技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
