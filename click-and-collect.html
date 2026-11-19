@@ -2203,6 +2203,14 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       .then(function(j){ if(!j || clePrix() !== cle) return; j.cle = cle; etat.prix = j; if(!ecrans.dates.hidden) majSelection(); })
       .catch(function(){});
   }
+  /* pourquoi le prix monte (tarification dynamique) — en clair pour le client */
+  function raisonsTexte(r){
+    r = r || []; var t = [];
+    if(r.indexOf('stock') >= 0) t.push(L('peu d’appareils restants', 'few units left'));
+    if(r.indexOf('chaleur') >= 0) t.push(L('chaleur annoncée', 'heat forecast'));
+    if(r.indexOf('derniere_minute') >= 0) t.push(L('dernière minute', 'last minute'));
+    return t.length ? ' · ' + t.join(', ') : '';
+  }
   function dureeNom(j, fr){ return langue() === 'en' ? ({7:'1 week', 14:'2 weeks', 30:'1 month'}[j] || j + ' days') : fr; }
   /* ── DATES EN UN GESTE : « Aujourd'hui » / « Demain » + la durée choisie
      dans les tarifs (7 jours sinon). Un toucher = dates posées + écran
@@ -2256,7 +2264,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       complet = !!(pr && pr.complet);
       if(complet) t.innerHTML = L('<b>Point complet à ces dates</b>Changez de dates ou de point de retrait', '<b>Point fully booked on these dates</b>Change dates or pick-up point');
       else t.innerHTML = '<b>' + n + L(' jours · ', ' days · ') + euros(tot) + (pr && pr.majore ? ' <s class="prix-normal">' + euros(pr.normalCents / 100) + '</s>' : '') + '</b>' +
-        (pr && pr.majore ? '<span class="forte">' + L('Forte demande à ces dates : +', 'High demand on these dates: +') + pr.majorationPct + ' %</span>' : esc(court(etat.debut) + ' → ' + court(etat.fin)) + L(' · soit ', ' · ') + euros(Math.round(tot / n * 100) / 100) + L('/jour', '/day'));
+        (pr && pr.majore ? '<span class="forte">' + L('Tarif dynamique : +', 'Dynamic pricing: +') + pr.majorationPct + ' %' + raisonsTexte(pr.raisons) + L(' · prix garanti 30 min', ' · price held 30 min') + '</span>' : esc(court(etat.debut) + ' → ' + court(etat.fin)) + L(' · soit ', ' · ') + euros(Math.round(tot / n * 100) / 100) + L('/jour', '/day'));
     }
     else t.innerHTML = '<b>' + (etat.debut ? L('Choisissez le retour', 'Choose your return') : L('Choisissez vos dates', 'Choose your dates')) + '</b>' + L('7 jours minimum · sans caution', '7 days minimum · no deposit');
     $('dates-ok').disabled = !ok || complet; $('effacer').hidden = !etat.debut;
@@ -2301,6 +2309,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('r-point').textContent = p.nom + (p.exemple ? L(' (exemple)', ' (example)') : '');
     $('r-date').textContent = court(etat.debut) + ' → ' + court(etat.fin) + ' · ' + n + L(' j', ' d');
     $('r-prix').textContent = euros(total());
+    var prM = (etat.prix && etat.prix.cle === clePrix() && etat.prix.majore) ? etat.prix : null;
+    $('r-prix').title = prM ? L('Tarif dynamique +', 'Dynamic pricing +') + prM.majorationPct + ' %' + raisonsTexte(prM.raisons) + L(' · prix garanti 30 min', ' · price held for 30 min') : '';
     $('wa').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(messageWA());
     $('envoyer').textContent = p.exemple ? L('Réserver par WhatsApp', 'Book on WhatsApp') : (inl.ok ? L('Payer ', 'Pay ') : L('Continuer vers le paiement · ', 'Continue to payment · ')) + euros(total());
     monterInline();
@@ -2463,7 +2473,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     chargerStripe().catch(function(){});
     (inl.ok ? inl.el.submit().then(function(r){ if(r.error){ var x = new Error(r.error.message || ''); x.carte = true; throw x; } }) : Promise.resolve()).then(function(){
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), lang:langue(),
+        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
         cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, _ref:etat.ref || '', campagne:campagne
       })});
     }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); })

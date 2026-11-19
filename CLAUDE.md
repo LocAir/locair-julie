@@ -158,6 +158,25 @@ Toujours partir du problème, pas de la machine.
   jusqu'à environ 15 m² par appareil.
 - PortaSplit : jusqu'à environ 42 m² par appareil.
 
+## Tarification dynamique (Click & Collect)
+
+Réglages et barrières dans `api/_lib/tarifDynamique.js` (seul endroit où
+changer un chiffre). Inspirée de Beyond / PriceLabs.
+
+- **3 signaux** : stock déjà réservé dans la ville (règle d'origine du
+  propriétaire : 80 % → +25 %), chaleur prévue sur la période (7 jours,
+  Open-Meteo), dernière minute (retrait aujourd'hui/demain, seulement si
+  la demande est déjà là).
+- **Barrières, jamais franchies** : jamais sous le barème ; jamais plus de
+  +25 % au total ; même prix pour tout le monde au même moment (aucune
+  donnée personnelle) ; un signal en panne compte pour rien (prix plus bas,
+  jamais plus haut) ; prix affiché garanti 30 min (devis signé) ;
+  prolongations jamais majorées.
+- **Interrupteur** : variable Vercel `TARIF_DYNAMIQUE=off` → barème seul.
+- Toujours dire au client pourquoi le prix monte (« chaleur annoncée »,
+  « peu d'appareils restants »), et ne jamais changer les seuils sans
+  l'accord du propriétaire.
+
 ## Outils de prospection (« cerveau + bras »)
 
 L'agent décide (le cerveau) ; des outils branchés agissent pour lui (les
