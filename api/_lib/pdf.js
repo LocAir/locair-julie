@@ -463,7 +463,11 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
     const tarifMoy = totalUn / jours;
     const locCents = forfait ? forfait.prix_cents : Math.round(totalUn * qty * 100);
     const horsZone = !!reservation.hors_zone;
-    const livCents = (horsZone ? 120 : 60) * 100;
+    // Click & Collect : le client vient chercher l'appareil au point de
+    // retrait — aucune livraison à facturer (sinon la facture afficherait
+    // 60 € de livraison puis une « remise » de −60 € : faux et confus).
+    const isCC     = reservation.source_channel === 'click_collect';
+    const livCents = isCC ? 0 : (horsZone ? 120 : 60) * 100;
     const isTech    = (reservation.installation || '').startsWith('Technicien');
     const instCents = isTech ? 80 * 100 : 0;
     const isExpress = !!reservation.express;
@@ -489,7 +493,11 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
     // l'admin -- voir admin/index.html) plutot que de nommer une ville : cette
     // facture est generee pour n'importe quelle ville active, pas seulement
     // Nice (voir api/_lib/city.js, resolveCityByAddress).
-    drawInvoiceItem(doc, {
+    drawInvoiceItem(doc, isCC ? {
+      label: 'Click & Collect — retrait et retour au point de retrait',
+      detailLines: [String(reservation.adresse || '').replace(/^CLICK & COLLECT — /, '') || '—'],
+      amount: '0,00 €',
+    } : {
       label: `Livraison & récupération — zone : ${horsZone ? 'hors zone' : 'zone standard'}`,
       amount: eur(livCents),
     });
@@ -508,7 +516,9 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
 
     if (Math.abs(ecart) >= 1) {
       drawInvoiceItem(doc, {
-        label:  ecart < 0 ? 'Remise commerciale' : 'Ajustement',
+        // Click & Collect à une date très demandée : prix majoré (voir
+        // _lib/clickCollect.js) — on le dit clairement.
+        label:  ecart < 0 ? 'Remise commerciale' : (isCC ? 'Majoration forte demande (dates très demandées)' : 'Ajustement'),
         amount: (ecart < 0 ? '− ' : '+ ') + eur(Math.abs(ecart)),
       });
     }
