@@ -26,6 +26,9 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       totalCents: p.totalCents, normalCents: p.normalCents, majore: p.majore,
       majorationPct: p.majorationPct, complet: p.libresAuPoint < 1,
+      // stock bas affiché au client (« Plus que 2 appareils ») : seulement 1 ou 2,
+      // jamais le stock exact au-delà — c'est un vrai chiffre, calculé à l'instant.
+      libres: p.libresAuPoint >= 1 && p.libresAuPoint <= 2 ? p.libresAuPoint : null,
       raisons: p.raisons || [], remise: !!p.remise, variationPct: p.variationPct || 0,
       // prix garanti 30 min (voir _lib/tarifDynamique.js)
       devis: signerDevis({ point: point.id, debut, jours, cents: p.totalCents }),
