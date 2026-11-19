@@ -26,7 +26,7 @@ const PRODUITS = `### Climatiseur mobile
 ### Click & Collect (climatiseur mobile à retirer soi-même)
 - Page : https://locair.fr/click-and-collect
 - Le client réserve et paie en ligne, à toute heure, puis récupère son climatiseur mobile chez un commerçant partenaire près de chez lui (point de retrait), aux horaires de ce point, et le rapporte au même point à la fin.
-- Même prix par jour que le climatiseur mobile (dès 12 €/j, dégressif), 7 jours minimum, aucune caution. Pas de livraison : le client vient chercher l'appareil au point (ne pas présenter ça comme « livraison gratuite »). Loc'Air pratique une tarification dynamique : aux dates très demandées, le prix peut augmenter (jamais en dessous du barème). Le prix exact s'affiche toujours avant de payer.
+- Prix Click & Collect (différent de la livraison) : 150 € les 7 jours en temps normal ; les durées plus longues suivent la même proportion (le prix exact de chaque durée s'affiche sur la page). Tarification dynamique : de 139 € à 189 € les 7 jours selon la demande (chaleur, stock), jamais en dehors. 7 jours minimum, aucune caution. Pas de livraison : le client vient chercher l'appareil au point (ne pas présenter ça comme « livraison gratuite »).
 - Le kit de fenêtre n'est PAS fourni en Click & Collect (seulement l'appareil) : ne jamais le promettre.
 - Pièce d'identité (carte recto-verso ou passeport) : ajoutée juste après le paiement, et vérifiée au comptoir avec le QR code de retrait reçu par email.
 - Les points de retrait sont en cours d'ouverture : si le paiement en ligne n'est pas encore ouvert pour un point (marqué « Exemple »), le client peut réserver par WhatsApp.

@@ -15,9 +15,11 @@
 // Les effets se multiplient, puis passent par les barrières.
 //
 // ── Les barrières de sécurité ─────────────────────────────────────────────
-//  • Plancher : jamais sous le barème (pricing_config) — personne ne paie
-//    moins que le prix public.
-//  • Plafond  : jamais plus de +25 % au total, quoi qu'il arrive.
+//  • Plancher : jamais moins de 139 € les 7 jours (et la même proportion
+//    pour les autres durées).
+//  • Plafond  : jamais plus de 189 € les 7 jours, quoi qu'il arrive.
+//  • Baisse   : seulement en période calme (temps frais prévu ET peu de
+//    réservations), jamais par défaut.
 //  • Même prix pour tout le monde au même moment : aucun signal lié à la
 //    personne (appareil, adresse IP, historique, langue). Interdit de
 //    personnaliser le prix.
@@ -38,11 +40,19 @@
 const crypto = require('crypto');
 const { maxPeriode } = require('./meteo');
 
+// Prix Click & Collect décidés par le propriétaire (19/11/2026) : 150 € les
+// 7 jours en temps normal, jamais moins de 139 €, jamais plus de 189 €.
+// Les autres durées suivent la même proportion (barème dégressif × 150/prix
+// de 7 jours au barème). La livraison (/reserver) n'est pas concernée.
+const BASE_SEMAINE_EUR = 150, MIN_SEMAINE_EUR = 139, MAX_SEMAINE_EUR = 189;
 const REGLES = {
-  plancher: 1.00,
-  plafond: 1.25,
-  // [part du stock déjà réservé, effet]
-  stock: [[0.80, 1.25], [0.70, 1.12], [0.60, 1.06], [0.50, 1.03]],
+  baseSemaineEur: BASE_SEMAINE_EUR, minSemaineEur: MIN_SEMAINE_EUR, maxSemaineEur: MAX_SEMAINE_EUR,
+  plancher: MIN_SEMAINE_EUR / BASE_SEMAINE_EUR,   // ≈ 0,927 (−7 %)
+  plafond: MAX_SEMAINE_EUR / BASE_SEMAINE_EUR,    // 1,26 (+26 %)
+  // [part du stock déjà réservé, effet] — haut de courbe = plafond
+  stock: [[0.80, MAX_SEMAINE_EUR / BASE_SEMAINE_EUR], [0.70, 1.12], [0.60, 1.06], [0.50, 1.03]],
+  // période calme : temps frais prévu ET peu de réservations → plancher
+  calme: { temperatureMax: 24, occupationMax: 0.30 },
   // [température max prévue (°C), effet]
   chaleur: [[33, 1.12], [31, 1.08], [29, 1.05], [27, 1.02]],
   derniereMinute: { joursMax: 1, effet: 1.05 },
@@ -56,7 +66,7 @@ function joursEntre(a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Da
 // ctx : { normalCents, tauxOccupation, debut, fin, aujourdhui, point:{lat,lng} }
 // → { totalCents, multiplicateur, majore, majorationPct, raisons:[...], signaux:{...} }
 async function appliquer(ctx) {
-  const signaux = { stock: 1, chaleur: 1, derniereMinute: 1, temperature: null, occupation: Math.round((ctx.tauxOccupation || 0) * 100) / 100 };
+  const signaux = { stock: 1, chaleur: 1, derniereMinute: 1, calme: 1, temperature: null, occupation: Math.round((ctx.tauxOccupation || 0) * 100) / 100 };
   if (!actif()) return finir(ctx.normalCents, 1, signaux, ['desactive']);
 
   signaux.stock = palier(REGLES.stock, ctx.tauxOccupation || 0);
@@ -64,24 +74,40 @@ async function appliquer(ctx) {
     const t = ctx.point ? await maxPeriode(ctx.point.lat, ctx.point.lng, ctx.debut, ctx.fin) : null;
     if (Number.isFinite(t)) { signaux.temperature = t; signaux.chaleur = palier(REGLES.chaleur, t); }
   } catch (e) { /* météo indisponible : signal neutre */ }
+  if (Number.isFinite(signaux.temperature) && signaux.temperature < REGLES.calme.temperatureMax && (ctx.tauxOccupation || 0) < REGLES.calme.occupationMax) signaux.calme = REGLES.plancher;
   const delai = joursEntre(ctx.aujourdhui, ctx.debut);
   if (delai <= REGLES.derniereMinute.joursMax && (signaux.stock > 1 || signaux.chaleur > 1)) signaux.derniereMinute = REGLES.derniereMinute.effet;
 
-  const brut = signaux.stock * signaux.chaleur * signaux.derniereMinute;
+  const brut = signaux.stock * signaux.chaleur * signaux.derniereMinute * signaux.calme;
   const raisons = [];
   if (signaux.stock > 1) raisons.push('stock');
   if (signaux.chaleur > 1) raisons.push('chaleur');
   if (signaux.derniereMinute > 1) raisons.push('derniere_minute');
+  if (signaux.calme < 1) raisons.push('calme');
   return finir(ctx.normalCents, brut, signaux, raisons);
 }
 
+function bornesCents(normalCents) {
+  return { min: Math.round(normalCents * REGLES.plancher / 100) * 100, max: Math.round(normalCents * REGLES.plafond / 100) * 100 };
+}
 function finir(normalCents, brut, signaux, raisons) {
   const m = Math.min(REGLES.plafond, Math.max(REGLES.plancher, brut));
+  const b = bornesCents(normalCents);
   let total = Math.round(normalCents * m / 100) * 100;            // arrondi à l'euro
-  total = Math.min(Math.round(normalCents * REGLES.plafond), Math.max(normalCents, total));
+  total = Math.min(b.max, Math.max(b.min, total));
   const pct = Math.round((total / normalCents - 1) * 100);
-  return { totalCents: total, multiplicateur: Math.round(m * 1000) / 1000, majore: total > normalCents, majorationPct: Math.max(0, pct), raisons: total > normalCents ? raisons : [], signaux };
+  return { totalCents: total, plancherCents: b.min, plafondCents: b.max, multiplicateur: Math.round(m * 1000) / 1000,
+    majore: total > normalCents, remise: total < normalCents, majorationPct: Math.max(0, pct), variationPct: pct,
+    raisons: total !== normalCents ? raisons : [], signaux };
 }
+// Prix de base Click & Collect (avant tarif dynamique), en centimes, arrondi
+// à l'euro : barème dégressif × (150 € / prix de 7 jours au barème).
+function baseCents(jours, calcTieredPrice, pricing) {
+  const sept = calcTieredPrice(7, pricing);
+  const f = sept > 0 ? REGLES.baseSemaineEur / sept : 1;
+  return Math.round(calcTieredPrice(jours, pricing) * f) * 100;
+}
+function facteurCC(calcTieredPrice, pricing) { const sept = calcTieredPrice(7, pricing); return sept > 0 ? REGLES.baseSemaineEur / sept : 1; }
 
 // ── Devis signé : le prix affiché reste garanti 30 minutes ───────────────
 function secret() { return process.env.TRANSPORTEUR_SECRET || ''; }
@@ -104,4 +130,4 @@ function lireDevis(devis, { point, debut, jours }) {
   } catch (e) { return null; }
 }
 
-module.exports = { appliquer, signerDevis, lireDevis, REGLES };
+module.exports = { appliquer, signerDevis, lireDevis, baseCents, facteurCC, bornesCents, REGLES };

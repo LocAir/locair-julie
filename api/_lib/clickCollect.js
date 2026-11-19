@@ -6,11 +6,11 @@
 // Modèle « stock figé » (plan opérationnel du propriétaire) : chaque point a
 // un nombre fixe d'appareils pour la saison. Le prix suit la tarification
 // dynamique de _lib/tarifDynamique.js (stock de la ville, chaleur prévue,
-// dernière minute), toujours entre le barème et +25 %.
+// dernière minute, période calme), toujours entre 139 € et 189 € les 7 jours.
 const crypto = require('crypto');
 const { calcTieredPrice } = require('./pricing');
 const { pointsDuCluster } = require('./pointsRetrait');
-const { appliquer } = require('./tarifDynamique');
+const { appliquer, baseCents } = require('./tarifDynamique');
 const { todayParis } = require('./dates');
 
 const SEUIL_PRIX_FORT = 0.8;      // 80 % d'occupation
@@ -57,9 +57,10 @@ async function prixClickCollect(supabase, point, debut, jours, pricing) {
   const tauxOccupation = capacite ? pris / capacite : 0;
   const libresAuPoint = Math.max(0, (point.stock || 0) - (occ[point.id] || 0));
 
-  const normalCents = Math.round(calcTieredPrice(jours, pricing) * 100);
+  // prix de base Click & Collect : 150 € les 7 jours (voir _lib/tarifDynamique.js)
+  const normalCents = baseCents(jours, calcTieredPrice, pricing);
   const t = await appliquer({ normalCents, tauxOccupation, debut, fin, aujourdhui: todayParis(), point });
-  return { fin, normalCents, totalCents: t.totalCents, majore: t.majore, majorationPct: t.majorationPct, raisons: t.raisons, signaux: t.signaux, multiplicateur: t.multiplicateur, libresAuPoint, tauxOccupation };
+  return { fin, normalCents, totalCents: t.totalCents, plancherCents: t.plancherCents, plafondCents: t.plafondCents, remise: t.remise, variationPct: t.variationPct, majore: t.majore, majorationPct: t.majorationPct, raisons: t.raisons, signaux: t.signaux, multiplicateur: t.multiplicateur, libresAuPoint, tauxOccupation };
 }
 
 function addDaysISO(iso, n) {

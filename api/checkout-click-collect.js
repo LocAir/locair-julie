@@ -96,7 +96,7 @@ module.exports = async (req, res) => {
   // il paie le prix plus bas. Toujours entre le barème et le plafond.
   const garanti = lireDevis(data.devis, { point: point.id, debut: dateDebut, jours: duree });
   let amountCents = prix.totalCents;
-  if (garanti) amountCents = Math.max(prix.normalCents, Math.min(prix.totalCents, garanti));
+  if (garanti) amountCents = Math.max(prix.plancherCents || prix.normalCents, Math.min(prix.totalCents, garanti));
   if (!amountCents || amountCents < 5000) return res.status(400).json({ error: 'Montant invalide.' });
   // Sans devis valable : le prix vu par le client ne doit jamais changer sans qu'il le sache.
   const vu = parseInt(data.prix_vu_cents, 10);
@@ -167,7 +167,7 @@ module.exports = async (req, res) => {
         campagne: clip(data.campagne, 400),
         piece_identite: pi.type || 'apres_paiement',
         lang: data.lang === 'en' ? 'en' : 'fr',
-        prix_fort: amountCents > prix.normalCents ? `oui (+${Math.round((amountCents / prix.normalCents - 1) * 100)} %)` : 'non',
+        prix_fort: amountCents !== prix.normalCents ? `${amountCents > prix.normalCents ? '+' : ''}${Math.round((amountCents / prix.normalCents - 1) * 100)} % (base ${prix.normalCents / 100} €)` : 'non',
         tarif_dynamique: JSON.stringify({ s: prix.signaux, m: prix.multiplicateur, r: prix.raisons, devis: !!garanti }).slice(0, 480),
       },
     }, { idempotencyKey: `cc-${ref}-${amountCents}-${dateDebut}-${point.id}` });
