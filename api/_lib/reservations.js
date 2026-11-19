@@ -786,6 +786,17 @@ async function confirmReservation(supabase, resa) {
     }
   }
 
+  // Click & Collect (réservation ou prolongation) : le client vient chercher
+  // l'appareil au point de retrait et le rapporte au même point. Donc :
+  //   - aucune mission livraison/récupération, aucun transporteur prévenu ;
+  //   - aucun appareil pris dans la flotte de livraison (assign_appareils) :
+  //     le stock d'un point est un stock figé, compté à part par
+  //     _lib/clickCollect.js (occupationParPoint) ;
+  //   - pas d'alerte « sous-effectif » ni « stock épuisé » de la ville, qui
+  //     concernent uniquement la flotte de livraison.
+  // On s'arrête ici, juste après le passage en « confirmée ».
+  if (resa.source_channel === 'click_collect') return resa;
+
   await assignAppareils(supabase, resa, staleOriginalId);
 
   // Validation automatique immédiate des appareils assignés — supprime l'étape

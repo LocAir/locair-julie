@@ -573,33 +573,55 @@ async function ouvrirRemise(code){
     const d = await r.json();
     if(!r.ok){ if(r.status===401){ logout(); return; } throw new Error(d.error || 'Erreur'); }
     const v = d.reservation;
-    carte.innerHTML = `
-      <div class="card-title">Remise Click &amp; Collect</div>
-      <div class="card-sub">Réservation <b>${escHtml(v.ref||'')}</b></div>
-      <div style="font-size:22px;font-weight:800;margin:10px 0 4px">${escHtml(v.prenom||'')} ${escHtml(v.nom||'')}</div>
-      <div class="card-sub">Retrait ${escHtml(dateFr(v.date_debut))} · retour ${escHtml(dateFr(v.date_fin))}</div>
-      <div class="card-sub">${escHtml(v.point||'')}</div>
-      ${v.remis_at ? `<p style="margin:14px 0;font-weight:700;color:#0F7A3D">✓ Déjà remis le ${escHtml(new Date(v.remis_at).toLocaleString('fr-FR'))}.</p>`
-        : `${v.piece_recue
+    const qui = `${escHtml(v.prenom||'')} ${escHtml(v.nom||'')}`;
+    const rendu = v.rendu || v.rendu_at;
+    let corps;
+    if(rendu){
+      corps = `<p style="margin:14px 0;font-weight:700;color:#0F7A3D">✓ Appareil déjà rendu${v.rendu_at ? ' le ' + escHtml(new Date(v.rendu_at).toLocaleString('fr-FR')) : ''}. Location terminée.</p>`;
+    } else if(v.remis_at || (v.peut_rendre && !v.peut_remettre)){
+      // L'appareil est chez le client : on propose de confirmer son retour.
+      corps = `${v.remis_at ? `<p style="margin:14px 0 6px;font-weight:700;color:#0F7A3D">✓ Remis le ${escHtml(new Date(v.remis_at).toLocaleString('fr-FR'))}.</p>` : ''}
+        ${v.en_retard ? `<p style="margin:6px 0;padding:10px 12px;border-radius:10px;background:#FEE2E2;color:#991B1B;font-size:14px">⚠ Retour prévu le ${escHtml(dateFr(v.date_fin))} : il est en retard.</p>` : ''}
+        ${v.retour_disponible && v.peut_rendre
+          ? `<p style="margin:6px 0 14px;padding:10px 12px;border-radius:10px;background:#FEF3C7;color:#92400E;font-size:14px">Le client rapporte l’appareil ? Vérifiez qu’il est bien là et en bon état, puis confirmez le retour.</p>
+             <button class="btn" id="rendu-ok">Confirmer le retour</button>`
+          : `<p class="card-sub" style="margin:10px 0">Le retour pourra être confirmé ici bientôt. En attendant, prévenez Loc’Air : 06 63 79 87 56.</p>`}`;
+    } else if(!v.peut_remettre){
+      corps = `<p style="margin:14px 0;padding:10px 12px;border-radius:10px;background:#FEF3C7;color:#92400E;font-size:14px">${escHtml(v.remise_message || 'Remise impossible aujourd’hui.')}</p>`;
+    } else {
+      corps = `${v.piece_recue
               ? `<p style="margin:14px 0 6px;padding:10px 12px;border-radius:10px;background:#E8F6EE;color:#0F7A3D;font-size:14px">✓ Pièce d’identité <b>reçue en ligne</b> par Loc’Air.</p>`
               : `<p style="margin:14px 0 6px;padding:10px 12px;border-radius:10px;background:#FEE2E2;color:#991B1B;font-size:14px">⚠ Pièce d’identité <b>pas encore reçue en ligne</b> : vérifiez-la avec d’autant plus de soin.</p>`}
-           <p style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:#FEF3C7;color:#92400E;font-size:14px">Demandez sa <b>pièce d’identité originale</b> : le nom doit être <b>${escHtml(v.prenom||'')} ${escHtml(v.nom||'')}</b>. Remettez l’appareil (sans kit de fenêtre).</p>
-           <button class="btn" id="remise-ok">Confirmer la remise</button>`}
+           <p style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:#FEF3C7;color:#92400E;font-size:14px">Demandez sa <b>pièce d’identité originale</b> : le nom doit être <b>${qui}</b>. Remettez l’appareil (sans kit de fenêtre).</p>
+           <button class="btn" id="remise-ok">Confirmer la remise</button>`;
+    }
+    carte.innerHTML = `
+      <div class="card-title">Click &amp; Collect</div>
+      <div class="card-sub">Réservation <b>${escHtml(v.ref||'')}</b></div>
+      <div style="font-size:22px;font-weight:800;margin:10px 0 4px">${qui}</div>
+      <div class="card-sub">Retrait ${escHtml(dateFr(v.date_debut))} · retour ${escHtml(dateFr(v.date_fin))}</div>
+      <div class="card-sub">${escHtml(v.point||'')}</div>
+      ${corps}
       <button class="btn" style="background:transparent;color:inherit;border:1px solid currentColor" onclick="fermerRemise()">Fermer</button>
       <p class="card-sub" id="remise-msg" style="margin-top:8px"></p>`;
-    const ok = document.getElementById('remise-ok');
-    if(ok) ok.onclick = async () => {
-      ok.disabled = true; ok.textContent = 'Validation…';
+    const envoyer = async (bouton, action, libelle, succes) => {
+      bouton.disabled = true; bouton.textContent = 'Validation…';
       try{
-        const r2 = await fetch(API('partenaire-remise'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'valider', code})});
+        const r2 = await fetch(API('partenaire-remise'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action, code})});
         const d2 = await r2.json();
         if(!r2.ok) throw new Error(d2.error || 'Erreur');
         try{ sessionStorage.removeItem('p_remise'); }catch(e){}
-        carte.innerHTML = `<div class="card-title" style="color:#0F7A3D">✓ Remise confirmée</div>
-          <div class="card-sub">${escHtml(v.prenom||'')} ${escHtml(v.nom||'')} repart avec son climatiseur. Retour prévu ${escHtml(dateFr(v.date_fin))}.</div>
-          <button class="btn" onclick="fermerRemise();loadDashboard()">Terminé</button>`;
-      }catch(e){ ok.disabled = false; ok.textContent = 'Confirmer la remise'; document.getElementById('remise-msg').textContent = e.message; }
+        carte.innerHTML = succes + `<button class="btn" onclick="fermerRemise();loadDashboard()">Terminé</button>`;
+      }catch(e){ bouton.disabled = false; bouton.textContent = libelle; document.getElementById('remise-msg').textContent = e.message; }
     };
+    const ok = document.getElementById('remise-ok');
+    if(ok) ok.onclick = () => envoyer(ok, 'valider', 'Confirmer la remise',
+      `<div class="card-title" style="color:#0F7A3D">✓ Remise confirmée</div>
+       <div class="card-sub">${qui} repart avec son climatiseur. Retour prévu ${escHtml(dateFr(v.date_fin))}, ici même.</div>`);
+    const rOk = document.getElementById('rendu-ok');
+    if(rOk) rOk.onclick = () => envoyer(rOk, 'rendre', 'Confirmer le retour',
+      `<div class="card-title" style="color:#0F7A3D">✓ Retour confirmé</div>
+       <div class="card-sub">Merci ! L’appareil de ${qui} est bien revenu. Gardez-le au point pour le prochain client.</div>`);
   }catch(e){
     carte.innerHTML = `<div class="card-title">QR code non valable</div><div class="card-sub">${escHtml(e.message)}</div><button class="btn" onclick="fermerRemise()">Fermer</button>`;
   }

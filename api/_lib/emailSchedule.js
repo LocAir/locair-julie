@@ -62,13 +62,48 @@ function scenariosDueToday(reservation, todayISO, { recupDatePrevue } = {}) {
 }
 
 // Click & Collect (reservations.source_channel = 'click_collect') : le client
-// vient chercher et rapporte l'appareil lui-même. Les rappels qui parlent de
-// livraison ou de récupération À DOMICILE (« notre technicien arrive
-// demain… ») seraient faux : on ne les envoie pas.
-const SCENARIOS_DOMICILE = ['preparation_j3', 'rappel_j1', 'rappel_recuperation', 'sms_rappel_recuperation'];
+// vient chercher et rapporte l'appareil lui-même. Les messages qui parlent de
+// livraison, d'installation, de technicien ou de récupération À DOMICILE
+// seraient faux : on ne les envoie pas. Ça vaut aussi pour :
+//   - suivi_j14 et avant_fin_location / sms_relance_prolongation (ils
+//     parlent du technicien et de la récupération chez le client) ;
+//   - post_installation et fin_location (déclenchés par une mission
+//     transporteur, qui n'existe pas en Click & Collect).
+// À la place, le client reçoit ses deux rappels Click & Collect (veille du
+// retrait, veille du retour), voir rappelsClickCollectDus ci-dessous.
+const SCENARIOS_DOMICILE = [
+  'suivi_j14', 'preparation_j3', 'rappel_j1', 'avant_fin_location', 'sms_relance_prolongation',
+  'rappel_recuperation', 'sms_rappel_recuperation', 'post_installation', 'fin_location',
+];
+function estClickCollect(reservation) {
+  return !!reservation && reservation.source_channel === 'click_collect';
+}
 function sansRappelsDomicile(reservation, liste) {
-  if (!reservation || reservation.source_channel !== 'click_collect') return liste;
+  if (!estClickCollect(reservation)) return liste;
   return liste.filter((x) => !SCENARIOS_DOMICILE.includes(typeof x === 'string' ? x : x.scenario));
+}
+// true = ce scénario ne doit jamais partir pour cette réservation
+// (utilisé par sendScenarioEmail, _lib/emailEngine.js, comme dernier filet).
+function scenarioInterditClickCollect(reservation, scenario) {
+  return estClickCollect(reservation) && SCENARIOS_DOMICILE.includes(scenario);
+}
+
+// Rappels Click & Collect dus aujourd'hui (fenêtre exacte, comme rappel_j1 :
+// jamais envoyés en retard) :
+//   - cc_rappel_retrait : la veille du retrait, si l'appareil n'est pas déjà remis ;
+//   - cc_rappel_retour  : la veille du retour, si l'appareil n'est pas déjà rendu.
+// `reservation` : { statut, source_channel, source, date_debut, date_fin,
+// remis_at?, rendu_at? } — date_fin = fin RÉELLE (après prolongations).
+// Les fiches de prolongation sont ignorées : c'est la réservation d'origine
+// (date_fin mise à jour à chaque prolongation) qui porte les rappels.
+function rappelsClickCollectDus(reservation, todayISO) {
+  if (!estClickCollect(reservation) || reservation.statut !== 'confirmee') return [];
+  if (reservation.source === 'site_prolongation') return [];
+  if (!reservation.date_debut || !reservation.date_fin) return [];
+  const due = [];
+  if (daysDiff(todayISO, reservation.date_debut) === 1 && !reservation.remis_at) due.push('cc_rappel_retrait');
+  if (daysDiff(todayISO, reservation.date_fin) === 1 && !reservation.rendu_at) due.push('cc_rappel_retour');
+  return due;
 }
 
 function scenarioDate(baseISO, offsetDays) {
@@ -180,4 +215,4 @@ function isSupersededReservation(resa, peers) {
   });
 }
 
-module.exports = { scenariosDueToday, upcomingScenariosForReservation, pastScenariosForReservation, daysDiff, isSupersededReservation };
+module.exports = { scenariosDueToday, upcomingScenariosForReservation, pastScenariosForReservation, daysDiff, isSupersededReservation, scenarioInterditClickCollect, rappelsClickCollectDus, SCENARIOS_DOMICILE };

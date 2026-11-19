@@ -600,9 +600,15 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
 }
 
 // Contrat + facture de location
-function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
+// clickCollect (optionnel) : true pour une location Click & Collect — le
+// client vient chercher l'appareil au point : aucun mot sur une livraison
+// ou un créneau, bouton vers Julie (pas WhatsApp), et version espagnole.
+// À passer par l'appelant (_lib/documents.js) :
+//   clickCollect: resa.source_channel === 'click_collect'
+function tplContratFacture({ prenom, ref, viewUrlDocuments, lang, clickCollect }) {
   const l = lang || 'fr';
   const p = escHtml(prenom || '');
+  if (clickCollect) return tplDocumentsClickCollect({ prenom, ref, viewUrlDocuments, lang: l, avenant: false });
   if (l === 'en') return wrap({
     title: "Your Loc'Air documents",
     intro: `Booking ref ${escHtml(ref)}`,
@@ -671,9 +677,10 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
 // initiale (tplContratFacture ci-dessus) ; ce texte précise explicitement que
 // ce sont de NOUVEAUX documents mis à jour suite à l'extension, pour éviter
 // toute confusion avec un doublon de l'envoi initial.
-function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) {
+function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang, clickCollect }) {
   const l = lang || 'fr';
   const p = escHtml(prenom || '');
+  if (clickCollect) return tplDocumentsClickCollect({ prenom, ref, viewUrlDocuments, lang: l, avenant: true });
   if (l === 'en') return wrap({
     title: "Your Loc'Air prolongation amendment",
     intro: `Booking ref ${escHtml(ref)}`,
@@ -1129,6 +1136,94 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
   });
 }
 
+// ── Click & Collect ─────────────────────────────────────────────────────
+// Le client vient chercher l'appareil au point de retrait et le rapporte
+// au même point. Jamais de livraison, de créneau, de technicien ni de kit
+// de fenêtre. Langues : fr / en / es (celles de la page Click & Collect).
+const LIEN_JULIE_CC = 'https://www.locair.fr/click-and-collect';
+function langueCC(lang) { return lang === 'en' || lang === 'es' ? lang : 'fr'; }
+
+// Email « vos documents » (contrat + facture, ou avenant + facture après
+// une prolongation) — version Click & Collect.
+function tplDocumentsClickCollect({ prenom, ref, viewUrlDocuments, lang, avenant }) {
+  const l = langueCC(lang);
+  const p = escHtml(prenom || '');
+  const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+  const docs = avenant
+    ? T('Avenant de prolongation &nbsp;·&nbsp; Facture (PDF)', 'Extension amendment &nbsp;·&nbsp; Invoice (PDF)', 'Anexo de ampliación &nbsp;·&nbsp; Factura (PDF)')
+    : T('Contrat de location &nbsp;·&nbsp; Facture (PDF)', 'Rental agreement &nbsp;·&nbsp; Invoice (PDF)', 'Contrato de alquiler &nbsp;·&nbsp; Factura (PDF)');
+  return wrap({
+    title: T('Vos documents Loc’Air', 'Your Loc’Air documents', 'Tus documentos Loc’Air'),
+    intro: `${T('Dossier', 'Booking ref', 'Reserva')} ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>${T('Bonjour', 'Hello', 'Hola')} ${p},</p>
+      <p>${avenant
+        ? T('Suite à votre prolongation, votre <strong>avenant</strong> (nouvelle date de retour) et votre <strong>facture</strong> sont disponibles en ligne.', 'Following your extension, your <strong>amendment</strong> (new return date) and your <strong>invoice</strong> are available online.', 'Tras tu ampliación, tu <strong>anexo</strong> (nueva fecha de devolución) y tu <strong>factura</strong> están disponibles en línea.')
+        : T('Merci pour votre confiance. Votre <strong>contrat de location</strong> et votre <strong>facture</strong> sont disponibles en ligne.', 'Thank you for your trust. Your <strong>rental agreement</strong> and <strong>invoice</strong> are available online.', 'Gracias por tu confianza. Tu <strong>contrato de alquiler</strong> y tu <strong>factura</strong> están disponibles en línea.')}</p>
+      <div class="box">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">${T('Vos documents', 'Your documents', 'Tus documentos')}</p>
+        <a href="${viewUrlDocuments || '#'}" style="color:#FF6200;font-weight:700;font-size:15px;text-decoration:none">${T('Consulter mes documents en ligne →', 'View my documents online →', 'Ver mis documentos en línea →')}</a>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">${docs}</p>
+      </div>
+      <p style="font-size:13px;color:#666">${T('Ce lien est permanent — vos documents restent accessibles à tout moment.', 'This link is permanent — your documents are accessible at any time.', 'Este enlace es permanente: tus documentos están disponibles en cualquier momento.')}</p>
+      ${avenant
+        ? `<p style="font-size:13px;color:#666">${T('Rapportez l’appareil au même point de retrait à la nouvelle date, aux horaires d’ouverture.', 'Bring the unit back to the same pick-up point on the new date, during opening hours.', 'Devuelve el aparato en el mismo punto de recogida en la nueva fecha, en su horario de apertura.')}</p>`
+        : `<p style="font-size:13px;color:#666">${T('Rendez-vous au point de retrait le jour choisi, aux horaires d’ouverture.', 'Go to the pick-up point on the day you chose, during opening hours.', 'Ve al punto de recogida el día elegido, en su horario de apertura.')}</p>`}`,
+    ctaHref: LIEN_JULIE_CC,
+    ctaLabel: T('Une question ? Écrire à Julie', 'A question? Chat with Julie', '¿Una pregunta? Escribe a Julie'),
+  });
+}
+
+// Rappel la veille du retrait. ctx : { prenom, ref, lang, point:{nom, adresse,
+// horaires}, dateRetrait (déjà formatée), itineraire, lienQr }
+function tplCCRappelRetrait({ prenom, ref, lang, point, dateRetrait, itineraire, lienQr }) {
+  const l = langueCC(lang);
+  const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+  const pt = point || {};
+  return wrap({
+    title: T('Retrait demain', 'Pick-up tomorrow', 'Recogida mañana'),
+    intro: `${T('Dossier', 'Booking ref', 'Reserva')} ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>${T('Bonjour', 'Hello', 'Hola')} ${escHtml(prenom)},</p>
+      <p>${T('Votre climatiseur vous attend <strong>demain', 'Your air conditioner is waiting for you <strong>tomorrow', 'Tu aire acondicionado te espera <strong>mañana')} (${escHtml(dateRetrait)})</strong> ${T('au point', 'at', 'en el punto')} <strong>${escHtml(pt.nom || '')}</strong>.</p>
+      <div class="box">
+        <p style="margin:0 0 4px"><strong>${escHtml(pt.nom || '')}</strong></p>
+        <p style="margin:0 0 4px">${escHtml(pt.adresse || '')}</p>
+        ${pt.horaires ? `<p style="margin:0">${T('Horaires', 'Opening hours', 'Horario')} : ${escHtml(pt.horaires)}</p>` : ''}
+      </div>
+      <p>${T('À apporter : <strong>votre QR code</strong> (dans l’email de confirmation) et <strong>votre pièce d’identité</strong>.', 'Bring <strong>your QR code</strong> (in your confirmation email) and <strong>your ID</strong>.', 'Trae <strong>tu código QR</strong> (en el email de confirmación) y <strong>tu documento de identidad</strong>.')}</p>
+      ${lienQr ? `<p style="font-size:13px"><a href="${lienQr}" style="color:#FF6200;font-weight:700">${T('Afficher mon QR code', 'Show my QR code', 'Ver mi código QR')}</a></p>` : ''}
+      ${itineraire ? `<p style="font-size:13px"><a href="${itineraire}" style="color:#FF6200;font-weight:700">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
+      <p style="font-size:13px;color:#666">${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.')}</p>`,
+    ctaHref: LIEN_JULIE_CC,
+    ctaLabel: T('Une question ? Écrire à Julie', 'A question? Chat with Julie', '¿Una pregunta? Escribe a Julie'),
+  });
+}
+
+// Rappel la veille du retour. ctx : { prenom, ref, lang, point, dateRetour, itineraire }
+function tplCCRappelRetour({ prenom, ref, lang, point, dateRetour, itineraire }) {
+  const l = langueCC(lang);
+  const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+  const pt = point || {};
+  return wrap({
+    title: T('Retour demain', 'Return tomorrow', 'Devolución mañana'),
+    intro: `${T('Dossier', 'Booking ref', 'Reserva')} ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>${T('Bonjour', 'Hello', 'Hola')} ${escHtml(prenom)},</p>
+      <p>${T('Votre location se termine <strong>demain', 'Your rental ends <strong>tomorrow', 'Tu alquiler termina <strong>mañana')} (${escHtml(dateRetour)})</strong>. ${T('Rapportez l’appareil au point', 'Please bring the unit back to', 'Devuelve el aparato en el punto')} <strong>${escHtml(pt.nom || '')}</strong>${T(', là où vous l’avez pris.', ', where you picked it up.', ', donde lo recogiste.')}</p>
+      <div class="box">
+        <p style="margin:0 0 4px"><strong>${escHtml(pt.nom || '')}</strong></p>
+        <p style="margin:0 0 4px">${escHtml(pt.adresse || '')}</p>
+        ${pt.horaires ? `<p style="margin:0">${T('Horaires', 'Opening hours', 'Horario')} : ${escHtml(pt.horaires)}</p>` : ''}
+      </div>
+      <p>${T('Montrez votre QR code au comptoir : le commerçant confirme le retour.', 'Show your QR code at the counter: the shop confirms the return.', 'Muestra tu código QR en el mostrador: el comercio confirma la devolución.')}</p>
+      <p>${T('Encore chaud ? Vous pouvez prolonger en ligne depuis votre espace client :', 'Still hot? You can extend online from your account:', '¿Sigue haciendo calor? Puedes ampliar en línea desde tu espacio cliente:')} <a href="https://www.locair.fr/client" style="color:#FF6200;font-weight:700">locair.fr/client</a></p>
+      ${itineraire ? `<p style="font-size:13px"><a href="${itineraire}" style="color:#FF6200;font-weight:700">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}`,
+    ctaHref: LIEN_JULIE_CC,
+    ctaLabel: T('Une question ? Écrire à Julie', 'A question? Chat with Julie', '¿Una pregunta? Escribe a Julie'),
+  });
+}
+
 module.exports = {
   escHtml, wrap,
   tplConfirmation, tplSuiviJ14, tplPreparationJ3, tplRappelJ1,
@@ -1137,4 +1232,5 @@ module.exports = {
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
   tplPrimeTransporteur, tplFactureTransporteurAdmin, tplRecapFactureHebdoAdmin,
   tplLienPaiement, tplRelanceDormant, tplOffrePrivilege,
+  tplDocumentsClickCollect, tplCCRappelRetrait, tplCCRappelRetour,
 };

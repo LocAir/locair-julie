@@ -143,7 +143,7 @@ module.exports = async (req, res) => {
   try {
     const { data: retards } = await supabase
       .from('livraisons')
-      .select('id, date_prevue, reservation_id, reservation:reservations(ref, nom, adresse, email, stripe_customer_id, stripe_payment_intent_id, city_id)')
+      .select('id, date_prevue, reservation_id, reservation:reservations(ref, nom, adresse, email, stripe_customer_id, stripe_payment_intent_id, city_id, source_channel)')
       .eq('type', 'recuperation')
       .in('statut', ['a_faire', 'acceptee'])
       .lt('date_prevue', todayStr);
@@ -152,6 +152,12 @@ module.exports = async (req, res) => {
     for (const liv of retards || []) {
       const joursRetard = Math.round((new Date(todayStr) - new Date(liv.date_prevue)) / 86400000);
       const resa = liv.reservation || {};
+      // Click & Collect : pas de récupération par un transporteur (le client
+      // rapporte l'appareil au point). Une vieille mission qui traînerait ne
+      // déclenche ni alerte ici ni, surtout, prélèvement automatique : le
+      // retard Click & Collect a son propre bloc ci-dessous (alerte admin
+      // seulement, jamais de prélèvement).
+      if (resa.source_channel === 'click_collect') continue;
 
       await pushToAdmin(supabase, {
         title: `🚨 Retard récupération — ${resa.nom || '?'} (${joursRetard}j)`,
@@ -262,7 +268,7 @@ module.exports = async (req, res) => {
   try {
     const { data: retardsLivraison } = await supabase
       .from('livraisons')
-      .select('id, date_prevue, reservation:reservations(ref, nom)')
+      .select('id, date_prevue, reservation:reservations(ref, nom, source_channel)')
       .eq('type', 'livraison')
       .in('statut', ['a_faire', 'acceptee'])
       .lt('date_prevue', todayStr);
@@ -271,6 +277,8 @@ module.exports = async (req, res) => {
     for (const liv of retardsLivraison || []) {
       const joursRetard = Math.round((new Date(todayStr) - new Date(liv.date_prevue)) / 86400000);
       const resa = liv.reservation || {};
+      // Click & Collect : personne ne livre, le client vient au point.
+      if (resa.source_channel === 'click_collect') continue;
       await pushToAdmin(supabase, {
         title: `🚨 Retard livraison — ${resa.nom || '?'} (${joursRetard}j)`,
         body:  `Livraison prévue le ${liv.date_prevue}, non effectuée. Dossier ${resa.ref || '?'}.`,
@@ -283,6 +291,54 @@ module.exports = async (req, res) => {
     console.error('[Cron retards livraison]', e.message);
   }
 
+  // ── 3ter. Click & Collect : appareil pas rendu au point à temps ──────────
+  // Le client devait rapporter l'appareil au point au plus tard le jour de
+  // fin (date_fin, déjà repoussée par chaque prolongation payée — voir
+  // webhook.js). Le commerçant confirme le retour en scannant le QR code
+  // (api/partenaire-remise.js, action 'rendre' → rendu_at).
+  // JAMAIS de prélèvement automatique ici : on prévient seulement l'admin,
+  // qui appelle le client. Une notification par réservation (tag stable),
+  // mise à jour chaque jour au lieu de s'empiler.
+  // Si la colonne rendu_at n'existe pas encore (migration
+  // 2026-11-19_click_collect_retour.sql pas passée), on ne fait rien : sans
+  // elle, impossible de savoir si l'appareil est revenu.
+  try {
+    const { data: ccNonRendus, error: ccErr } = await supabase
+      .from('reservations')
+      .select('id, ref, prenom, nom, tel, date_fin, point_retrait_id, adresse, remis_at, rendu_at, source')
+      .eq('source_channel', 'click_collect')
+      .eq('statut', 'confirmee')
+      .is('rendu_at', null)
+      .lt('date_fin', todayStr)
+      .limit(200);
+    if (ccErr) {
+      if (ccErr.code === '42703' || /does not exist/i.test(ccErr.message || '')) report.ccRetoursNonSuivis = 'migration rendu_at à passer';
+      else throw ccErr;
+    } else {
+      let ccRetard = 0;
+      for (const r of ccNonRendus || []) {
+        // Une fiche de prolongation suit la même location que sa fiche
+        // d'origine : on n'alerte qu'une fois, sur la fiche d'origine.
+        if (r.source === 'site_prolongation') continue;
+        const joursRetard = Math.round((new Date(todayStr) - new Date(r.date_fin)) / 86400000);
+        const point = String(r.adresse || '').replace(/^CLICK & COLLECT — /, '').split(' — ')[0];
+        await pushToAdmin(supabase, {
+          title: r.remis_at
+            ? `🚨 Click & Collect — appareil pas rendu — ${r.nom || '?'} (${joursRetard}j)`
+            : `⚠️ Click & Collect — retrait jamais confirmé — ${r.nom || '?'}`,
+          body: r.remis_at
+            ? `Retour prévu le ${r.date_fin} au point ${point}, toujours pas confirmé par le commerçant. Dossier ${r.ref || '?'} — appeler le client${r.tel ? ' (' + r.tel + ')' : ''}. Aucun prélèvement automatique.`
+            : `Location finie le ${r.date_fin} (point ${point}) sans remise ni retour confirmés par le commerçant. Dossier ${r.ref || '?'} — vérifier avec le point.`,
+          tag: `cc-retour-retard-${r.id}`,
+        });
+        ccRetard++;
+      }
+      if (ccRetard) report.ccRetoursEnRetard = ccRetard;
+    }
+  } catch (e) {
+    console.error('[Cron retours Click & Collect]', e.message);
+  }
+
   // ── 3bis. Relance des réservations en_attente jamais payées (Module 8) ──────
   // Un panier abandonné sur le site, ou un lien de paiement envoyé par
   // l'admin jamais finalisé, laissait jusqu'ici la réservation en_attente
@@ -293,7 +349,7 @@ module.exports = async (req, res) => {
   try {
     const { data: enAttente } = await supabase
       .from('reservations')
-      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, stripe_payment_intent_id, created_at, source, lang, reservation_origine_id')
+      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, stripe_payment_intent_id, created_at, source, source_channel, lang, reservation_origine_id')
       .eq('statut', 'en_attente')
       .or('email.not.is.null,tel.not.is.null')
       .limit(500);
@@ -302,6 +358,15 @@ module.exports = async (req, res) => {
     if ((enAttente || []).length && process.env.STRIPE_SECRET_KEY) {
       const stripeRelance = new Stripe(process.env.STRIPE_SECRET_KEY);
       for (const resa of enAttente) {
+        // Click & Collect : jamais de relance de paiement (le lien envoyé
+        // parle de livraison et d'un détail de prix « à domicile »). Un
+        // panier abandonné depuis plus de 2 h est simplement annulé, pour
+        // libérer l'appareil du point (le stock d'un point est petit).
+        if (resa.source_channel === 'click_collect') {
+          if (today - new Date(resa.created_at) < 2 * 3600000) continue;
+          if (await annulerPanierClickCollect(supabase, stripeRelance, resa)) annuleCount++;
+          continue;
+        }
         if (!resa.email && !resa.tel) continue;
         const ageJours = Math.floor((today - new Date(resa.created_at)) / 86400000);
         if (ageJours < 1) continue;
@@ -1125,10 +1190,19 @@ module.exports = async (req, res) => {
   try {
     const limite = new Date(Date.UTC(...todayStr.split('-').map((n, i) => i === 1 ? Number(n) - 1 : Number(n))) - 30 * 864e5).toISOString().slice(0, 10);
     let effacees = 0;
-    const { data: avecColonne, error: colErr } = await supabase.from('reservations')
-      .select('id, piece_identite_paths').not('piece_identite_paths', 'is', null).lt('date_fin', limite).limit(200);
+    // Click & Collect pas encore rendu au point (remis au client, rendu_at
+    // vide) : on GARDE la pièce d'identité tant que l'appareil n'est pas
+    // revenu. Seulement si la colonne rendu_at existe (migration du
+    // 19/11) ; sinon, comportement d'avant (effacement à 30 jours).
+    let { data: avecColonne, error: colErr } = await supabase.from('reservations')
+      .select('id, piece_identite_paths, source_channel, remis_at, rendu_at').not('piece_identite_paths', 'is', null).lt('date_fin', limite).limit(200);
+    if (colErr && (colErr.code === '42703' || /does not exist/i.test(colErr.message || ''))) {
+      ({ data: avecColonne, error: colErr } = await supabase.from('reservations')
+        .select('id, piece_identite_paths').not('piece_identite_paths', 'is', null).lt('date_fin', limite).limit(200));
+    }
     if (!colErr) {
       for (const r of avecColonne || []) {
+        if ('rendu_at' in r && r.source_channel === 'click_collect' && r.remis_at && !r.rendu_at) continue;
         if (r.piece_identite_paths && r.piece_identite_paths.length) await supabase.storage.from('missions').remove(r.piece_identite_paths);
         await supabase.from('reservations').update({ piece_identite_paths: null }).eq('id', r.id);
         effacees++;
@@ -1145,6 +1219,24 @@ module.exports = async (req, res) => {
     report.piecesIdentiteEffacees = effacees;
   } catch (e) {
     console.error('[Cron pièces d’identité]', e.message);
+  }
+
+  // ── Pièces d'identité orphelines : envoyées depuis la page Click & Collect
+  // mais jamais rattachées à une réservation (paiement abandonné). Effacées
+  // 48 h après l'envoi. Prudence : au moindre doute (liste illisible,
+  // requête en erreur), on n'efface RIEN.
+  try {
+    report.piecesIdentiteOrphelines = await effacerIdentitesOrphelines(supabase);
+  } catch (e) {
+    console.error('[Cron pièces d’identité orphelines]', e.message);
+  }
+
+  // ── Click & Collect : rappels la veille du retrait et la veille du retour
+  // (fr / en / es), une seule fois par réservation (verrou email_sent).
+  try {
+    report.ccRappels = await envoyerRappelsClickCollect(supabase, todayStr);
+  } catch (e) {
+    console.error('[Cron rappels Click & Collect]', e.message);
   }
 
   return res.status(200).json({ ok: true, date: todayStr, ...report });
