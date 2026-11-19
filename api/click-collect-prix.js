@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({
       totalCents: p.totalCents, normalCents: p.normalCents, majore: p.majore,
       majorationPct: p.majorationPct, complet: p.libresAuPoint < 1,
-      raisons: p.raisons || [],
+      raisons: p.raisons || [], remise: !!p.remise, variationPct: p.variationPct || 0,
       // prix garanti 30 min (voir _lib/tarifDynamique.js)
       devis: signerDevis({ point: point.id, debut, jours, cents: p.totalCents }),
     });

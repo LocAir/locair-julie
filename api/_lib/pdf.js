@@ -461,7 +461,10 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
     // préexistant, ex. code promo).
     const totalUn  = calcTieredPrice(jours, pricing);
     const tarifMoy = totalUn / jours;
-    const locCents = forfait ? forfait.prix_cents : Math.round(totalUn * qty * 100);
+    // Click & Collect : prix propre (150 € les 7 jours, tarification
+    // dynamique) — la ligne de location montre le prix réellement payé.
+    const locCents = (reservation.source_channel === 'click_collect') ? (reservation.prix_total_cents || 0)
+      : (forfait ? forfait.prix_cents : Math.round(totalUn * qty * 100));
     const horsZone = !!reservation.hors_zone;
     // Click & Collect : le client vient chercher l'appareil au point de
     // retrait — aucune livraison à facturer (sinon la facture afficherait
@@ -484,7 +487,9 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
         `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — pack à prix fixe (hors livraison/installation)`,
       ] : [
         `Période : du ${fmtDate(reservation.date_debut)} au ${fmtDate(reservation.date_fin)} (${jours} jours)`,
-        `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — tarif moyen ${eur(Math.round(tarifMoy * 100))}/jour (tarif dégressif)`,
+        reservation.source_channel === 'click_collect'
+          ? `Quantité : 1 climatiseur — Click & Collect, tarif dynamique (soit ${eur(Math.round((reservation.prix_total_cents || 0) / jours))}/jour)`
+          : `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — tarif moyen ${eur(Math.round(tarifMoy * 100))}/jour (tarif dégressif)`,
       ],
       amount: eur(locCents),
     });

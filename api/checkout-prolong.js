@@ -8,6 +8,7 @@ const { getEffectiveDateFin } = require('./_lib/reservations');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, pointFermeLe } = require('./_lib/pointsRetrait');
 const { occupationParPoint } = require('./_lib/clickCollect');
+const { facteurCC } = require('./_lib/tarifDynamique');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -157,6 +158,10 @@ module.exports = async (req, res) => {
       const dbOrigDays = Math.round((new Date(extDateDebut+'T00:00:00Z') - new Date(orig.date_debut+'T00:00:00Z')) / 86400000);
       if (dbOrigDays > 0) {
         amountCents = _safeIncrement(dbOrigDays, jours) * qty * 100;
+        // Click & Collect : même proportion que son prix de base (150 € les
+        // 7 jours, _lib/tarifDynamique.js), jamais de tarif dynamique sur une
+        // prolongation.
+        if (orig?.source_channel === 'click_collect') amountCents = Math.round(amountCents * facteurCC(calcTieredPrice, pricing) / 100) * 100;
       }
     }
     if (!amountCents || amountCents <= 0) {

@@ -39,13 +39,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Click &amp; Collect climatiseur — réservez, récupérez près de chez vous · Loc’Air</title>
 <link rel="canonical" href="https://www.locair.fr/click-and-collect">
-<meta name="description" content="Un climatiseur près de chez vous, réservable à toute heure. Location dès 12 € par jour, retrait dans un point Loc’Air de la Côte d’Azur, sans caution.">
+<meta name="description" content="Un climatiseur près de chez vous, réservable à toute heure. Location 150 € la semaine, retrait dans un point Loc’Air de la Côte d’Azur, sans caution.">
 <meta name="robots" content="noindex,nofollow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Loc’Air">
 <meta property="og:url" content="https://www.locair.fr/click-and-collect">
 <meta property="og:title" content="Réservez. Récupérez. Votre climatiseur près de chez vous · Loc’Air">
-<meta property="og:description" content="Click &amp; Collect sur la Côte d’Azur : réservez en ligne à toute heure, récupérez votre climatiseur chez un commerçant près de chez vous. Dès 12 € par jour, sans caution.">
+<meta property="og:description" content="Click &amp; Collect sur la Côte d’Azur : réservez en ligne à toute heure, récupérez votre climatiseur chez un commerçant près de chez vous. 150 € la semaine, sans caution.">
 <meta property="og:image" content="https://www.locair.fr/og-click-collect.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -1168,6 +1168,8 @@ h1 em,h2 em,h3 em{font-style:normal;font-weight:900}
 /* onglet partenaire : la langue est déjà en haut de page */
 .hero-part .langues{display:none}
 .hero-part em{color:#9CC4FF!important}
+.forte.baisse{color:var(--ok)!important}
+.tarifs.epure .tf-paliers b{font-size:15px}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -1258,10 +1260,7 @@ h1 em,h2 em,h3 em{font-style:normal;font-weight:900}
             <span class="t-info">
               <b class="t-nom"><span lang="fr">Climatiseur mobile</span><span lang="en">Portable air conditioner</span></b>
               <span class="t-sous"><span lang="fr">Prêt à brancher · pièce jusqu’à 15 m²</span><span lang="en">Plug and play · rooms up to 15 m²</span></span>
-              <span class="t-prix"><small><span lang="fr">dès</span><span lang="en">from</span></small><b id="prix-mini">12</b><em>€/<span lang="fr">jour</span><span lang="en">day</span></em></span>
-            </span>
-          </span>
-          <span class="t-confiance"><span class="t-ok"><span lang="fr">Sans caution</span><span lang="en">No deposit</span></span><span class="t-sep" aria-hidden="true">·</span><span class="t-note"><span class="t-et" aria-hidden="true">★</span> 4,9 <small><span lang="fr">(38 avis Google)</span><span lang="en">(38 Google reviews)</span></small></span></span>
+              <span class="t-prix"><b id="prix-mini">150</b><em>€ <span lang="fr">la semaine</span><span lang="en">a week</span></em></span><span class="t-sep" aria-hidden="true">·</span><span class="t-note"><span class="t-et" aria-hidden="true">★</span> 4,9 <small><span lang="fr">(38 avis Google)</span><span lang="en">(38 Google reviews)</span></small></span></span>
           <span class="t-cta"><span lang="fr">Je réserve mon point de retrait</span><span lang="en">Choose my pick-up point</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>
         </a>
       </div>
@@ -1691,6 +1690,8 @@ var POINTS = [];
 
 /* Barème par défaut — remplacé par /api/pricing-config dès qu'il répond. */
 var PALIERS = [[7,12],[14,10],[21,9],[Infinity,8]];
+/* Prix Click & Collect (7 jours) : base, minimum, maximum — relus depuis le serveur (/api/points-retrait → _lib/tarifDynamique.js). */
+var CC = {base:150, min:139, max:189};
 var JOURS_MIN = 7, JOURS_MAX = 90;
 var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis du calendrier */
 var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
@@ -1777,7 +1778,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   var CLE_ETAT = 'locair_cc_etat';
 
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  function prix(j){ var t = 0; for(var d = 1; d <= j; d++){ for(var k = 0; k < PALIERS.length; k++){ if(d <= PALIERS[k][0]){ t += PALIERS[k][1]; break; } } } return Math.round(t * 100) / 100; }
+  function prixBareme(j){ var t = 0; for(var d = 1; d <= j; d++){ for(var k = 0; k < PALIERS.length; k++){ if(d <= PALIERS[k][0]){ t += PALIERS[k][1]; break; } } } return Math.round(t * 100) / 100; }
+  /* prix de base Click & Collect, même calcul que le serveur (_lib/tarifDynamique.js → baseCents) */
+  function prix(j){ var s7 = prixBareme(7); return Math.round(prixBareme(j) * (s7 > 0 ? CC.base / s7 : 1)); }
   /* langue : L('texte fr', 'english text') ; dates et prix au format de la langue */
   function L(fr, en){ return langue() === 'en' ? en : fr; }
   function LOC(){ return langue() === 'en' ? 'en-GB' : 'fr-FR'; }
@@ -2106,19 +2109,16 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   });
 
   /* ── prix affiché dans le titre ── */
-  function majPrixTextes(){ $('prix-mini').textContent = String(PALIERS[0][1]).replace('.', ','); dessinerTarifs(); try{ window.dispatchEvent(new Event('cc-langue')); }catch(e){} }
+  function majPrixTextes(){ $('prix-mini').textContent = String(CC.base); dessinerTarifs(); try{ window.dispatchEvent(new Event('cc-langue')); }catch(e){} }
   function dessinerTarifs(){
     var ol = $('tf-paliers'); if(!ol) return;
-    var deb = 1, max = PALIERS[0][1];
-    ol.innerHTML = PALIERS.map(function(pl, k){
-      var fin = pl[0], t = !isFinite(fin) ? L('Dès le ' + deb + 'e jour', 'From day ' + deb) : L('Jours ' + deb + ' à ' + fin, 'Days ' + deb + '–' + fin);
-      var pct = Math.round((1 - pl[1] / max) * 100);
-      var li = '<li data-deb="' + deb + '" data-fin="' + (isFinite(fin) ? fin : 9999) + '"><span class="tf-barre" style="--h:' + Math.round(pl[1] / max * 100) + '%"><span class="tf-ici">' + L('Vous êtes ici', 'You are here') + '</span>' + (pct > 0 ? '<i>−' + pct + ' %</i>' : '') + '</span><b>' + euros(pl[1]) + '</b><small>' + L('/jour', '/day') + '</small><span class="tf-j">' + t + '</span></li>';
-      deb = fin + 1; return li;
+    var D = [[7,13,L('1 semaine','1 week')],[14,20,L('2 semaines','2 weeks')],[21,29,L('3 semaines','3 weeks')],[30,9999,L('1 mois','1 month')]];
+    ol.innerHTML = D.map(function(d){
+      return '<li data-deb="' + d[0] + '" data-fin="' + d[1] + '"><b>' + euros(prix(d[0])) + '</b><span class="tf-j">' + d[2] + '</span></li>';
     }).join('');
     $('tf-exemples').innerHTML = DUREES.map(function(d){ return '<button type="button" data-tfj="' + d[0] + '">' + dureeNom(d[0], d[1]) + '</button>'; }).join('');
     var r = $('tf-jours'); r.min = JOURS_MIN; r.max = JOURS_MAX; if(+r.value < JOURS_MIN) r.value = JOURS_MIN;
-    $('tf-note').textContent = L('Nous pratiquons une tarification dynamique : aux dates très demandées, le prix peut augmenter. Le prix exact s’affiche toujours avant de payer.', 'We use dynamic pricing: on very busy dates, the price can go up. The exact price is always shown before you pay.');
+    $('tf-note').textContent = L('Nous pratiquons une tarification dynamique : de ' + euros(CC.min) + ' à ' + euros(CC.max) + ' la semaine selon la demande (chaleur, stock). Le prix exact s’affiche toujours avant de payer.', 'We use dynamic pricing: from ' + euros(CC.min) + ' to ' + euros(CC.max) + ' a week depending on demand (heat, stock). The exact price is always shown before you pay.');
     majSimu();
   }
   function majSimu(){
@@ -2209,6 +2209,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(r.indexOf('stock') >= 0) t.push(L('peu d’appareils restants', 'few units left'));
     if(r.indexOf('chaleur') >= 0) t.push(L('chaleur annoncée', 'heat forecast'));
     if(r.indexOf('derniere_minute') >= 0) t.push(L('dernière minute', 'last minute'));
+    if(r.indexOf('calme') >= 0) t.push(L('période calme', 'quiet period'));
     return t.length ? ' · ' + t.join(', ') : '';
   }
   function dureeNom(j, fr){ return langue() === 'en' ? ({7:'1 week', 14:'2 weeks', 30:'1 month'}[j] || j + ' days') : fr; }
@@ -2264,7 +2265,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       complet = !!(pr && pr.complet);
       if(complet) t.innerHTML = L('<b>Point complet à ces dates</b>Changez de dates ou de point de retrait', '<b>Point fully booked on these dates</b>Change dates or pick-up point');
       else t.innerHTML = '<b>' + n + L(' jours · ', ' days · ') + euros(tot) + (pr && pr.majore ? ' <s class="prix-normal">' + euros(pr.normalCents / 100) + '</s>' : '') + '</b>' +
-        (pr && pr.majore ? '<span class="forte">' + L('Tarif dynamique : +', 'Dynamic pricing: +') + pr.majorationPct + ' %' + raisonsTexte(pr.raisons) + L(' · prix garanti 30 min', ' · price held 30 min') + '</span>' : esc(court(etat.debut) + ' → ' + court(etat.fin)) + L(' · soit ', ' · ') + euros(Math.round(tot / n * 100) / 100) + L('/jour', '/day'));
+        (pr && (pr.majore || pr.remise) ? '<span class="forte' + (pr.remise ? ' baisse' : '') + '">' + L('Tarif dynamique : ', 'Dynamic pricing: ') + (pr.variationPct > 0 ? '+' : '−') + Math.abs(pr.variationPct || pr.majorationPct) + ' %' + raisonsTexte(pr.raisons) + L(' · prix garanti 30 min', ' · price held 30 min') + '</span>' : esc(court(etat.debut) + ' → ' + court(etat.fin)) + L(' · soit ', ' · ') + euros(Math.round(tot / n * 100) / 100) + L('/jour', '/day'));
     }
     else t.innerHTML = '<b>' + (etat.debut ? L('Choisissez le retour', 'Choose your return') : L('Choisissez vos dates', 'Choose your dates')) + '</b>' + L('7 jours minimum · sans caution', '7 days minimum · no deposit');
     $('dates-ok').disabled = !ok || complet; $('effacer').hidden = !etat.debut;
@@ -2879,7 +2880,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(h && h !== 'paiement' && h !== 'merci' && sv){ try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){} if(h !== 'ville') aller(h); else aller('ville', true); }
     else aller('ville');
   }
-  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; })
+  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine}; majPrixTextes(); } })
     .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (menu ☰ → Aide).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (bubble, bottom right).'); $('loc-err').hidden = false; })
     .then(demarrer).then(function(){ majSimu(); if(POINTS.length) gcQuandVisible(); });
   majPrixTextes();

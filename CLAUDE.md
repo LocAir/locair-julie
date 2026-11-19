@@ -163,12 +163,16 @@ Toujours partir du problème, pas de la machine.
 Réglages et barrières dans `api/_lib/tarifDynamique.js` (seul endroit où
 changer un chiffre). Inspirée de Beyond / PriceLabs.
 
-- **3 signaux** : stock déjà réservé dans la ville (règle d'origine du
-  propriétaire : 80 % → +25 %), chaleur prévue sur la période (7 jours,
-  Open-Meteo), dernière minute (retrait aujourd'hui/demain, seulement si
-  la demande est déjà là).
-- **Barrières, jamais franchies** : jamais sous le barème ; jamais plus de
-  +25 % au total ; même prix pour tout le monde au même moment (aucune
+- **Prix Click & Collect (décidé le 19/11/2026)** : **150 € les 7 jours**
+  en temps normal, **jamais moins de 139 €, jamais plus de 189 €** (les
+  autres durées suivent la même proportion du barème). La livraison
+  (`/reserver`) garde son propre barème.
+- **Signaux** : stock déjà réservé dans la ville (80 % → maximum), chaleur
+  prévue sur la période (7 jours, Open-Meteo), dernière minute (seulement
+  si la demande est déjà là), période calme (temps frais ET peu de
+  réservations → minimum).
+- **Barrières, jamais franchies** : jamais sous 139 €/7 jours ; jamais au-
+  dessus de 189 €/7 jours ; même prix pour tout le monde au même moment (aucune
   donnée personnelle) ; un signal en panne compte pour rien (prix plus bas,
   jamais plus haut) ; prix affiché garanti 30 min (devis signé) ;
   prolongations jamais majorées.
