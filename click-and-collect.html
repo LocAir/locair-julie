@@ -85,7 +85,7 @@ a{color:var(--vif)}
 .nav .col{height:58px;display:flex;align-items:center;justify-content:space-between}
 .nav-logo{font-weight:900;font-size:22px;color:var(--vif);letter-spacing:-.04em;line-height:1}
 .nav-logo em{font-style:italic;color:var(--vif-d)}
-.nav-tel{color:#fff;background:var(--vif);text-decoration:none;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;padding:9px 15px;border-radius:var(--r-f);box-shadow:0 4px 14px rgba(26,94,219,.3)}
+.nav-tel{white-space:nowrap;color:#fff;background:var(--vif);text-decoration:none;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;padding:9px 15px;border-radius:var(--r-f);box-shadow:0 4px 14px rgba(26,94,219,.3)}
 .nav-tel svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2}
 
 /* ── PROGRESSION : étapes nommées + résumé qui suit le client ── */
@@ -438,6 +438,20 @@ body:not(.en-etape) .nav-langue button[aria-pressed="true"]{background:#fff;colo
 .vcarte.bientot .vc-txt small{color:#F3C77A}
 .vcarte.bientot:hover{transform:none}
 
+/* ── BOUTON « ESPACE » : espace client / espace partenaire ── */
+.espace{position:relative}
+.espace-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.espace-btn svg{width:18px;height:18px;stroke:var(--vif-d);fill:none;stroke-width:2;stroke-linecap:round}
+body:not(.en-etape) .espace-btn,.sur-photo .espace-btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3)}
+body:not(.en-etape) .espace-btn svg,.sur-photo .espace-btn svg{stroke:#fff}
+.espace-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:248px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px -12px rgba(11,30,68,.35);padding:6px}
+.espace-menu[hidden]{display:none}
+@media (max-width:600px){.espace-menu{position:fixed;left:16px;right:16px;width:auto;top:62px}}
+.espace-menu a{display:block;padding:11px 12px;border-radius:12px;text-decoration:none;color:var(--ink)}
+.espace-menu a:hover,.espace-menu a:focus-visible{background:var(--vif-clair)}
+.espace-menu b{display:block;font-size:15px}
+.espace-menu small{display:block;font-size:12.5px;color:var(--ink-2)}
+
 /* ── PIÈCE D'IDENTITÉ ── */
 .identite{border:0;padding:0;margin:0;min-width:0}
 .choix-pi{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-f);padding:4px;margin-bottom:10px}
@@ -514,6 +528,13 @@ body.a-cook{padding-bottom:72px}
   <div class="col">
     <span class="nav-logo" aria-label="Loc’Air">Loc<em>’Air</em></span>
     <div class="nav-langue" role="group" aria-label="Langue / Language"><button type="button" data-langue="fr" aria-pressed="true">FR</button><button type="button" data-langue="en" aria-pressed="false">EN</button></div>
+    <div class="espace" id="espace">
+      <button type="button" class="espace-btn" id="espace-btn" aria-haspopup="true" aria-expanded="false" aria-controls="espace-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span class="sr"><span lang="fr">Mon espace</span><span lang="en">My account</span></span></button>
+      <div class="espace-menu" id="espace-menu" hidden>
+        <a href="/client"><b><span lang="fr">Espace client</span><span lang="en">Customer area</span></b><small><span lang="fr">Ma réservation, ma facture</span><span lang="en">My booking, my invoice</span></small></a>
+        <a href="/partenaire"><b><span lang="fr">Espace partenaire</span><span lang="en">Partner area</span></b><small><span lang="fr">Commerçants : commissions, remises</span><span lang="en">Shops: commissions, hand-overs</span></small></a>
+      </div>
+    </div>
     <a class="nav-tel" href="tel:+33663798756" data-mesure="cc_appel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>06 63 79 87 56</a>
   </div>
 </header>
@@ -785,6 +806,16 @@ var PALIERS = [[7,12],[14,10],[21,9],[Infinity,8]];
 var JOURS_MIN = 7, JOURS_MAX = 90;
 var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis du calendrier */
 var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
+
+/* Bouton « Espace » : ouvre / ferme le petit menu (Échap et clic dehors ferment). */
+(function(){
+  var b = document.getElementById('espace-btn'), m = document.getElementById('espace-menu');
+  if(!b || !m) return;
+  function fermer(){ m.hidden = true; b.setAttribute('aria-expanded', 'false'); }
+  b.addEventListener('click', function(e){ e.stopPropagation(); var o = m.hidden; m.hidden = !o; b.setAttribute('aria-expanded', String(o)); if(o) m.querySelector('a').focus(); });
+  document.addEventListener('click', function(e){ if(!m.hidden && !m.contains(e.target)) fermer(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !m.hidden){ fermer(); b.focus(); } });
+})();
 
 /* ── MESURE : consentement, puis événements ─────────────────────────── */
 (function(){

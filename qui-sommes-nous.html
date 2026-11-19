@@ -98,6 +98,20 @@ section.bloc{padding-block:52px 8px}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 24px;border-radius:var(--r-f);font-weight:700;text-decoration:none}
 .btn-1{background:#fff;color:var(--vif-d)}
 .btn-2{border:1.5px solid rgba(255,255,255,.6);color:#fff}
+/* ── BOUTON « ESPACE » : espace client / espace partenaire ── */
+.espace{position:relative}
+.espace-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.espace-btn svg{width:18px;height:18px;stroke:var(--vif-d);fill:none;stroke-width:2;stroke-linecap:round}
+body:not(.en-etape) .espace-btn,.sur-photo .espace-btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3)}
+body:not(.en-etape) .espace-btn svg,.sur-photo .espace-btn svg{stroke:#fff}
+.espace-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:60;width:248px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px -12px rgba(11,30,68,.35);padding:6px}
+.espace-menu[hidden]{display:none}
+@media (max-width:600px){.espace-menu{position:fixed;left:16px;right:16px;width:auto;top:62px}}
+.espace-menu a{display:block;padding:11px 12px;border-radius:12px;text-decoration:none;color:var(--ink)}
+.espace-menu a:hover,.espace-menu a:focus-visible{background:var(--vif-clair)}
+.espace-menu b{display:block;font-size:15px}
+.espace-menu small{display:block;font-size:12.5px;color:var(--ink-2)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .pied{font-size:12.5px;color:var(--ink-3);text-align:center;padding-block:22px 30px}
 .pied a{color:var(--ink-3)}
 @media(max-width:420px){ .chiffres{grid-template-columns:1fr 1fr 1fr} .engagements{grid-template-columns:1fr} }
@@ -106,10 +120,17 @@ section.bloc{padding-block:52px 8px}
 </head>
 <body>
 
-<header class="nav">
+<header class="nav sur-photo">
   <div class="col">
     <a class="nav-logo" href="/" aria-label="Loc’Air">Loc<em>’Air</em></a>
     <div class="langues" role="group" aria-label="Langue / Language"><button type="button" data-langue="fr" aria-pressed="true">FR</button><button type="button" data-langue="en" aria-pressed="false">EN</button></div>
+    <div class="espace" id="espace">
+      <button type="button" class="espace-btn" id="espace-btn" aria-haspopup="true" aria-expanded="false" aria-controls="espace-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span class="sr"><span lang="fr">Mon espace</span><span lang="en">My account</span></span></button>
+      <div class="espace-menu" id="espace-menu" hidden>
+        <a href="/client"><b><span lang="fr">Espace client</span><span lang="en">Customer area</span></b><small><span lang="fr">Ma réservation, ma facture</span><span lang="en">My booking, my invoice</span></small></a>
+        <a href="/partenaire"><b><span lang="fr">Espace partenaire</span><span lang="en">Partner area</span></b><small><span lang="fr">Commerçants : commissions, remises</span><span lang="en">Shops: commissions, hand-overs</span></small></a>
+      </div>
+    </div>
     <a class="nav-tel" href="tel:+33663798756">06 63 79 87 56</a>
   </div>
 </header>
@@ -214,6 +235,15 @@ section.bloc{padding-block:52px 8px}
   var l = null; try{ l = localStorage.getItem('locair_cc_langue'); }catch(e){}
   choisir(l || (/^en/i.test(navigator.language || '') ? 'en' : 'fr'));
   [].forEach.call(document.querySelectorAll('button[data-langue]'), function(b){ b.addEventListener('click', function(){ choisir(b.dataset.langue); }); });
+})();
+/* Bouton « Espace » : ouvre / ferme le petit menu (Échap et clic dehors ferment). */
+(function(){
+  var b = document.getElementById('espace-btn'), m = document.getElementById('espace-menu');
+  if(!b || !m) return;
+  function fermer(){ m.hidden = true; b.setAttribute('aria-expanded', 'false'); }
+  b.addEventListener('click', function(e){ e.stopPropagation(); var o = m.hidden; m.hidden = !o; b.setAttribute('aria-expanded', String(o)); if(o) m.querySelector('a').focus(); });
+  document.addEventListener('click', function(e){ if(!m.hidden && !m.contains(e.target)) fermer(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !m.hidden){ fermer(); b.focus(); } });
 })();
 </script>
 </body>
