@@ -23,7 +23,7 @@ const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
-const { prixClickCollect, lienRemise, imageQrRemise } = require('./_lib/clickCollect');
+const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite } = require('./_lib/clickCollect');
 
 const JOURS_MAX = 90;
 const clip = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
@@ -52,14 +52,19 @@ module.exports = async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Adresse email invalide.' });
   if (tel.replace(/\D/g, '').length < 9) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
 
-  // Pièce d'identité obligatoire : carte (recto + verso) ou passeport, déjà
-  // envoyée dans le bucket privé via /api/upload-identite. On n'accepte que
-  // des chemins de ce dossier, jamais un chemin arbitraire.
+  // Pièce d'identité : carte (recto + verso) ou passeport. Elle est en
+  // principe ajoutée APRÈS le paiement (api/click-collect-identite.js), pour
+  // ne pas freiner la réservation ; si le navigateur l'envoie déjà ici, on la
+  // vérifie. On n'accepte que des chemins du dossier identites/, jamais un
+  // chemin arbitraire. Le commerçant vérifie la pièce au retrait dans tous
+  // les cas.
   const pi = data.piece_identite && typeof data.piece_identite === 'object' ? data.piece_identite : {};
   const attendu = pi.type === 'cni' ? 2 : pi.type === 'passeport' ? 1 : 0;
   const chemins = Array.isArray(pi.paths) ? pi.paths.map((x) => clip(x, 200)) : [];
-  if (!attendu || chemins.length !== attendu || !chemins.every((x) => /^identites\/\d+-[a-f0-9]{18}\/(recto|verso|passeport)\.(jpg|png|webp|heic|heif|pdf)$/.test(x))) {
-    return res.status(400).json({ error: 'Merci d’ajouter votre pièce d’identité (carte recto et verso, ou passeport).' });
+  if (pi.type || chemins.length) {
+    if (!attendu || chemins.length !== attendu || !chemins.every((x) => /^identites\/\d+-[a-f0-9]{18}\/(recto|verso|passeport)\.(jpg|png|webp|heic|heif|pdf)$/.test(x))) {
+      return res.status(400).json({ error: 'Pièce d’identité incomplète (carte recto et verso, ou passeport).' });
+    }
   }
 
   const point = getPointRetrait(clip(data.point_id, 60));
@@ -154,7 +159,7 @@ module.exports = async (req, res) => {
         frais_livraison: '0 EUR',
         customer_id: customerId,
         campagne: clip(data.campagne, 400),
-        piece_identite: pi.type,
+        piece_identite: pi.type || 'apres_paiement',
         lang: data.lang === 'en' ? 'en' : 'fr',
         prix_fort: prix.majore ? `oui (+${prix.majorationPct} %)` : 'non',
       },
@@ -182,7 +187,7 @@ module.exports = async (req, res) => {
       lang: data.lang === 'en' ? 'en' : 'fr',
       type_client: 'particulier',
       cgv_accepted_at: new Date().toISOString(),
-      piece_identite_paths: chemins,
+      piece_identite_paths: chemins.length ? chemins : null,
       point_retrait_id: point.id,
       partenaire_id: partenaireId,
       partenaire_commission_cents: commissionCents,
@@ -194,7 +199,7 @@ module.exports = async (req, res) => {
     // rien perdre. Voir supabase/migration_2026-11-18_click_collect.sql.
     if (insertErr && /piece_identite_paths|point_retrait_id/.test(insertErr.message || '')) {
       delete ligne.piece_identite_paths; delete ligne.point_retrait_id;
-      ligne.instructions_acces = `${ligne.instructions_acces} | PIÈCE D'IDENTITÉ (${pi.type}) : ${chemins.join(' ; ')}`.slice(0, 1000);
+      if (chemins.length) ligne.instructions_acces = `${ligne.instructions_acces} | PIÈCE D'IDENTITÉ (${pi.type}) : ${chemins.join(' ; ')}`.slice(0, 1000);
       ({ data: resa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single());
     }
 
@@ -217,6 +222,8 @@ module.exports = async (req, res) => {
       clientSecret: intent.client_secret, amountCents, ref, majore: prix.majore,
       // QR de remise : montré au client, scanné par le commerçant au retrait.
       remise: { lien: lienRemise(resa.id, ref), qr: imageQrRemise(resa.id, ref) },
+      // Pour ajouter la pièce d'identité juste après le paiement.
+      identite: chemins.length ? null : { id: resa.id, code: codeIdentite(resa.id, ref) },
     });
   } catch (err) {
     console.error('[CC Stripe]', err.message);
