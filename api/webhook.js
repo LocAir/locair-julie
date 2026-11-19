@@ -828,7 +828,7 @@ ${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${
 <p style="margin:18px 0 6px"><b>${T('Votre QR code de retrait', 'Your pick-up QR code')}</b> — ${T('montrez-le au comptoir, avec votre pièce d’identité :', 'show it at the counter with your ID:')}</p>
 <p style="margin:0 0 6px"><img src="${imageQrRemise(resa.id, resa.ref, 220)}" width="220" height="220" alt="QR code"></p>
 <p style="color:#4B5873;font-size:13px;margin:0 0 14px">${T('Code de réservation', 'Booking code')} : <b>${esc(resa.ref || '')}</b></p>
-<p>${T('Pensez à venir en voiture : l’appareil vous est remis avec son kit de fenêtre, sans perçage.', 'Come by car: the unit is handed over with its no-drill window kit.')}</p>
+<p>${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.')}</p>
 <p>${T('Une question ? Écrivez à Julie, notre assistante, sur', 'Any question? Chat with Julie, our assistant, on')} <a href="https://www.locair.fr/click-and-collect">locair.fr/click-and-collect</a>.</p>
 <p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
     const r = await sendBrevoEmail({ to: resa.email, subject: T(`Click & Collect confirmé — retrait le ${fmt(resa.date_debut)}`, `Click & Collect confirmed — pick-up on ${fmt(resa.date_debut)}`), html, senderName: "Loc'Air" });

@@ -502,7 +502,7 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
       amount: eur(livCents),
     });
 
-    drawInvoiceItem(doc, {
+    if (!isCC) drawInvoiceItem(doc, {
       label: isTech ? 'Option installation par technicien qualifié' : 'Installation en autonomie (kit fourni sans perçage)',
       amount: isTech ? eur(instCents) : 'Offert',
     });
