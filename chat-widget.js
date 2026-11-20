@@ -58,10 +58,10 @@
 
   var CSS = `
 #jw-btn{position:fixed;bottom:24px;right:90px;width:52px;height:52px;border-radius:50%;
-  background:#086E60;color:#fff;border:none;cursor:pointer;z-index:8900;
-  box-shadow:0 4px 18px rgba(8,110,96,.45);display:flex;align-items:center;justify-content:center;
+  background:#1A5EDB;color:#fff;border:none;cursor:pointer;z-index:8900;
+  box-shadow:0 4px 18px rgba(26,94,219,.45);display:flex;align-items:center;justify-content:center;
   transition:transform .2s,box-shadow .2s;padding:0}
-#jw-btn:hover{transform:scale(1.08);box-shadow:0 6px 26px rgba(8,110,96,.55)}
+#jw-btn:hover{transform:scale(1.08);box-shadow:0 6px 26px rgba(26,94,219,.55)}
 #jw-btn svg{width:26px;height:26px;fill:currentColor}
 #jw-panel{position:fixed;bottom:88px;right:16px;width:340px;height:480px;max-height:calc(100vh - 110px);
   background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.18);
@@ -69,7 +69,7 @@
   transform:scale(.9) translateY(20px);opacity:0;pointer-events:none;
   transition:transform .25s cubic-bezier(.4,0,.2,1),opacity .25s}
 #jw-panel.jw-open{transform:scale(1) translateY(0);opacity:1;pointer-events:auto}
-#jw-head{background:#086E60;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+#jw-head{background:#1A5EDB;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 #jw-head-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);
   display:flex;align-items:center;justify-content:center;font-size:18px}
 #jw-head-text{flex:1}
@@ -91,8 +91,8 @@
 #jw-footer{background:#fff;border-top:1px solid #e6ebf1;padding:10px;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
 #jw-input{flex:1;border:1.5px solid #e6ebf1;border-radius:22px;padding:9px 14px;font-size:13px;
   resize:none;outline:none;max-height:80px;font-family:inherit;line-height:1.4;color:#0E1F35}
-#jw-input:focus{border-color:#086E60}
-#jw-send{width:36px;height:36px;border-radius:50%;background:#086E60;color:#fff;border:none;
+#jw-input:focus{border-color:#1A5EDB}
+#jw-send{width:36px;height:36px;border-radius:50%;background:#1A5EDB;color:#fff;border:none;
   cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
   transition:background .15s;padding:0}
 #jw-send:hover{background:#065a4f}
@@ -101,8 +101,8 @@
 #jw-wa-link a{color:#25D366;font-weight:600;text-decoration:none}
 #jw-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 6px;background:#f0f2f5;flex-shrink:0}
 .jw-chip{background:#fff;border:1.5px solid #d1d5db;border-radius:18px;padding:6px 12px;font-size:12px;
-  color:#086E60;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;font-family:inherit}
-.jw-chip:hover{background:#e7f3f0;border-color:#086E60}
+  color:#1A5EDB;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;font-family:inherit}
+.jw-chip:hover{background:#e7f3f0;border-color:#1A5EDB}
 #jw-badge{position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;
   background:#ef4444;color:#fff;font-size:10px;font-weight:700;display:flex;
   align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
