@@ -5,10 +5,10 @@
 //    après une prolongation, jusqu'au retour. Il est long et tiré au hasard
 //    (32^8 possibilités) : impossible à deviner, et les essais sont limités.
 // 2. RETRAIT : il montre sa pièce d'identité au commerçant et valide lui-même
-//    le retrait sur son téléphone. RETOUR : il tend son téléphone au commerçant,
-//    qui vérifie l'appareil et confirme avec SON code partenaire (le même que
-//    pour son espace partenaire). Sans ce code, aucun retour n'est enregistré :
-//    une carte QR prise en photo ne permet pas de déclarer « rendu » de chez soi.
+//    le retrait sur son téléphone. RETOUR : le commerçant vérifie l'appareil et
+//    donne au client son « code retour du jour » (espace partenaire, change
+//    chaque jour) ; le client le tape pour valider. Sans ce code, aucun retour
+//    n'est enregistré : une carte QR prise en photo ne suffit pas.
 //
 // POST { point, ref, action: 'voir'|'valider'|'rendre', code_commercant }
 // Les règles (dates, statut, colonnes) sont celles de _lib/remiseCC.js,
@@ -19,6 +19,8 @@ const { verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { agir } = require('./_lib/remiseCC');
+const { codeRetourDuJour } = require('./_lib/clickCollect');
+const { todayParis } = require('./_lib/dates');
 
 const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
 
@@ -93,13 +95,17 @@ module.exports = async (req, res) => {
     }
     const cleCommercant = `comptoir-commercant:${partenaire.id}`;
     if (await isRateLimited(supabase, cleCommercant)) {
-      return res.status(429).json({ error: T(lang, 'Trop d’essais du code commerçant. Réessayez dans 15 minutes.', 'Too many wrong shop codes. Try again in 15 minutes.', 'Demasiados códigos de comercio incorrectos. Vuelve a intentarlo en 15 minutos.') });
+      return res.status(429).json({ error: T(lang, 'Trop d’essais du code retour. Réessayez dans 15 minutes.', 'Too many wrong return codes. Try again in 15 minutes.', 'Demasiados códigos de devolución incorrectos. Vuelve a intentarlo en 15 minutos.') });
     }
+    // Le client tape le « code retour du jour » donné par le commerçant (affiché
+    // dans son espace partenaire). Le code secret du commerçant marche aussi,
+    // s'il préfère le taper lui-même.
     const code = String(b.code_commercant || '').trim();
-    const bon = code && (partenaire.pin_hashed ? verifyPin(code, partenaire.pin) : safeEqual(code, partenaire.pin || ''));
+    const bon = code && (safeEqual(code, codeRetourDuJour(partenaire.id, todayParis()))
+      || (partenaire.pin_hashed ? verifyPin(code, partenaire.pin) : safeEqual(code, partenaire.pin || '')));
     if (!bon) {
       await recordFailedAttempt(supabase, cleCommercant);
-      return res.status(401).json({ error: T(lang, 'Code commerçant incorrect.', 'Wrong shop code.', 'Código de comercio incorrecto.'), code: 'code_commercant' });
+      return res.status(401).json({ error: T(lang, 'Code retour incorrect. Demandez au commerçant le code du jour.', 'Wrong return code. Ask the shopkeeper for today’s code.', 'Código de devolución incorrecto. Pide al comerciante el código del día.'), code: 'code_commercant' });
     }
     const out = await agir(supabase, r, partenaire.id, action);
     return res.status(out.status).json(out.body);

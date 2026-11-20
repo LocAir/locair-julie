@@ -716,7 +716,16 @@ function renderDashboard(d){
     ? '⏳ Demande en cours'
     : canAsk ? `Demander le virement de ${euros(d.non_verse_euros)} →` : 'Aucun solde à verser';
 
-  zone.innerHTML = `
+  // Commerçant point de retrait : le code retour du jour, à donner au client
+  // qui rapporte un climatiseur (il le tape sur son téléphone pour valider).
+  const codeRetour = d.code_retour_du_jour
+    ? `<div style="margin:0 0 16px;padding:16px 18px;border-radius:16px;background:#1A5EDB;color:#fff">
+         <div style="font-size:13px;font-weight:700;opacity:.85">Code retour du jour</div>
+         <div style="font-size:40px;font-weight:900;letter-spacing:.2em;line-height:1.1;margin:4px 0">${escHtml(d.code_retour_du_jour)}</div>
+         <div style="font-size:13.5px;line-height:1.45;opacity:.92">Quand un client rapporte un climatiseur : vérifiez l’appareil (appareil, gaine, télécommande), puis donnez-lui ce code. Il le tape sur son téléphone pour valider le retour. Le code change chaque jour.</div>
+       </div>`
+    : '';
+  zone.innerHTML = codeRetour + `
     <div class="topnote">Tableau de bord ambassadeur</div>
 
     <!-- Hero commission -->
