@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Click & Collect — étapes</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<!-- Tableau de bord du parcours Click & Collect : combien de visites arrivent
+     à chaque étape, et quel titre (A ou B) fait le plus réserver.
+     Utilise la connexion de l'appli admin (même navigateur). -->
+<style>
+:root{--vif:#1A5EDB;--ink:#0E1726;--ink-2:#4B5873;--line:#E3E9F4;--mist:#F2F6FD}
+*{box-sizing:border-box}
+body{margin:0;background:var(--mist);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}
+.sous{color:var(--ink-2);margin:0 0 18px}
+.outils{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.outils button{border:1px solid var(--line);background:#fff;border-radius:100px;padding:10px 16px;font-weight:700;cursor:pointer;min-height:44px}
+.outils button[aria-pressed="true"]{background:var(--vif);color:#fff;border-color:var(--vif)}
+.grille{display:grid;gap:16px}
+@media(min-width:760px){.grille{grid-template-columns:1fr 1fr}}
+.carte{background:#fff;border-radius:18px;padding:20px;box-shadow:0 8px 24px -14px rgba(11,30,68,.25)}
+.carte h2{font-size:17px;margin:0 0 4px}
+.carte .t{color:var(--ink-2);font-size:14px;margin:0 0 14px}
+.etape{margin:0 0 12px}
+.etape .l{display:flex;justify-content:space-between;gap:10px;font-size:14px;margin-bottom:5px}
+.etape .l b{font-variant-numeric:tabular-nums}
+.barre{height:12px;border-radius:6px;background:var(--mist);overflow:hidden}
+.barre i{display:block;height:100%;background:var(--vif);border-radius:6px}
+.perte{font-size:12.5px;color:#B42318;margin-top:3px}
+.taux{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-weight:800}
+.msg{background:#fff;border-radius:14px;padding:16px;color:var(--ink-2)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Click &amp; Collect — où les visiteurs s’arrêtent</h1>
+  <p class="sous">Chaque barre = nombre de visites qui atteignent l’étape. En rouge : la perte par rapport à l’étape d’avant.</p>
+  <div class="outils" id="outils"><button data-j="1">24 h</button><button data-j="7" aria-pressed="true">7 jours</button><button data-j="30">30 jours</button><button data-j="90">90 jours</button></div>
+  <div id="sortie"><p class="msg">Chargement…</p></div>
+</main>
+<script>
+(function(){
+  var TOKEN = ''; try{ TOKEN = localStorage.getItem('a_token') || ''; }catch(e){}
+  var out = document.getElementById('sortie');
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function charger(j){
+    if(!TOKEN){ out.innerHTML = '<p class="msg">Connectez-vous d’abord à l’appli admin (<a href="/admin">/admin</a>) dans ce navigateur, puis revenez ici.</p>'; return; }
+    out.innerHTML = '<p class="msg">Chargement…</p>';
+    fetch('/api/admin-cc-entonnoir', {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':TOKEN}, body:JSON.stringify({jours:j})})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+      .then(function(x){
+        if(!x.ok){ out.innerHTML = '<p class="msg">' + esc(x.d.error || 'Accès refusé. Reconnectez-vous à l’appli admin.') + '</p>'; return; }
+        if(x.d.manque_table){ out.innerHTML = '<p class="msg">Le compteur n’est pas encore activé : collez le SQL <b>supabase/migration_2026-11-20_cc_evenements.sql</b> dans Supabase → SQL Editor.</p>'; return; }
+        var h = '<div class="grille">';
+        ['A', 'B'].forEach(function(v){
+          var e = x.d.variantes[v], max = Math.max(1, e[0].visites);
+          h += '<section class="carte"><h2>Titre ' + v + '</h2><p class="t">« ' + esc(x.d.titres[v]) + ' »</p>';
+          e.forEach(function(s, i){
+            var p = Math.round(s.visites / max * 100), prev = i ? e[i - 1].visites : 0;
+            var perte = i && prev ? Math.round((1 - s.visites / prev) * 100) : null;
+            h += '<div class="etape"><div class="l"><span>' + esc(s.libelle) + '</span><b>' + s.visites + '</b></div><div class="barre"><i style="width:' + p + '%"></i></div>' +
+              (perte !== null && perte > 0 ? '<div class="perte">−' + perte + ' % ici</div>' : '') + '</div>';
+          });
+          var payes = e[e.length - 1].visites;
+          h += '<p class="taux">Taux de réservation : ' + (e[0].visites ? (Math.round(payes / e[0].visites * 1000) / 10).toString().replace('.', ',') : '0') + ' %</p></section>';
+        });
+        h += '</div><p class="sous" style="margin-top:14px">' + x.d.total_evenements + ' mesures sur ' + x.d.jours + ' jour(s). Attendez au moins 200 visites par titre avant de choisir le gagnant.</p>';
+        out.innerHTML = h;
+      }).catch(function(){ out.innerHTML = '<p class="msg">Pas de connexion. Rechargez la page.</p>'; });
+  }
+  [].forEach.call(document.querySelectorAll('#outils button'), function(b){
+    b.onclick = function(){ [].forEach.call(document.querySelectorAll('#outils button'), function(x){ x.setAttribute('aria-pressed', String(x === b)); }); charger(+b.dataset.j); };
+  });
+  charger(7);
+})();
+</script>
+</body>
+</html>
