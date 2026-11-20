@@ -143,16 +143,15 @@ function codeRemise(reservationId, ref) {
   const secret = process.env.TRANSPORTEUR_SECRET || '';
   return crypto.createHmac('sha256', secret).update(`remise:${reservationId}:${ref || ''}`).digest('hex').slice(0, 20);
 }
-// Code retour du jour (4 chiffres) d'un commerçant point de retrait : affiché
-// dans son espace partenaire, il le donne au client qui rapporte un
-// climatiseur ; le client le tape sur /retrait pour valider le retour. Il
-// change chaque jour (date de Paris) : noté par un client, il ne sert plus le
-// lendemain. Distinct du code secret de l'espace partenaire, qui ne doit
-// jamais être donné. Calculé, jamais stocké.
-function codeRetourDuJour(partenaireId, jourISO) {
-  const secret = process.env.TRANSPORTEUR_SECRET || '';
-  const h = crypto.createHmac('sha256', secret).update(`retour:${partenaireId}:${jourISO}`).digest();
-  return String(h.readUInt32BE(0) % 10000).padStart(4, '0');
+// Code retour (décision du propriétaire, 20/11/2026) : les 2 derniers
+// chiffres du téléphone de la boutique. Le commerçant le donne au client qui
+// rapporte un climatiseur ; le client le tape sur /retrait pour valider.
+// Téléphone : champ « tel » du point (pointsRetrait.js), sinon le téléphone
+// du commerçant (table partenaires). Risque accepté par le propriétaire :
+// ce numéro est public, un client pourrait valider un faux retour.
+function codeRetour(point, partenaire) {
+  const tel = String((point && point.tel) || (partenaire && partenaire.telephone) || '').replace(/\D/g, '');
+  return tel.length >= 2 ? tel.slice(-2) : null;
 }
 function lienRemise(reservationId, ref) {
   return `https://www.locair.fr/partenaire?remise=${reservationId}.${codeRemise(reservationId, ref)}`;
@@ -189,4 +188,4 @@ function imageQrRemise(reservationId, ref, taille = 240) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${taille}x${taille}&margin=8&data=${encodeURIComponent(lienRemise(reservationId, ref))}`;
 }
 
-module.exports = { codeRetourDuJour, prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };
+module.exports = { codeRetour, prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };
