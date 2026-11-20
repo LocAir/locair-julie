@@ -1064,7 +1064,7 @@ html[data-style="brut"] .vite-b{border-radius:0;border:2.5px solid var(--noir);b
 html[data-style="brut"] .vite-b b{text-transform:uppercase}
 html[data-style="brut"] .vite-p{font-family:var(--mono);color:var(--noir)}
 .tarifs.epure #tf-jours{margin-bottom:18px}
-.tarifs.epure .tf-note{font-size:12px;color:var(--ink-3)}
+.tarifs.epure .tf-note{font-size:13px;color:var(--ink-2)}
 .rail-info[hidden]{display:none}
 
 /* ── BAS DE PAGE (famille locair.fr) ── */
@@ -1681,11 +1681,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   var t = document.getElementById('ticket'), c = document.getElementById('choix');
   if(!t || !c) return;
   [].forEach.call(document.querySelectorAll('#cmt-cta,[data-vers-choix]'), function(t2){ t2.addEventListener('click', function(e){ e.preventDefault(); c.scrollIntoView({behavior:'smooth', block:'start'}); }); });
-  t.addEventListener('click', function(e){
-    e.preventDefault(); if(window.mesurer) window.mesurer('cc_ticket');
+  /* descend à la carte et cherche le point le plus proche (bouton du ticket ET bouton des tarifs) */
+  window.allerAuPointProche = function(){
     c.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-    /* et cherche tout de suite le point le plus proche (le téléphone demande l'autorisation) :
-       carte si elle est prête, sinon le bouton de la liste */
     var essais = 0;
     (function localiser(){
       var g = document.getElementById('gc-loc'), l = document.getElementById('localiser');
@@ -1693,6 +1691,10 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       if(++essais < 10) return setTimeout(localiser, 300);
       if(l && l.offsetParent) l.click();
     })();
+  };
+  t.addEventListener('click', function(e){
+    e.preventDefault(); if(window.mesurer) window.mesurer('cc_ticket');
+    window.allerAuPointProche();
     var b = document.getElementById('localiser'); if(b) setTimeout(function(){ b.focus({ preventScroll: true }); }, 450);
   });
 })();
@@ -2253,11 +2255,15 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
 
   /* ── prix affiché dans le titre ── */
   function majPrixTextes(){ $('prix-mini').textContent = String(CC.demain || CC.base); dessinerTarifs(); try{ window.dispatchEvent(new Event('cc-langue')); }catch(e){} }
+  /* prix affichés dans « Combien ça coûte » : le même coefficient que le vrai
+     prix de demain affiché en haut (CC.demain), pour ne jamais montrer deux prix
+     différents sur la page. Le prix exact du point choisi s'affiche avant de payer. */
+  function prixVitrine(j){ return CC.demain ? Math.round(prix(j) * CC.demain / CC.base) : prix(j); }
   function dessinerTarifs(){
     var ol = $('tf-paliers'); if(!ol) return;
     var D = [[7,13,L('1 semaine','1 week')],[14,20,L('2 semaines','2 weeks')],[21,29,L('3 semaines','3 weeks')],[30,9999,L('1 mois','1 month')]];
     ol.innerHTML = D.map(function(d){
-      return '<li role="button" tabindex="0" data-deb="' + d[0] + '" data-fin="' + d[1] + '"><b>' + euros(prix(d[0])) + '</b><span class="tf-j">' + d[2] + '</span></li>';
+      return '<li role="button" tabindex="0" data-deb="' + d[0] + '" data-fin="' + d[1] + '"><b>' + euros(prixVitrine(d[0])) + '</b><span class="tf-j">' + d[2] + '</span></li>';
     }).join('');
     var r = $('tf-jours'); r.min = JOURS_MIN; r.max = JOURS_MAX; if(+r.value < JOURS_MIN) r.value = JOURS_MIN;
     $('tf-note').textContent = L('Nous pratiquons une tarification dynamique : de ' + euros(CC.min) + ' à ' + euros(CC.max) + ' la semaine selon la demande (chaleur, stock). Le prix exact s’affiche toujours avant de payer.', 'We use dynamic pricing: from ' + euros(CC.min) + ' to ' + euros(CC.max) + ' a week depending on demand (heat, stock). The exact price is always shown before you pay.', 'Aplicamos precios dinámicos: de ' + euros(CC.min) + ' a ' + euros(CC.max) + ' a la semana según la demanda (calor, stock). El precio exacto se muestra siempre antes de pagar.');
@@ -2265,7 +2271,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   }
   function majSimu(){
     var r = $('tf-jours'); if(!r) return;
-    var n = +r.value, tot = prix(n), plein = Math.round(PALIERS[0][1] * n * 100) / 100, eco = Math.round((plein - tot) * 100) / 100;
+    var n = +r.value, tot = prixVitrine(n), plein = Math.round(PALIERS[0][1] * n * 100) / 100, eco = Math.round((plein - tot) * 100) / 100;
     $('tf-n').textContent = n + L(' jours', ' days');
     (function(){
       var el = $('tf-total'), depart = +(el.dataset.v || tot), t0 = 0;
@@ -2279,7 +2285,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('tf-parj').textContent = L('soit ', '') + euros(Math.round(tot / n * 100) / 100) + L(' par jour', ' a day');
     [].forEach.call($('tf-paliers').children, function(li){ var a = +li.dataset.deb, b = +li.dataset.fin; li.classList.toggle('on', a <= n); li.classList.toggle('actuel', a <= n && n <= b); li.setAttribute('aria-pressed', String(a <= n && n <= b)); });
     r.style.setProperty('--p', ((n - r.min) / (r.max - r.min) * 100) + '%');
-    $('tf-cta').textContent = L('Réserver ' + n + ' jours · ' + euros(tot), 'Book ' + n + ' days · ' + euros(tot), 'Reservar ' + n + ' días · ' + euros(tot)) + ' ↑';
+    $('tf-cta').textContent = L('Réserver ' + n + ' jours · ' + euros(tot), 'Book ' + n + ' days · ' + euros(tot), 'Reservar ' + n + ' días · ' + euros(tot));
   }
 
 
@@ -2949,7 +2955,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       if(!vu && t){ clearInterval(t); t = null; sec.classList.remove('demo'); }
     }, {threshold:.45}).observe(sec);
   })();
-  $('tf-cta').addEventListener('click', function(){ etat.dureeVoulue = etat.dureeSimu = +$('tf-jours').value; window.mesurer('cc_tarif_duree'); });
+  $('tf-cta').addEventListener('click', function(){ etat.dureeVoulue = etat.dureeSimu = +$('tf-jours').value; window.mesurer('cc_tarif_duree'); if(window.allerAuPointProche) window.allerAuPointProche(); });
 
   /* ── BANDEAU CHALEUR : vraie prévision de la semaine (Open-Meteo, via
      /api/meteo-semaine). Affiché seulement à partir de 25 °C : jamais de
