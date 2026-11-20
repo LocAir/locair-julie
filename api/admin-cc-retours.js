@@ -4,7 +4,8 @@
 // Colonnes : supabase/migration_2026-11-20_cc_retour_photo.sql.
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
-const { getPointRetrait } = require('./_lib/pointsRetrait');
+const { getPointRetrait, POINTS_RETRAIT } = require('./_lib/pointsRetrait');
+const { codeRetour } = require('./_lib/clickCollect');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -13,6 +14,22 @@ module.exports = async (req, res) => {
   if (!a.ok) return res.status(401).json({ error: 'Non autorisé' });
   const b = req.body || {};
   try {
+    // Flyers commerçants (admin/flyers-commercants.html) : pour chaque point de
+    // retrait, son code retour, à imprimer et à remettre au commerçant.
+    // Jamais affiché sur le site public.
+    if (b.action === 'flyers') {
+      const codes = POINTS_RETRAIT.filter((p) => !p.test).map((p) => String(p.partenaire_code || '').toLowerCase()).filter(Boolean);
+      let partenaires = [];
+      if (codes.length) {
+        const { data } = await supabase.from('partenaires').select('code, nom, telephone').in('code', codes);
+        partenaires = data || [];
+      }
+      const points = POINTS_RETRAIT.filter((p) => !p.test).map((p) => {
+        const part = partenaires.find((x) => String(x.code || '').toLowerCase() === String(p.partenaire_code || '').toLowerCase()) || null;
+        return { id: p.id, nom: p.nom, adresse: p.adresse, exemple: !!p.exemple, partenaire: part ? (part.nom || part.code) : null, partenaire_code: p.partenaire_code || null, code_retour: codeRetour(p, part) };
+      });
+      return res.status(200).json({ points });
+    }
     if (b.action === 'pret') {
       const id = parseInt(b.id, 10);
       if (!id) return res.status(400).json({ error: 'Réservation manquante' });
