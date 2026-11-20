@@ -339,7 +339,9 @@ body.a-cook .barre-dates{bottom:64px}
 body:not(.en-etape) .nav{position:absolute;left:0;right:0;background:transparent;border-bottom:0;box-shadow:none}
 body:not(.en-etape) .nav-logo,body:not(.en-etape) .nav-logo em{color:#fff}
 body:not(.en-etape) .nav-tel{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);box-shadow:none;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-.hero::after{background:linear-gradient(180deg,rgba(6,18,42,.82) 0%,rgba(6,18,42,.5) 42%,rgba(6,18,42,.18) 70%,rgba(6,18,42,.55) 100%)!important}
+.hero::after{background:linear-gradient(180deg,rgba(9,36,92,.62) 0%,rgba(9,36,92,.38) 40%,rgba(9,36,92,.10) 68%,rgba(6,18,42,.5) 100%)!important}
+/* texte lisible sur un ciel plus clair */
+.hero h1,.hero .hero-sous{text-shadow:0 2px 18px rgba(4,16,44,.45),0 1px 2px rgba(4,16,44,.35)}
 /* icônes des récapitulatifs */
 .recap dt{display:flex;align-items:center;gap:8px}
 .recap .ico{width:17px;height:17px;flex-shrink:0;stroke:var(--vif);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -1022,6 +1024,7 @@ html[data-style="brut"] .ugc-play{border-radius:0;border:2.5px solid var(--noir)
 .t-ok{display:inline-flex;align-items:center;gap:6px;color:var(--ok)}
 .t-ok::before{content:"";width:18px;height:18px;border-radius:50%;background:#E8F6EE url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230F7A3D' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E") center/11px no-repeat}
 .t-sep{color:var(--ink-3)}
+.t-var{display:block;font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.3}
 .adr-boite{position:relative}
 .adr-liste{position:absolute;left:0;right:0;top:calc(100% - 22px);z-index:20;list-style:none;margin:0;padding:6px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 30px -12px rgba(11,30,68,.35)}
 .adr-liste li{padding:11px 12px;border-radius:10px;cursor:pointer;font-size:15px;min-height:44px;box-sizing:border-box}
@@ -1166,6 +1169,16 @@ html:not([data-style="brut"]) .bdp-in{row-gap:36px}
   html:not([data-style="brut"]) .faq-liste,html:not([data-style="brut"]) .faq-plus{grid-column:2}
   html:not([data-style="brut"]) .bdp{margin-top:128px}
 }
+
+/* langue : un petit bouton, la liste s'ouvre au toucher */
+.lg-menu{position:relative;margin-left:auto}
+.lg-btn{display:flex;align-items:center;gap:4px;min-height:44px;min-width:58px;justify-content:center;padding:0 12px;border-radius:100px;border:1px solid var(--line);background:#fff;color:var(--vif-d);font:800 13px var(--font);cursor:pointer}
+.lg-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.3);color:#fff;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.lg-liste{position:absolute;right:0;top:calc(100% + 8px);z-index:60;min-width:150px;background:#fff;border-radius:16px;padding:6px;box-shadow:0 18px 40px -14px rgba(11,30,68,.4)}
+.lg-liste button{display:block;width:100%;text-align:left;border:0;background:none;padding:12px 14px;border-radius:10px;font:700 15px var(--font);color:var(--ink);cursor:pointer;min-height:44px}
+.lg-liste button[aria-pressed="true"]{background:var(--mist);color:var(--vif-d)}
+.nav .lg-menu+.espace{margin-left:8px}
 </style>
 <script>
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
@@ -1185,7 +1198,7 @@ html:not([data-style="brut"]) .bdp-in{row-gap:36px}
   <div class="col">
     <button type="button" class="burger" id="burger" aria-expanded="false" aria-controls="tiroir"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="sr"><span lang="fr">Menu</span><span lang="en">Menu</span><span lang="es">Menú</span></span></button>
     <span class="nav-logo" aria-label="Loc’Air">Loc<em>’Air</em></span>
-    <div class="nav-langue haut" role="group" aria-label="Langue / Language / Idioma"><button type="button" data-langue="fr" aria-pressed="true">FR</button><button type="button" data-langue="en" aria-pressed="false">EN</button><button type="button" data-langue="es" aria-pressed="false">ES</button></div>
+    <div class="lg-menu" id="lg-menu"><button type="button" class="lg-btn" id="lg-btn" aria-haspopup="true" aria-expanded="false" aria-controls="lg-liste" aria-label="Langue / Language / Idioma"><span id="lg-cur">FR</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><div class="lg-liste" id="lg-liste" hidden><button type="button" data-langue="fr" aria-pressed="true">Français</button><button type="button" data-langue="en" aria-pressed="false">English</button><button type="button" data-langue="es" aria-pressed="false">Español</button></div></div>
     <div class="espace" id="espace">
       <button type="button" class="espace-btn" id="espace-btn" aria-haspopup="true" aria-expanded="false" aria-controls="espace-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span class="sr"><span lang="fr">Mon espace</span><span lang="en">My account</span><span lang="es">Mi cuenta</span></span></button>
       <div class="espace-menu" id="espace-menu" hidden>
@@ -1239,7 +1252,7 @@ html:not([data-style="brut"]) .bdp-in{row-gap:36px}
     <div class="hero">
       <picture>
         <source media="(min-width:760px)" type="image/webp" srcset="/cc-hero-1600.webp 1600w, /cc-hero-2560.webp 2560w, /hero-ete.webp 3840w" sizes="100vw">
-        <img class="hero-img" src="/cc-hero-p720.webp" srcset="/cc-hero-p720.webp 720w, /cc-hero-p1080.webp 1080w" sizes="100vw" width="1080" height="1350" alt="" fetchpriority="high" decoding="async">
+        <img class="hero-img" src="/cc-hero-p720.webp" srcset="/cc-hero-p720.webp 720w, /cc-hero-p1080.webp 1080w, /cc-hero-p1440.webp 1440w" sizes="100vw" width="1080" height="1350" alt="" fetchpriority="high" decoding="async">
       </picture>
 
       <div class="col">
@@ -1254,10 +1267,11 @@ html:not([data-style="brut"]) .bdp-in{row-gap:36px}
               <b class="t-nom"><span lang="fr">Climatiseur mobile</span><span lang="en">Portable air conditioner</span><span lang="es">Aire acondicionado portátil</span></b>
               <span class="t-sous"><span lang="fr">Prêt à brancher · pièce jusqu’à 15&nbsp;m²</span><span lang="en">Plug and play · rooms up to 15&nbsp;m²</span><span lang="es">Listo para enchufar · hasta 15&nbsp;m²</span></span>
               <span class="t-prix"><b><span class="t-eur" lang="en">€</span><span id="prix-mini">150</span></b><em><span lang="fr">€ la semaine</span><span lang="en">a week</span><span lang="es">€ a la semana</span></em></span>
+              <span class="t-var"><span lang="fr">en temps normal · 139 à 189 € selon la demande</span><span lang="en">usual price · €139–€189 depending on demand</span><span lang="es">precio habitual · de 139 a 189 € según la demanda</span></span>
             </span>
           </span>
           <span class="t-confiance"><span class="t-ok"><span lang="fr">Sans caution</span><span lang="en">No deposit</span><span lang="es">Sin fianza</span></span><span class="t-sep" aria-hidden="true">·</span><span class="t-note"><span class="t-et" aria-hidden="true">★</span> <span lang="fr" id="t-note-fr">4,9</span><span lang="en" id="t-note-en">4.9</span><span lang="es" id="t-note-es">4,9</span> <small>(<span id="t-nb">38</span> <span lang="fr">avis Google</span><span lang="en">Google reviews</span><span lang="es">reseñas Google</span>)</small></span></span>
-          <span class="t-cta"><span lang="fr">Choisir mon point de retrait</span><span lang="en">Choose my pick-up point</span><span lang="es">Elegir mi punto de recogida</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>
+          <span class="t-cta"><span lang="fr">Trouver le point le plus proche</span><span lang="en">Find the nearest point</span><span lang="es">Buscar el punto más cercano</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>
         </a>
       </div>
     </div>
@@ -1278,7 +1292,7 @@ html:not([data-style="brut"]) .bdp-in{row-gap:36px}
         <div class="gcarte" id="gcarte" hidden>
           <div class="gc-map" id="gc-map" aria-label="Carte des points de retrait" data-aria-fr="Carte des points de retrait" data-aria-en="Map of pick-up points" data-aria-es="Mapa de puntos de recogida"></div>
           <button type="button" class="gc-loc" id="gc-loc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="4"/></svg><span lang="fr">Me localiser</span><span lang="en">Locate me</span><span lang="es">Localizarme</span></button>
-          <p class="gc-astuce" id="gc-astuce"><span lang="fr">Touchez un point sur la carte</span><span lang="en">Tap a point on the map</span><span lang="es">Toca un punto en el mapa</span></p>
+          <p class="gc-astuce" id="gc-astuce"><span lang="fr">Touchez un point</span><span lang="en">Tap a point</span><span lang="es">Toca un punto</span></p>
           <div class="gc-fiche" id="gc-fiche" hidden></div>
         </div>
         <button type="button" class="localiser" id="localiser">
@@ -1419,7 +1433,7 @@ html:not([data-style="brut"]) .bdp-in{row-gap:36px}
     <div class="hero hero-part">
       <picture>
         <source media="(min-width:760px)" type="image/webp" srcset="/cc-hero-1600.webp 1600w, /cc-hero-2560.webp 2560w" sizes="100vw">
-        <img class="hero-img" src="/cc-hero-p720.webp" srcset="/cc-hero-p720.webp 720w, /cc-hero-p1080.webp 1080w" sizes="100vw" width="1080" height="1350" alt="" decoding="async">
+        <img class="hero-img" src="/cc-hero-p720.webp" srcset="/cc-hero-p720.webp 720w, /cc-hero-p1080.webp 1080w, /cc-hero-p1440.webp 1440w" sizes="100vw" width="1080" height="1350" alt="" decoding="async">
       </picture>
       <div class="col">
         <nav class="onglets" aria-label="Sections"><button type="button" data-onglet="ville"><span lang="fr">Louer</span><span lang="en">Rent</span><span lang="es">Alquilar</span></button><button type="button" data-onglet="partenaire" aria-current="page"><span lang="fr">Partenaire</span><span lang="en">Partner</span><span lang="es">Colaborador</span></button></nav>
@@ -1682,6 +1696,15 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   t.addEventListener('click', function(e){
     e.preventDefault();
     c.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    /* et cherche tout de suite le point le plus proche (le téléphone demande l'autorisation) :
+       carte si elle est prête, sinon le bouton de la liste */
+    var essais = 0;
+    (function localiser(){
+      var g = document.getElementById('gc-loc'), l = document.getElementById('localiser');
+      if(g && g.offsetParent) return g.click();
+      if(++essais < 6) return setTimeout(localiser, 300);
+      if(l && l.offsetParent) l.click();
+    })();
     var b = document.getElementById('localiser'); if(b) setTimeout(function(){ b.focus({ preventScroll: true }); }, 450);
   });
 })();
@@ -1963,10 +1986,19 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('part-wa').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(en ? 'Hello, I run a business on the French Riviera and I would like to become a Loc’Air pickup point.' : es ? 'Hola, tengo un comercio en la Costa Azul y me gustaría ser punto de recogida Loc’Air.' : 'Bonjour, j’ai un commerce sur la Côte d’Azur et j’aimerais devenir point de retrait Loc’Air.');
     $('part-mail').href = 'mailto:contact@locair.fr?subject=' + encodeURIComponent(en ? 'Becoming a Loc’Air pickup point' : es ? 'Ser punto de recogida Loc’Air' : 'Devenir point de retrait Loc’Air');
   }
+  (function(){
+    var b = $('lg-btn'), li = $('lg-liste'); if(!b) return;
+    function fermer(){ li.hidden = true; b.setAttribute('aria-expanded', 'false'); }
+    b.addEventListener('click', function(e){ e.stopPropagation(); var o = li.hidden; li.hidden = !o; b.setAttribute('aria-expanded', String(o)); if(o){ var a = li.querySelector('[aria-pressed="true"]'); if(a) a.focus(); } });
+    li.addEventListener('click', function(e){ if(e.target.closest('[data-langue]')){ fermer(); b.focus(); } });
+    document.addEventListener('click', function(e){ if(!li.hidden && !e.target.closest('#lg-menu')) fermer(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !li.hidden){ fermer(); b.focus(); } });
+  })();
   function choisirLangue(l){
     if(l !== 'en' && l !== 'es') l = 'fr';
     document.documentElement.setAttribute('data-langue', l);
     document.documentElement.lang = l;
+    if($('lg-cur')) $('lg-cur').textContent = l.toUpperCase();
     try{ localStorage.setItem('locair_cc_langue', l); }catch(e){}
     $('email').placeholder = l === 'en' ? 'you@example.com' : l === 'es' ? 'tu@ejemplo.es' : 'vous@exemple.fr';
     $('tel').placeholder = l === 'en' ? '+44 7700 900123' : l === 'es' ? '+34 612 34 56 78' : '06 12 34 56 78';
