@@ -5,21 +5,17 @@
 //    après une prolongation, jusqu'au retour. Il est long et tiré au hasard
 //    (32^8 possibilités) : impossible à deviner, et les essais sont limités.
 // 2. RETRAIT : il montre sa pièce d'identité au commerçant et valide lui-même
-//    le retrait sur son téléphone. RETOUR : le commerçant vérifie l'appareil et
-//    donne au client le code retour (les 2 derniers chiffres du téléphone de la
-//    boutique, voir clickCollect.codeRetour) ; le client le tape pour valider.
+//    le retrait sur son téléphone. RETOUR : il dépose l'appareil dans sa housse,
+//    prend une photo et valide — en 15 secondes, sans code (voir apresRetour).
 //
-// POST { point, ref, action: 'voir'|'valider'|'rendre', code_commercant }
+// POST { point, ref, action: 'voir'|'valider'|'rendre'|'signaler'|'photo', photo, categorie, message }
 // Les règles (dates, statut, colonnes) sont celles de _lib/remiseCC.js,
 // communes avec l'espace partenaire.
 const { getSupabase } = require('./_lib/supabase');
-const { safeEqual } = require('./_lib/auth');
-const { verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { agir } = require('./_lib/remiseCC');
 const { pushToAdmin } = require('./_lib/push');
-const { codeRetour } = require('./_lib/clickCollect');
 
 const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
 
@@ -116,30 +112,59 @@ module.exports = async (req, res) => {
       return res.status(out.status).json(out.body);
     }
 
-    // RETOUR : le commerçant confirme avec son code (sinon un client pourrait
-    // déclarer « rendu » depuis chez lui sans rapporter l'appareil).
-    if (!partenaire || partenaire.actif === false) {
-      return res.status(409).json({ error: T(lang, 'Ce point n’est pas encore relié à un commerçant. Le commerçant peut écrire à Loc’Air.', 'This point isn’t linked to a shop yet. The shop can contact Loc’Air.', 'Este punto aún no está vinculado a un comercio. El comercio puede contactar con Loc’Air.') });
+    // RETOUR en 15 secondes (décision du propriétaire, 20/11/2026) : le client
+    // dépose le climatiseur dans sa housse, prend UNE photo (preuve du dépôt),
+    // et valide. Pas de code commerçant. La location est close, le client
+    // reçoit sa confirmation de retour + sa facture, l'appareil passe
+    // « À reconditionner » (page admin/cc-retours.html).
+    if (action === 'rendre') {
+      const photo = String(b.photo || '');
+      if (!photo.startsWith(`signalements/${r.id}-`) || photo.includes('..')) {
+        return res.status(400).json({ error: T(lang, 'Prenez une photo du climatiseur dans sa housse pour valider le retour.', 'Take a photo of the air conditioner in its cover to confirm the return.', 'Haz una foto del aire acondicionado en su funda para confirmar la devolución.'), code: 'photo_requise' });
+      }
+      const out = await agir(supabase, r, partenaire ? partenaire.id : null, 'rendre');
+      if (out.status === 200 && out.body && out.body.ok && !out.body.deja) {
+        await apresRetour(supabase, r, point, photo, lang).catch((e) => console.error('[cc-comptoir après retour]', e.message));
+      }
+      return res.status(out.status).json(out.body);
     }
-    const cleCommercant = `comptoir-commercant:${partenaire.id}`;
-    if (await isRateLimited(supabase, cleCommercant)) {
-      return res.status(429).json({ error: T(lang, 'Trop d’essais du code retour. Réessayez dans 15 minutes.', 'Too many wrong return codes. Try again in 15 minutes.', 'Demasiados códigos de devolución incorrectos. Vuelve a intentarlo en 15 minutos.') });
-    }
-    // Le client tape le code retour donné par le commerçant (2 derniers chiffres
-    // du téléphone de la boutique). Le code secret du commerçant marche aussi,
-    // s'il préfère le taper lui-même.
-    const code = String(b.code_commercant || '').trim();
-    const cr = codeRetour(point, partenaire);
-    const bon = code && ((cr && safeEqual(code, cr))
-      || (partenaire.pin_hashed ? verifyPin(code, partenaire.pin) : safeEqual(code, partenaire.pin || '')));
-    if (!bon) {
-      await recordFailedAttempt(supabase, cleCommercant);
-      return res.status(401).json({ error: T(lang, 'Code retour incorrect. Demandez-le au commerçant.', 'Wrong return code. Ask the shopkeeper.', 'Código de devolución incorrecto. Pídeselo al comerciante.'), code: 'code_commercant' });
-    }
-    const out = await agir(supabase, r, partenaire.id, action);
-    return res.status(out.status).json(out.body);
+    return res.status(400).json({ error: 'Action inconnue.' });
   } catch (e) {
     console.error('[cc-comptoir]', e.message);
     return res.status(500).json({ error: T(lang, 'Erreur serveur. Réessayez.', 'Server error. Please try again.', 'Error del servidor. Inténtalo de nuevo.') });
   }
 };
+
+// Après un retour validé : photo + état « à reconditionner » sur la
+// réservation, puis confirmation au client (email + SMS) avec sa facture.
+// Colonnes retour_photo / etat_retour : supabase/migration_2026-11-20_cc_retour_photo.sql.
+// Tant qu'elles n'existent pas, la photo part dans les consignes (rien n'est perdu).
+async function apresRetour(supabase, r, point, photo, lang) {
+  const { error } = await supabase.from('reservations').update({ retour_photo: photo, etat_retour: 'a_reconditionner' }).eq('id', r.id);
+  if (error) {
+    await supabase.from('reservations').update({ instructions_acces: `${r.instructions_acces || ''} | PHOTO RETOUR : ${photo} | À RECONDITIONNER`.slice(0, 1000) }).eq('id', r.id);
+  }
+  // facture : celle déjà générée au paiement si elle existe, sinon l'espace client
+  const { data: docs } = await supabase.from('documents').select('access_token').eq('reservation_id', r.id).eq('type', 'facture')
+    .order('id', { ascending: false }).limit(1);
+  const lienFacture = docs && docs[0] ? `https://www.locair.fr/api/document-view?token=${docs[0].access_token}` : 'https://www.locair.fr/client';
+  const l = r.lang === 'en' || r.lang === 'es' ? r.lang : (lang || 'fr');
+  const Tx = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+  const quand = new Date().toLocaleString(l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+  const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
+  if (r.email) {
+    await sendBrevoEmail({
+      to: r.email, senderName: "Loc'Air",
+      subject: Tx(`Retour confirmé — ${r.ref}`, `Return confirmed — ${r.ref}`, `Devolución confirmada — ${r.ref}`),
+      html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
+<h2 style="color:#1A5EDB;margin:0 0 12px">${Tx('Merci', 'Thank you', 'Gracias')} ${esc(r.prenom || '')} !</h2>
+<p>${Tx(`Votre climatiseur a bien été rendu au point <b>${esc(point.nom)}</b>, ${esc(quand)}. Votre location est terminée.`, `Your air conditioner was returned to <b>${esc(point.nom)}</b>, ${esc(quand)}. Your rental is over.`, `Tu aire acondicionado se devolvió en <b>${esc(point.nom)}</b>, ${esc(quand)}. Tu alquiler ha terminado.`)}</p>
+<p style="margin:16px 0"><a href="${esc(lienFacture)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${Tx('Voir ma facture', 'View my invoice', 'Ver mi factura')}</a></p>
+<p style="color:#4B5873;font-size:13px">${Tx('Référence', 'Reference', 'Referencia')} : ${esc(r.ref || '')} · Loc’Air · locair.fr</p></div>`,
+    }).catch(() => {});
+  }
+  if (r.tel) {
+    await sendBrevoSms({ to: r.tel, content: Tx(`Loc'Air : retour confirmé (${r.ref}). Merci ! Votre facture : ${lienFacture}`, `Loc'Air: return confirmed (${r.ref}). Thank you! Your invoice: ${lienFacture}`, `Loc'Air: devolución confirmada (${r.ref}). ¡Gracias! Tu factura: ${lienFacture}`) }).catch(() => {});
+  }
+}

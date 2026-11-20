@@ -68,6 +68,8 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 #sig-msg{width:100%;font:500 16px 'DM Sans',sans-serif;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;resize:vertical;margin-bottom:10px}
 .msg.ok{background:#E8F6EE;color:var(--ok)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.photo-retour{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;border:2px dashed var(--vif);border-radius:16px;color:var(--vif-d);font-weight:800;font-size:16px;cursor:pointer;margin:6px 0 12px;padding:14px;text-align:center;overflow:hidden}
+.photo-retour img{max-width:100%;max-height:220px;border-radius:12px}
 .fini{text-align:center;padding:36px 22px}
 .fini .rond{width:84px;height:84px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
 .fini svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
@@ -115,8 +117,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       <form class="commercant" id="f-com" novalidate hidden>
         <h2><span lang="fr">Rendre le climatiseur</span><span lang="en">Return the air conditioner</span><span lang="es">Devolver el aire acondicionado</span></h2>
         <p id="r-consigne"></p>
-        <div class="champ"><label for="code-com"><span lang="fr">Code retour donné par le commerçant</span><span lang="en">Return code from the shopkeeper</span><span lang="es">Código de devolución del comerciante</span></label>
-          <input id="code-com" class="pin" type="text" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••"></div>
+        <label class="photo-retour" id="ph-ret"><input type="file" id="ph-file" accept="image/*" capture="environment" hidden><span id="ph-txt">📷 <span lang="fr">Photo du climatiseur dans sa housse</span><span lang="en">Photo of the air conditioner in its cover</span><span lang="es">Foto del aire acondicionado en su funda</span></span><img id="ph-img" alt="" hidden></label>
         <button class="btn vert" id="b-com" type="submit"></button>
         <p class="msg err" id="m-com" role="alert" hidden></p>
       </form>
@@ -210,7 +211,6 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     var info = $('r-info'), f = $('f-com'), btn = $('b-com'), nom = $('r-nom').textContent;
     info.hidden = true; f.hidden = true; $('f-cli').hidden = true; etat.action = null;
     $('sig').hidden = !(r.peut_remettre || r.peut_rendre); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
-    if(r.sans_commercant && !r.peut_remettre){ info.textContent = L('Ce point n’est pas encore relié à un commerçant : le retour ne peut pas être confirmé ici. Écrivez à Julie sur locair.fr.', 'This point isn’t linked to a shop yet, so the return can’t be confirmed here. Chat with Julie on locair.fr.', 'Este punto aún no está vinculado a un comercio: la devolución no se puede confirmar aquí. Escribe a Julie en locair.fr.'); info.hidden = false; return; }
     if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; $('r-tendre').hidden = true; return; }
     /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
@@ -220,7 +220,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
-      $('r-consigne').textContent = L('Rendez l’appareil sous sa housse, avec sa gaine d’évacuation et le filtre propre. Le commerçant le reprend et vous donne le code retour : tapez-le ici.', 'Return the unit under its cover, with its exhaust hose and a clean filter. The shopkeeper takes it back and gives you the return code: enter it here.', 'Devuelve el aparato con su funda puesta, con su tubo de evacuación y el filtro limpio. El comerciante lo recoge y te da el código de devolución: escríbelo aquí.');
+      $('r-consigne').textContent = L('Déposez le climatiseur dans sa housse, avec sa gaine d’évacuation. Prenez-le en photo, puis validez : c’est fini.', 'Leave the air conditioner in its cover, with its exhaust hose. Take a photo, then confirm: you’re done.', 'Deja el aire acondicionado en su funda, con su tubo de evacuación. Hazle una foto y confirma: listo.');
       btn.textContent = L('Valider mon retour', 'Confirm my return', 'Confirmar mi devolución'); f.hidden = false;
     } else {
       info.textContent = r.remise_message || L('Rien à faire aujourd’hui pour cette réservation.', 'Nothing to do today for this booking.', 'Nada que hacer hoy con esta reserva.'); info.hidden = false;
@@ -286,18 +286,26 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       $('f-texte').textContent = L('Retrait validé. Rapportez l’appareil ici le ', 'Pick-up confirmed. Bring the unit back here on ', 'Recogida confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + L('. Gardez votre numéro de commande.', '. Keep your order number.', '. Guarda tu número de pedido.');
     }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
+  var photoRetour = null;
+  $('ph-file').addEventListener('change', function(){
+    var f = this.files && this.files[0]; this.value = ''; if(!f) return;
+    reduire(f).then(function(b){ photoRetour = b; var im = $('ph-img'); im.src = URL.createObjectURL(b); im.hidden = false; $('ph-txt').innerHTML = '🔄 ' + L('Reprendre la photo', 'Retake the photo', 'Repetir la foto'); erreur($('m-com'), ''); });
+  });
   $('f-com').addEventListener('submit', function(e){
     e.preventDefault();
-    var code = $('code-com').value.trim(); if(!code) return erreur($('m-com'), L('Tapez le code retour donné par le commerçant.', 'Enter the return code from the shopkeeper.', 'Escribe el código de devolución del comerciante.'));
+    if(!photoRetour) return erreur($('m-com'), L('Prenez d’abord une photo du climatiseur dans sa housse.', 'First take a photo of the air conditioner in its cover.', 'Primero haz una foto del aire acondicionado en su funda.'));
     var b = $('b-com'); b.disabled = true; erreur($('m-com'), '');
     var action = etat.action;
-    appel({action:action, code_commercant:code}).then(function(r){
-      b.disabled = false; $('code-com').value = '';
+    appel({action:'photo', type:photoRetour.type || 'image/jpeg'}).then(function(u){
+      if(!u.ok || !u.j.signedUrl) throw new Error(u.j.error || '');
+      return fetch(u.j.signedUrl, {method:'PUT', headers:{'Content-Type': photoRetour.type || 'image/jpeg'}, body:photoRetour}).then(function(x){ if(!x.ok) throw new Error(L('La photo n’a pas pu partir. Réessayez.', 'The photo couldn’t be sent. Try again.', 'No se pudo enviar la foto. Inténtalo de nuevo.')); return appel({action:'rendre', photo:u.j.path}); });
+    }).then(function(r){
+      b.disabled = false;
       if(!r.ok) return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       if(action === 'valider'){ $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!'); $('f-texte').textContent = L('Remise confirmée. Rapportez l’appareil ici le ', 'Handover confirmed. Bring the unit back here on ', 'Entrega confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.'; }
-      else { $('f-titre').textContent = L('Retour confirmé, merci !', 'Return confirmed, thank you!', '¡Devolución confirmada, gracias!'); $('f-texte').textContent = L('Votre location est terminée. À bientôt chez Loc’Air.', 'Your rental is over. See you soon at Loc’Air.', 'Tu alquiler ha terminado. Hasta pronto en Loc’Air.'); }
-    }).catch(function(){ b.disabled = false; erreur($('m-com'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+      else { $('f-titre').textContent = L('Retour confirmé, merci !', 'Return confirmed, thank you!', '¡Devolución confirmada, gracias!'); $('f-texte').textContent = L('Votre location est terminée. Votre confirmation et votre facture arrivent par email et SMS.', 'Your rental is over. Your confirmation and invoice are on their way by email and text.', 'Tu alquiler ha terminado. Tu confirmación y tu factura llegan por email y SMS.'); return; $('f-texte').textContent = L('Votre location est terminée. À bientôt chez Loc’Air.', 'Your rental is over. See you soon at Loc’Air.', 'Tu alquiler ha terminado. Hasta pronto en Loc’Air.'); }
+    }).catch(function(x){ b.disabled = false; erreur($('m-com'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
 })();
 </script>
