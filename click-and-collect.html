@@ -660,6 +660,15 @@ body.en-etape .annonce{display:none}
 .carte-pts:not(.pret){background:linear-gradient(90deg,#EEF1F5,#E3E9F2,#EEF1F5);background-size:200% 100%;animation:brille 1.2s infinite}
 .mois h3{position:sticky;top:var(--haut-suivi,112px);z-index:2;background:var(--mist);padding:8px 4px;margin:0 0 4px;box-shadow:0 6px 8px -8px rgba(14,23,38,.2)}
 .champ-ok{position:relative}
+.tel-ligne{display:flex;gap:8px}
+.tel-ligne .champ{flex:1;min-width:0}
+.tel-pays{position:relative;flex:0 0 auto;min-width:104px;min-height:54px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--paper);display:flex;align-items:center;padding:0 30px 0 12px;font-size:17px;color:var(--ink)}
+.tel-pays::after{content:"";position:absolute;right:13px;top:50%;width:7px;height:7px;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:translateY(-70%) rotate(45deg)}
+.tel-pays select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:17px}
+.tel-pays:focus-within{border-color:var(--vif);box-shadow:0 0 0 3px var(--vif-clair)}
+.tel-pays-v{white-space:nowrap}
+.tel-ligne.champ-ok::after{top:19px}
+.facultatif{font-weight:500;color:var(--ink-2)}
 .champ-ok .champ{padding-right:40px}
 .champ-ok::after{content:"";position:absolute;right:16px;top:46px;width:16px;height:9px;border-left:2.5px solid var(--ok);border-bottom:2.5px solid var(--ok);transform:rotate(-45deg)}
 .suggere{display:block;margin-top:6px;font-size:13.5px;color:var(--ink-2)}
@@ -1554,7 +1563,10 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
         </div>
         <div>
           <label class="champ-l" for="tel"><span lang="fr">Téléphone</span><span lang="en">Phone</span><span lang="es">Teléfono</span></label>
-          <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
+          <div class="tel-ligne">
+            <div class="tel-pays"><select id="tel-pays" aria-label="Pays du numéro" autocomplete="tel-country-code"><option value="FR" data-ind="33" selected>🇫🇷 France +33</option><option value="MC" data-ind="377">🇲🇨 Monaco +377</option><option value="IT" data-ind="39">🇮🇹 Italia +39</option><option value="BE" data-ind="32">🇧🇪 Belgique +32</option><option value="CH" data-ind="41">🇨🇭 Suisse +41</option><option value="LU" data-ind="352">🇱🇺 Luxembourg +352</option><option value="DE" data-ind="49">🇩🇪 Deutschland +49</option><option value="ES" data-ind="34">🇪🇸 España +34</option><option value="PT" data-ind="351">🇵🇹 Portugal +351</option><option value="NL" data-ind="31">🇳🇱 Nederland +31</option><option value="GB" data-ind="44">🇬🇧 United Kingdom +44</option><option value="IE" data-ind="353">🇮🇪 Ireland +353</option><option value="AT" data-ind="43">🇦🇹 Österreich +43</option><option value="DK" data-ind="45">🇩🇰 Danmark +45</option><option value="SE" data-ind="46">🇸🇪 Sverige +46</option><option value="NO" data-ind="47">🇳🇴 Norge +47</option><option value="FI" data-ind="358">🇫🇮 Suomi +358</option><option value="PL" data-ind="48">🇵🇱 Polska +48</option><option value="CZ" data-ind="420">🇨🇿 Česko +420</option><option value="GR" data-ind="30">🇬🇷 Ελλάδα +30</option><option value="US" data-ind="1">🇺🇸 United States +1</option><option value="CA" data-ind="1">🇨🇦 Canada +1</option><option value="BR" data-ind="55">🇧🇷 Brasil +55</option><option value="MA" data-ind="212">🇲🇦 Maroc +212</option><option value="DZ" data-ind="213">🇩🇿 Algérie +213</option><option value="TN" data-ind="216">🇹🇳 Tunisie +216</option><option value="IL" data-ind="972">🇮🇱 Israel +972</option><option value="AE" data-ind="971">🇦🇪 UAE +971</option><option value="RU" data-ind="7">🇷🇺 Россия +7</option><option value="UA" data-ind="380">🇺🇦 Україна +380</option><option value="CN" data-ind="86">🇨🇳 中国 +86</option><option value="JP" data-ind="81">🇯🇵 日本 +81</option><option value="AU" data-ind="61">🇦🇺 Australia +61</option></select><span class="tel-pays-v" id="tel-pays-v" aria-hidden="true">🇫🇷 +33</span></div>
+            <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel-national" enterkeyhint="next" required maxlength="22" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
+          </div>
           <p class="aide" id="tel-aide"><span lang="fr">Pour vous prévenir en cas d’imprévu avant le retrait.</span><span lang="en">So we can reach you if anything changes before pick-up.</span><span lang="es">Para avisarte si algo cambia antes de la recogida.</span></p>
         </div>
         <div class="adr-boite">
@@ -1562,6 +1574,10 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
           <input class="champ" id="adr" name="adr" type="text" autocomplete="street-address" enterkeyhint="done" required maxlength="200" placeholder="12 rue de France, 06000 Nice" aria-describedby="adr-aide" aria-autocomplete="list" aria-controls="adr-liste">
           <ul class="adr-liste" id="adr-liste" role="listbox" hidden></ul>
           <p class="aide" id="adr-aide"><span lang="fr">Elle figure sur votre contrat de location. En France ou à l’étranger.</span><span lang="en">It appears on your rental contract. In France or abroad.</span><span lang="es">Aparece en tu contrato de alquiler. En Francia o en el extranjero.</span></p>
+        </div>
+        <div>
+          <label class="champ-l" for="adr2"><span lang="fr">Complément d’adresse</span><span lang="en">Address line 2</span><span lang="es">Complemento de dirección</span> <span class="facultatif"><span lang="fr">(facultatif)</span><span lang="en">(optional)</span><span lang="es">(opcional)</span></span></label>
+          <input class="champ" id="adr2" name="adr2" type="text" autocomplete="address-line2" enterkeyhint="done" maxlength="100" placeholder="Bâtiment, étage, appartement…">
         </div>
         <div class="paie-inline" id="paie-inline" hidden>
           <p class="champ-l"><span lang="fr">Paiement</span><span lang="en">Payment</span><span lang="es">Pago</span></p>
@@ -1994,6 +2010,32 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     document.addEventListener('click', function(e){ if(!li.hidden && !e.target.closest('#lg-menu')) fermer(); });
     document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !li.hidden){ fermer(); b.focus(); } });
   })();
+  /* ── téléphone : pays + numéro, envoyé au format international ── */
+  var telPaysChoisi = false, dernierInd = '33';
+  function indTel(){ var o = $('tel-pays').selectedOptions ? $('tel-pays').selectedOptions[0] : $('tel-pays').options[$('tel-pays').selectedIndex]; return o ? o.getAttribute('data-ind') : '33'; }
+  function choisirPaysTel(code){
+    var sel = $('tel-pays'); sel.value = code; if(sel.selectedIndex < 0) sel.value = 'FR';
+    var o = sel.options[sel.selectedIndex];
+    $('tel-pays-v').textContent = o.textContent.split(' ')[0] + ' +' + o.getAttribute('data-ind');
+    dernierInd = o.getAttribute('data-ind');
+    var EX = {FR:'06 12 34 56 78', MC:'06 12 34 56 78', GB:'07700 900123', ES:'612 34 56 78', IT:'312 345 6789', BE:'0470 12 34 56', CH:'078 123 45 67', DE:'01512 3456789', US:'(201) 555-0123', CA:'(204) 555-0123', NL:'06 12345678', PT:'912 345 678'};
+    $('tel').placeholder = EX[sel.value] || '';
+  }
+  /* numéro tapé ou rempli avec son indicatif (+33…, 0033…) : le pays suit tout seul */
+  function paysDepuisNumero(v){
+    var d = v.trim().replace(/^00/, '+'); if(d.charAt(0) !== '+') return;
+    d = d.replace(/\D/g, ''); var meilleur = null;
+    [].forEach.call($('tel-pays').options, function(o){ var i = o.getAttribute('data-ind'); if(d.indexOf(i) === 0 && (!meilleur || i.length > meilleur.getAttribute('data-ind').length)) meilleur = o; });
+    if(meilleur && indTel() !== meilleur.getAttribute('data-ind')) choisirPaysTel(meilleur.value);
+  }
+  /* numéro complet au format international : +33 612345678 */
+  function telComplet(){
+    var v = $('tel').value.trim();
+    if(/^(\+|00)/.test(v)) return '+' + v.replace(/^00/, '').replace(/\D/g, '');
+    var d = v.replace(/\D/g, ''); if(!d) return '';
+    if(indTel() !== '39') d = d.replace(/^0+/, '');   /* le 0 du début disparaît avec l'indicatif (sauf en Italie) */
+    return '+' + indTel() + ' ' + d;
+  }
   function choisirLangue(l){
     if(l !== 'en' && l !== 'es') l = 'fr';
     document.documentElement.setAttribute('data-langue', l);
@@ -2001,7 +2043,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if($('lg-cur')) $('lg-cur').textContent = l.toUpperCase();
     try{ localStorage.setItem('locair_cc_langue', l); }catch(e){}
     $('email').placeholder = l === 'en' ? 'you@example.com' : l === 'es' ? 'tu@ejemplo.es' : 'vous@exemple.fr';
-    $('tel').placeholder = l === 'en' ? '+44 7700 900123' : l === 'es' ? '+34 612 34 56 78' : '06 12 34 56 78';
+    if(!telPaysChoisi && !$('tel').value) choisirPaysTel(l === 'en' ? 'GB' : l === 'es' ? 'ES' : 'FR');
+    $('adr2').placeholder = l === 'en' ? 'Building, floor, flat…' : l === 'es' ? 'Edificio, planta, piso…' : 'Bâtiment, étage, appartement…';
     majPartenaire();
     if(POINTS.length) rafraichirLangue();
   }
@@ -2464,7 +2507,12 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('envoyer').textContent = (inl.ok ? L('Payer ', 'Pay ') : L('Continuer vers le paiement · ', 'Continue to payment · ')) + euros(total());
     monterInline();
     var memo = etat.client; if(!memo){ try{ memo = JSON.parse(localStorage.getItem('locair_cc_client') || 'null'); }catch(e){} }
-    if(memo){ ['prenom','nom','email','tel'].forEach(function(k){ if(!$(k).value && memo[k]) $(k).value = memo[k]; }); if(!$('adr').value && memo.adresse) $('adr').value = memo.adresse; }
+    if(memo){
+      ['prenom','nom','email'].forEach(function(k){ if(!$(k).value && memo[k]) $(k).value = memo[k]; });
+      if(!$('tel').value && (memo.telSaisi || memo.tel)){ if(memo.telPays){ choisirPaysTel(memo.telPays); telPaysChoisi = true; } $('tel').value = memo.telSaisi || memo.tel; paysDepuisNumero($('tel').value); }
+      if(!$('adr').value && (memo.adr1 || memo.adresse)) $('adr').value = memo.adr1 || memo.adresse;
+      if(!$('adr2').value && memo.adr2) $('adr2').value = memo.adr2;
+    }
   }
   $('recap').addEventListener('click', function(e){
     var b = e.target.closest('[data-modif]'); if(!b) return;
@@ -2476,8 +2524,17 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   /* téléphone mis en forme pendant la saisie : 06 12 34 56 78 */
   $('tel').addEventListener('input', function(){
     var v = this.value, d = v.replace(/\D/g, '');
-    if(/^0\d*$/.test(d) && d.length <= 10 && v.indexOf('+') < 0){ this.value = d.replace(/(\d{2})(?=\d)/g, '$1 '); }
+    paysDepuisNumero(v);
+    if((indTel() === '33' || indTel() === '377') && /^0\d*$/.test(d) && d.length <= 10 && v.indexOf('+') < 0){ this.value = d.replace(/(\d{2})(?=\d)/g, '$1 '); }
     if(this.getAttribute('aria-invalid')){ this.removeAttribute('aria-invalid'); $('tel-aide').className = 'aide'; $('tel-aide').textContent = L('Pour vous prévenir en cas d’imprévu avant le retrait.', 'So we can reach you if anything changes before pick-up.', 'Para avisarte si algo cambia antes de la recogida.'); }
+  });
+  $('tel-pays').addEventListener('change', function(){
+    var t = $('tel'), v = t.value.trim().replace(/^00/, '+'), ancien = '+' + dernierInd;
+    telPaysChoisi = true; choisirPaysTel(this.value);
+    /* l'ancien indicatif tapé à la main s'efface : le pays choisi le remplace */
+    if(v.replace(/[\s.-]/g, '').indexOf(ancien) === 0){ var reste = v.replace(/[\s.-]/g, '').slice(ancien.length); t.value = (dernierInd === '39' ? '' : '0') + reste; }
+    else if(v.charAt(0) === '+') t.value = v.replace(/^\+\d{1,3}\s*/, '');
+    t.parentNode.classList.toggle('champ-ok', telValide()); t.focus();
   });
   /* coche verte quand un champ est bon (au départ du champ), rien de rouge
      tant que la personne tape */
@@ -2485,7 +2542,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     prenom: function(v){ return v.trim().length > 0; },
     nom: function(v){ return v.trim().length > 0; },
     email: function(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); },
-    tel: function(v){ return telValide(v); }
+    tel: function(){ return telValide(); }
   };
   Object.keys(VALIDE).forEach(function(k){
     $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); this.parentNode.classList.toggle('champ-ok', VALIDE[k](this.value)); });
@@ -2571,7 +2628,11 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     ['gclid','gbraid','wbraid','utm_source','utm_medium','utm_campaign','utm_term','utm_content'].forEach(function(k){ if(q.get(k)) out.push(k + '=' + q.get(k)); });
     return out.join(' · ');
   })();
-  function telValide(v){ var d = v.replace(/\D/g, ''); return d.length >= 9 && d.length <= 15; }
+  function telValide(){
+    var t = telComplet(), d = t.replace(/\D/g, '');
+    if(t.indexOf('+33') === 0) return d.length === 11;   /* France : 9 chiffres après +33 */
+    return d.length >= 8 && d.length <= 15;
+  }
   function invalide(id, msg){ $(id).setAttribute('aria-invalid', 'true'); $(id).focus(); if(msg){ var e = $('resa-err'); e.textContent = msg; e.hidden = false; } }
 
   /* ── PAIEMENT SUR LE MÊME ÉCRAN que les coordonnées ──
@@ -2611,12 +2672,13 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       err.textContent = L('Ce point de retrait ouvre bientôt : le paiement y sera possible dès son ouverture. Choisissez un autre point, ou écrivez à Julie (menu ☰ → Aide).', 'This pick-up point opens soon: payment will be possible as soon as it opens. Choose another point, or chat with Julie (menu ☰ → Help).', 'Este punto de recogida abre pronto: el pago será posible en cuanto abra. Elige otro punto o escribe a Julie (menú ☰ → Ayuda).');
       err.hidden = false; return;
     }
-    var c = {prenom:$('prenom').value.trim(), nom:$('nom').value.trim(), email:$('email').value.trim(), tel:$('tel').value.trim()};
+    var c = {prenom:$('prenom').value.trim(), nom:$('nom').value.trim(), email:$('email').value.trim(), tel:telComplet(), telSaisi:$('tel').value.trim(), telPays:$('tel-pays').value};
     if(!c.prenom) return invalide('prenom', L('Indiquez votre prénom.', 'Please enter your first name.'));
     if(!c.nom) return invalide('nom', L('Indiquez votre nom.', 'Please enter your last name.'));
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) return invalide('email', L('Cette adresse email semble incomplète.', 'This email address looks incomplete.'));
-    if(!telValide(c.tel)){ $('tel-aide').className = 'aide err'; $('tel-aide').textContent = L('Ce numéro semble incomplet. Exemple : 06 12 34 56 78.', 'This number looks incomplete. Include your country code, e.g. +44 7700 900123.'); return invalide('tel'); }
-    var adr = $('adr').value.trim(); c.adresse = adr;
+    if(!telValide()){ $('tel-aide').className = 'aide err'; $('tel-aide').textContent = L('Ce numéro semble incomplet. Vérifiez le pays et le numéro.', 'This number looks incomplete. Check the country and the number.', 'Este número parece incompleto. Comprueba el país y el número.'); return invalide('tel'); }
+    var adr = $('adr').value.trim(), adr2 = $('adr2').value.trim(); c.adr1 = adr; c.adr2 = adr2;
+    c.adresse = adr2 ? adr2 + ', ' + adr : adr;   /* comme sur une enveloppe : le complément avant la rue */
     if(adr.length < 8 || !/\d/.test(adr) && adr.split(/\s+/).length < 3) return invalide('adr', L('Indiquez votre adresse postale complète.', 'Please enter your full home address.', 'Indica tu dirección postal completa.'));
     if(!$('cgv').checked){ $('cgv').closest('.coche').classList.add('err'); err.textContent = L('Merci d’accepter les conditions pour continuer.', 'Please accept the terms to continue.'); err.hidden = false; $('cgv').focus(); return; }
     etat.client = c; sauver('infos');
