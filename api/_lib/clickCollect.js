@@ -143,6 +143,17 @@ function codeRemise(reservationId, ref) {
   const secret = process.env.TRANSPORTEUR_SECRET || '';
   return crypto.createHmac('sha256', secret).update(`remise:${reservationId}:${ref || ''}`).digest('hex').slice(0, 20);
 }
+// Code retour du jour (4 chiffres) d'un commerçant point de retrait : affiché
+// dans son espace partenaire, il le donne au client qui rapporte un
+// climatiseur ; le client le tape sur /retrait pour valider le retour. Il
+// change chaque jour (date de Paris) : noté par un client, il ne sert plus le
+// lendemain. Distinct du code secret de l'espace partenaire, qui ne doit
+// jamais être donné. Calculé, jamais stocké.
+function codeRetourDuJour(partenaireId, jourISO) {
+  const secret = process.env.TRANSPORTEUR_SECRET || '';
+  const h = crypto.createHmac('sha256', secret).update(`retour:${partenaireId}:${jourISO}`).digest();
+  return String(h.readUInt32BE(0) % 10000).padStart(4, '0');
+}
 function lienRemise(reservationId, ref) {
   return `https://www.locair.fr/partenaire?remise=${reservationId}.${codeRemise(reservationId, ref)}`;
 }
@@ -178,4 +189,4 @@ function imageQrRemise(reservationId, ref, taille = 240) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${taille}x${taille}&margin=8&data=${encodeURIComponent(lienRemise(reservationId, ref))}`;
 }
 
-module.exports = { prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };
+module.exports = { codeRetourDuJour, prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };
