@@ -291,21 +291,23 @@ module.exports = async (req, res) => {
     console.error('[Cron retards livraison]', e.message);
   }
 
-  // ── 3ter. Click & Collect : appareil pas rendu au point à temps ──────────
-  // Le client devait rapporter l'appareil au point au plus tard le jour de
-  // fin (date_fin, déjà repoussée par chaque prolongation payée — voir
-  // webhook.js). Le commerçant confirme le retour en scannant le QR code
-  // (api/partenaire-remise.js, action 'rendre' → rendu_at).
-  // JAMAIS de prélèvement automatique ici : on prévient seulement l'admin,
-  // qui appelle le client. Une notification par réservation (tag stable),
-  // mise à jour chaque jour au lieu de s'empiler.
-  // Si la colonne rendu_at n'existe pas encore (migration
-  // 2026-11-19_click_collect_retour.sql pas passée), on ne fait rien : sans
-  // elle, impossible de savoir si l'appareil est revenu.
+  // ── 3ter. Click & Collect : appareil pas rendu à temps ─────────────────
+  // Règles des CGV (article « Click & Collect », décidées par le propriétaire
+  // le 20/11/2026) :
+  //   - retour possible jusqu'à la fermeture du point le jour de fin
+  //     (date_fin, repoussée par chaque prolongation payée) ;
+  //   - ensuite, jours 1 à 7 : chaque jour de retard = un jour de location
+  //     en plus, au tarif Click & Collect, prélevé sur la carte enregistrée
+  //     au paiement (si AUTO_LATE_CHARGE=true sur Vercel, sinon alerte admin
+  //     seulement) + un SMS chaque jour au client ;
+  //   - au-delà de 7 jours : appareil « non rendu ». Plus de prélèvement
+  //     automatique : l'admin est alerté pour facturer la valeur de
+  //     remplacement (sur justificatif) et porter plainte.
+  // Sans retrait confirmé (remis_at vide), jamais de prélèvement : alerte seulement.
   try {
     const { data: ccNonRendus, error: ccErr } = await supabase
       .from('reservations')
-      .select('id, ref, prenom, nom, tel, date_fin, point_retrait_id, adresse, remis_at, rendu_at, source')
+      .select('id, ref, prenom, nom, tel, lang, city_id, quantite, stripe_customer_id, date_fin, point_retrait_id, adresse, remis_at, rendu_at, source')
       .eq('source_channel', 'click_collect')
       .eq('statut', 'confirmee')
       .is('rendu_at', null)
@@ -315,25 +317,68 @@ module.exports = async (req, res) => {
       if (ccErr.code === '42703' || /does not exist/i.test(ccErr.message || '')) report.ccRetoursNonSuivis = 'migration rendu_at à passer';
       else throw ccErr;
     } else {
-      let ccRetard = 0;
+      const { montantProlongationCC } = require('./_lib/prolongCC');
+      const { calcTieredPrice } = require('./_lib/pricing');
+      const pricingCC = await getPricingConfig(supabase);
+      const jourCents = montantProlongationCC(calcTieredPrice(1, pricingCC) * 100, pricingCC); // 1 jour au tarif Click & Collect
+      const debutJour = todayStr + 'T00:00:00Z';
+      let ccRetard = 0, ccFactures = 0;
       for (const r of ccNonRendus || []) {
-        // Une fiche de prolongation suit la même location que sa fiche
-        // d'origine : on n'alerte qu'une fois, sur la fiche d'origine.
-        if (r.source === 'site_prolongation') continue;
+        if (r.source === 'site_prolongation') continue; // la fiche d'origine porte le suivi
         const joursRetard = Math.round((new Date(todayStr) - new Date(r.date_fin)) / 86400000);
         const point = String(r.adresse || '').replace(/^CLICK & COLLECT — /, '').split(' — ')[0];
-        await pushToAdmin(supabase, {
-          title: r.remis_at
-            ? `🚨 Click & Collect — appareil pas rendu — ${r.nom || '?'} (${joursRetard}j)`
-            : `⚠️ Click & Collect — retrait jamais confirmé — ${r.nom || '?'}`,
-          body: r.remis_at
-            ? `Retour prévu le ${r.date_fin} au point ${point}, toujours pas confirmé par le commerçant. Dossier ${r.ref || '?'} — appeler le client${r.tel ? ' (' + r.tel + ')' : ''}. Aucun prélèvement automatique.`
-            : `Location finie le ${r.date_fin} (point ${point}) sans remise ni retour confirmés par le commerçant. Dossier ${r.ref || '?'} — vérifier avec le point.`,
-          tag: `cc-retour-retard-${r.id}`,
-        });
         ccRetard++;
+        if (!r.remis_at) {
+          await pushToAdmin(supabase, { title: `⚠️ Click & Collect — retrait jamais confirmé — ${r.nom || '?'}`,
+            body: `Location finie le ${r.date_fin} (point ${point}) sans retrait ni retour confirmés. Dossier ${r.ref || '?'} — vérifier avec le point.`, tag: `cc-retour-retard-${r.id}` });
+          continue;
+        }
+        if (joursRetard > 7) {
+          await pushToAdmin(supabase, { title: `🚨 Click & Collect — appareil NON RENDU — ${r.nom || '?'} (${joursRetard}j)`,
+            body: `Plus de 7 jours de retard (retour prévu le ${r.date_fin}, point ${point}). Dossier ${r.ref || '?'}${r.tel ? ' · ' + r.tel : ''}. Selon les CGV : facturer la valeur de remplacement sur justificatif et porter plainte.`, tag: `cc-non-rendu-${r.id}` });
+          continue;
+        }
+        // une seule fois par jour : déjà traité aujourd'hui ?
+        const { data: dejaJour } = await supabase.from('email_log').select('id').eq('reservation_id', r.id).eq('scenario', 'cc_retard').gte('created_at', debutJour).limit(1);
+        if (dejaJour && dejaJour.length) continue;
+        const qte = Math.max(1, r.quantite || 1), montant = jourCents * qte;
+        const l = r.lang === 'en' || r.lang === 'es' ? r.lang : 'fr';
+        const Tx = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+        const eur = (c) => (c / 100).toFixed(2).replace('.', l === 'en' ? '.' : ',') + ' €';
+        let facture = false;
+        if (process.env.AUTO_LATE_CHARGE === 'true' && r.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
+          try {
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+            const methods = await stripe.paymentMethods.list({ customer: r.stripe_customer_id, type: 'card' });
+            if (methods.data.length) {
+              const intent = await stripe.paymentIntents.create({
+                amount: montant, currency: 'eur', customer: r.stripe_customer_id, payment_method: methods.data[0].id,
+                off_session: true, confirm: true,
+                description: `Loc'Air — Click & Collect, jour ${joursRetard} de retard · ${r.ref || ''}`,
+                metadata: { type: 'retard_cc', jour: String(joursRetard), reservation_id: String(r.id) },
+              }, { idempotencyKey: `cc-retard-${r.id}-${todayStr}` });
+              await supabase.from('incidents').insert({ city_id: r.city_id || null, reservation_id: r.id, type: 'retard', description: `Click & Collect — jour ${joursRetard} de retard facturé (${eur(montant)}) · ${intent.id}`, montant_facture_cents: montant, statut: 'resolu' });
+              facture = true; ccFactures++;
+            }
+          } catch (eStripe) {
+            console.error('[Cron retard CC]', r.ref, eStripe.message);
+            await pushToAdmin(supabase, { title: `❌ Retard Click & Collect non prélevé — ${r.nom || '?'}`, body: `Dossier ${r.ref || '?'} : ${eStripe.message}. À facturer à la main.`, tag: `cc-retard-echec-${r.id}` }).catch(() => {});
+          }
+        }
+        if (!facture) {
+          await pushToAdmin(supabase, { title: `🚨 Click & Collect — appareil pas rendu — ${r.nom || '?'} (${joursRetard}j)`,
+            body: `Retour prévu le ${r.date_fin} au point ${point}. Dossier ${r.ref || '?'}${r.tel ? ' · ' + r.tel : ''}. Jour ${joursRetard}/7 : ${eur(montant)} à facturer (prélèvement automatique ${process.env.AUTO_LATE_CHARGE === 'true' ? 'impossible' : 'désactivé'}).`, tag: `cc-retour-retard-${r.id}` });
+        }
+        // SMS du jour au client
+        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
+        const sms = Tx(`Loc'Air : votre climatiseur devait être rendu le ${r.date_fin.split('-').reverse().join('/')}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour. Rapportez-le au point ${point} ou prolongez : ${lien}`,
+          `Loc'Air: your air conditioner was due back on ${r.date_fin.split('-').reverse().join('/')}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day. Bring it back to ${point} or extend: ${lien}`,
+          `Loc'Air: tu aire acondicionado debía devolverse el ${r.date_fin.split('-').reverse().join('/')}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día. Devuélvelo en ${point} o amplía: ${lien}`);
+        if (r.tel) await sendBrevoSms({ to: r.tel, content: sms }).catch(() => {});
+        await supabase.from('email_log').insert({ reservation_id: r.id, scenario: 'cc_retard', canal: 'sms', destinataire: r.tel || null, modele: 'cc_retard', statut: 'envoye', contenu: sms }).then(() => {}, () => {});
       }
       if (ccRetard) report.ccRetoursEnRetard = ccRetard;
+      if (ccFactures) report.ccRetardsFactures = ccFactures;
     }
   } catch (e) {
     console.error('[Cron retours Click & Collect]', e.message);
