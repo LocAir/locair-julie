@@ -1,6 +1,8 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyPartenaireToken } = require('./_lib/auth');
 const { pushToAdmin } = require('./_lib/push');
+const { POINTS_RETRAIT } = require('./_lib/pointsRetrait');
+const { codeRetour } = require('./_lib/clickCollect');
 
 function startOfDayISO() {
   const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
@@ -99,10 +101,17 @@ module.exports = async (req, res) => {
       // manuelle (les montants déjà calculés par réservation restent eux
       // corrects, seul ce texte explicatif était faux).
       const { data: partenaireRow } = await supabase
-        .from('partenaires').select('taux_commission_pct').eq('id', partenaireId).maybeSingle();
+        .from('partenaires').select('taux_commission_pct, code, telephone').eq('id', partenaireId).maybeSingle();
+      // Commerçant point de retrait Click & Collect : son code retour (2 derniers
+      // chiffres du téléphone de la boutique), à donner au client qui rapporte
+      // un climatiseur. Montré seulement à lui, une fois connecté.
+      const pointCC = partenaireRow && partenaireRow.code
+        ? POINTS_RETRAIT.find((p) => !p.test && p.partenaire_code && String(p.partenaire_code).toLowerCase() === String(partenaireRow.code).toLowerCase())
+        : null;
 
       return res.status(200).json({
         taux_commission_pct: partenaireRow?.taux_commission_pct ?? null,
+        point_retrait: pointCC ? { nom: pointCC.nom, code_retour: codeRetour(pointCC, partenaireRow) } : null,
         reservations_aujourdhui: reservationsAujourdhui,
         gain_aujourdhui_euros:   gainAujourdhui / 100,
         reservations_mois:       reservationsMois,

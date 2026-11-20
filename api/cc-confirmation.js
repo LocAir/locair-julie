@@ -7,7 +7,7 @@
 const PDFDocument = require('pdfkit');
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual } = require('./_lib/auth');
-const { codeRemise, lienRemise } = require('./_lib/clickCollect');
+const { codeRemise } = require('./_lib/clickCollect');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 
 const BLEU = '#1A5EDB', ENCRE = '#0E1726', GRIS = '#4B5873', BRUME = '#F2F6FD';
@@ -20,16 +20,6 @@ function dateLongue(iso, l) {
   if (!iso) return '—';
   return new Date(iso + 'T12:00:00Z').toLocaleDateString(l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : 'fr-FR',
     { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
-}
-
-// QR code en image (même service que l'email). En cas d'échec : pas de QR,
-// le numéro de commande suffit au comptoir.
-async function imageQr(lien) {
-  try {
-    const r = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=400x400&margin=0&format=png&data=${encodeURIComponent(lien)}`, { signal: AbortSignal.timeout(5000) });
-    if (!r.ok) return null;
-    return Buffer.from(await r.arrayBuffer());
-  } catch (e) { return null; }
 }
 
 module.exports = async (req, res) => {
@@ -49,7 +39,6 @@ module.exports = async (req, res) => {
     const adresse = pt ? pt.adresse : String(r.adresse || '').replace(/^CLICK & COLLECT — /, '');
     const o = (pt && pt.ouverture) || [9, 19];
     const horaires = pt && pt.horaires ? pt.horaires : T(`${o[0]} h – ${o[1]} h`, `${o[0]}:00–${o[1]}:00`, `${o[0]}:00–${o[1]}:00`);
-    const qr = await imageQr(lienRemise(r.id, r.ref));
 
     const doc = new PDFDocument({ size: 'A4', margin: 0, info: { Title: `Loc'Air — ${r.ref}` } });
     const morceaux = [];
@@ -66,17 +55,11 @@ module.exports = async (req, res) => {
     let y = 122;
     doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('VOTRE NUMÉRO DE COMMANDE', 'YOUR ORDER NUMBER', 'TU NÚMERO DE PEDIDO'), M, y, { characterSpacing: 1 });
     doc.fillColor(ENCRE).font('Helvetica-Bold').fontSize(34).text(r.ref || '', M, y + 18);
-    doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('Gardez-le jusqu’au retour de l’appareil, même si vous prolongez.', 'Keep it until you return the unit, even if you extend.', 'Guárdalo hasta devolver el aparato, aunque amplíes.'), M, y + 60, { width: 300 });
+    doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('Gardez-le jusqu’au retour de l’appareil, même si vous prolongez.', 'Keep it until you return the unit, even if you extend.', 'Guárdalo hasta devolver el aparato, aunque amplíes.'), M, y + 60, { width: W - 2 * M });
 
-    // QR code
-    if (qr) {
-      doc.roundedRect(W - M - 150, 112, 150, 150, 10).lineWidth(3).stroke(BLEU);
-      doc.image(qr, W - M - 138, 124, { width: 126, height: 126 });
-      doc.fillColor(GRIS).fontSize(9).text(T('À montrer au comptoir', 'Show at the counter', 'Enséñalo en el mostrador'), W - M - 150, 268, { width: 150, align: 'center' });
-    }
 
     // détails
-    y = 300;
+    y = 210;
     const ligne = (titre, valeur) => {
       doc.moveTo(M, y).lineTo(W - M, y).lineWidth(0.6).stroke('#E3E9F4');
       doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(titre, M, y + 12, { width: 150 });
@@ -96,7 +79,8 @@ module.exports = async (req, res) => {
     y += 22;
     const boxY = y;
     const points = [
-      T('Montrez ce QR code, ou scannez celui du commerçant et tapez votre numéro de commande.', 'Show this QR code, or scan the shop’s QR code and enter your order number.', 'Enseña este código QR, o escanea el del comercio y escribe tu número de pedido.'),
+      T('Retrait : scannez le QR code du commerçant, tapez votre numéro de commande et validez. Montrez l’écran vert au commerçant.', 'Pick-up: scan the shop’s QR code, enter your order number and confirm. Show the green screen to the shopkeeper.', 'Recogida: escanea el código QR del comercio, escribe tu número de pedido y confirma. Enseña la pantalla verde al comerciante.'),
+      T('Retour : même QR code, une photo de l’appareil sous sa housse, puis le code que vous donne le commerçant.', 'Return: same QR code, a photo of the unit in its cover, then the code the shopkeeper gives you.', 'Devolución: el mismo código QR, una foto del aparato en su funda y el código que te da el comerciante.'),
       T('Apportez votre pièce d’identité originale (carte d’identité ou passeport).', 'Bring your original ID (ID card or passport).', 'Trae tu documento de identidad original (DNI o pasaporte).'),
       T('Vous recevez l’appareil sous sa housse, avec sa gaine d’évacuation. Pas de kit fenêtre : la gaine passe par une fenêtre entrouverte.', 'You get the unit under its cover, with its exhaust hose. No window kit: the hose goes through a half-open window.', 'Recibes el aparato con su funda y su tubo de evacuación. Sin kit de ventana: el tubo sale por una ventana entreabierta.'),
       T('Venez en voiture pour repartir avec l’appareil. Il reste sous sa housse : enlevez-la seulement chez vous.', 'Come by car to take the unit home. It stays under its cover: only take it off at home.', 'Ven en coche para llevarte el aparato. Va siempre en su funda: quítala solo en casa.'),

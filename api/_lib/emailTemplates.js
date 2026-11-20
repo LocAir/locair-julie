@@ -1216,7 +1216,7 @@ function tplCCRappelRetour({ prenom, ref, lang, point, dateRetour, itineraire })
         <p style="margin:0 0 4px">${escHtml(pt.adresse || '')}</p>
         ${pt.horaires ? `<p style="margin:0">${T('Horaires', 'Opening hours', 'Horario')} : ${escHtml(pt.horaires)}</p>` : ''}
       </div>
-      <p>${T('Montrez votre QR code au comptoir : le commerçant confirme le retour.', 'Show your QR code at the counter: the shop confirms the return.', 'Muestra tu código QR en el mostrador: el comercio confirma la devolución.')}</p>
+      <p>${T('Au comptoir : scannez le QR code du commerçant, tapez votre numéro de commande, prenez l’appareil en photo sous sa housse et tapez le code que vous donne le commerçant.', 'At the counter: scan the shop’s QR code, enter your order number, take a photo of the unit in its cover and enter the code the shopkeeper gives you.', 'En el mostrador: escanea el código QR del comercio, escribe tu número de pedido, haz una foto del aparato en su funda e introduce el código que te da el comerciante.')}</p>
       <p>${T('Encore chaud ? Vous pouvez prolonger en ligne depuis votre espace client :', 'Still hot? You can extend online from your account:', '¿Sigue haciendo calor? Puedes ampliar en línea desde tu espacio cliente:')} <a href="https://www.locair.fr/client" style="color:#FF6200;font-weight:700">locair.fr/client</a></p>
       ${itineraire ? `<p style="font-size:13px"><a href="${itineraire}" style="color:#FF6200;font-weight:700">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}`,
     ctaHref: LIEN_JULIE_CC,
