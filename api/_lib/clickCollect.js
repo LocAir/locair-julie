@@ -178,4 +178,15 @@ function imageQrRemise(reservationId, ref, taille = 240) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${taille}x${taille}&margin=8&data=${encodeURIComponent(lienRemise(reservationId, ref))}`;
 }
 
-module.exports = { prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };
+// Code commerçant pour valider un RETOUR (décision du propriétaire,
+// 20/11/2026, rétablie le 20/11 au soir) : les 2 derniers chiffres du
+// téléphone de la boutique. Le client le demande au commerçant et le tape
+// sur /retrait. Téléphone : champ « tel » du point (pointsRetrait.js, jamais
+// envoyé au navigateur), sinon le téléphone du commerçant (partenaires).
+// La règle n'apparaît jamais dans le code du site public.
+function codeRetour(point, partenaire) {
+  const tel = String((point && point.tel) || (partenaire && partenaire.telephone) || '').replace(/\D/g, '');
+  return tel.length >= 2 ? tel.slice(-2) : null;
+}
+
+module.exports = { codeRetour, prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };
