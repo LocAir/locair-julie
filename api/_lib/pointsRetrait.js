@@ -25,9 +25,7 @@
 //             la réservation lui est rattachée et sa commission comptée
 //   commission_pct   commission du commerçant sur la location payée (15 %,
 //             décidé par le propriétaire le 18/11/2026)
-//   tel       téléphone de la boutique : ses 2 derniers chiffres sont le code
-//             retour que le commerçant donne au client (sinon, le téléphone du
-//             commerçant dans l'admin, onglet Partenaires)
+//   tel       téléphone de la boutique (affiché au besoin)
 //   zone      'cote-azur' ou 'madrid' (page et langue)
 //   ouverture [heure d'ouverture, heure de fermeture] des jours ouverts,
 //             à l'heure de Paris (affiche « Ouvert · ferme à 19h »)
