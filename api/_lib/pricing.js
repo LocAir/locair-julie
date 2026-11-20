@@ -79,7 +79,7 @@ function getProForfaitCents(config) {
 // avoir sa facture doit payer le tarif particulier — c'est le même appareil.
 //
 // La grille pro ne s'applique donc QUE si la commande vient de l'offre pro,
-// qui l'annonce explicitement (data.offre === 'pro', envoyé par pro.html).
+// qui l'annonce explicitement (data.offre === 'pro', paramètre « ?offre=pro » de /reserver).
 // Aucun libellé, aucune devinette.
 function isOffrePro(data) {
   return String((data && data.offre) || '').toLowerCase() === 'pro';
