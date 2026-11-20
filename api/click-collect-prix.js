@@ -19,8 +19,9 @@ let apercuCache = null;
 async function apercu(supabase) {
   if (apercuCache && Date.now() - apercuCache.t < 10 * 60000) return apercuCache.v;
   const demain = addDays(todayParis(), 1);
-  const vrais = POINTS_RETRAIT.filter((p) => !p.exemple);
-  const points = (vrais.length ? vrais : POINTS_RETRAIT).filter((p) => !pointFermeLe(p, demain) && !pointFermeLe(p, addDays(demain, 7)));
+  const publics = POINTS_RETRAIT.filter((p) => !p.test);
+  const vrais = publics.filter((p) => !p.exemple);
+  const points = (vrais.length ? vrais : publics).filter((p) => !pointFermeLe(p, demain) && !pointFermeLe(p, addDays(demain, 7)));
   const pricing = await getPricingConfig(supabase);
   const prix = await Promise.all(points.map((p) => prixClickCollect(supabase, p, demain, 7, pricing).catch(() => null)));
   const ok = prix.filter((x) => x && x.libresAuPoint >= 1);

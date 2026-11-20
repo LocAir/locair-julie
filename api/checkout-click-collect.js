@@ -74,7 +74,7 @@ module.exports = async (req, res) => {
 
   const point = getPointRetrait(clip(data.point_id, 60));
   if (!point) return res.status(400).json({ error: 'Point de retrait inconnu.' });
-  if (point.exemple) return res.status(409).json({ error: 'Ce point de retrait n’est pas encore ouvert au paiement en ligne. Réservez par WhatsApp ou au 06 63 79 87 56.' });
+  if (point.exemple) return res.status(409).json({ error: 'Ce point de retrait n’est pas encore ouvert au paiement en ligne. Choisissez un autre point, ou écrivez à Julie sur la page.' });
 
   const pricing = await getPricingConfig(getSupabase());
   const dateDebut = clip(data.date, 10);
