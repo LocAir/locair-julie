@@ -1235,6 +1235,7 @@ module.exports = async (req, res) => {
   // (fr / en / es), une seule fois par réservation (verrou email_sent).
   try {
     report.ccRappels = await envoyerRappelsClickCollect(supabase, todayStr);
+    report.ccFiltres = await rappelerFiltreClickCollect(supabase, todayStr);
   } catch (e) {
     console.error('[Cron rappels Click & Collect]', e.message);
   }
@@ -1311,9 +1312,9 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
         ? T(`Votre climatiseur vous attend demain au point <b>${esc(lieu)}</b>, ouvert ${heures}. Venez avec ce QR code et votre pièce d’identité.`,
             `Your air conditioner is waiting for you tomorrow at <b>${esc(lieu)}</b>, open ${heures}. Bring this QR code and your ID.`,
             `Tu aire acondicionado te espera mañana en <b>${esc(lieu)}</b>, abierto ${heures}. Trae este código QR y tu documento de identidad.`)
-        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
-            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}. Want to keep it? Extend at <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
-            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
+        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}, dans sa housse et avec le filtre rincé. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}, in its cover with the filter rinsed. Want to keep it? Extend at <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}, en su funda y con el filtro enjuagado. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
       const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
 <p>${texte}</p>
@@ -1340,4 +1341,46 @@ ${retrait ? `<p><img src="${imageQrRemise(r.id, r.ref, 220)}" width="220" height
     }
   }
   return envoyes;
+}
+
+// ── Click & Collect : « nettoyez le filtre » une fois par semaine ─────────
+// Pour qu'un appareil rendu reparte tout de suite chez le client suivant
+// (décision du propriétaire, 20/11/2026) : housse + filtre rincé chaque
+// semaine par le client. Envoyé tous les 7 jours après le retrait, jamais la
+// veille ni le jour du retour (le rappel du retour en parle déjà).
+// Doublons évités par email_log (pas de nouvelle table ni de scénario).
+async function rappelerFiltreClickCollect(supabase, todayStr) {
+  const jours = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 864e5);
+  let { data: rows, error } = await supabase.from('reservations')
+    .select('id, ref, prenom, email, tel, lang, date_debut, date_fin, source, remis_at, rendu_at')
+    .eq('source_channel', 'click_collect').eq('statut', 'confirmee')
+    .lte('date_debut', todayStr).gt('date_fin', todayStr).limit(500);
+  if (error) return 'colonnes manquantes';
+  let n = 0;
+  for (const r of rows || []) {
+    if (r.source === 'site_prolongation' || r.rendu_at) continue;
+    const ecoule = jours(r.date_debut, todayStr), reste = jours(todayStr, r.date_fin);
+    if (ecoule < 7 || ecoule % 7 !== 0 || reste <= 1) continue;
+    const depuis = new Date(Date.now() - 5 * 864e5).toISOString();
+    const { data: deja } = await supabase.from('email_log').select('id').eq('reservation_id', r.id)
+      .eq('scenario', 'cc_filtre').gte('created_at', depuis).limit(1);
+    if (deja && deja.length) continue;
+    const l = r.lang === 'en' || r.lang === 'es' ? r.lang : 'fr';
+    const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+    const sms = T("Loc'Air : petit geste de la semaine, rincez le filtre de votre climatiseur (2 min) : éteignez et débranchez, retirez le filtre, rincez-le à l'eau tiède, laissez sécher, remettez-le. Il refroidira mieux. Merci !",
+      "Loc'Air: weekly tip, rinse your air conditioner's filter (2 min): switch off and unplug, take out the filter, rinse it in lukewarm water, let it dry, put it back. It will cool better. Thanks!",
+      "Loc'Air: gesto de la semana, enjuaga el filtro de tu aire acondicionado (2 min): apágalo y desenchúfalo, saca el filtro, enjuágalo con agua tibia, déjalo secar y vuelve a ponerlo. Enfriará mejor. ¡Gracias!");
+    let ok = false;
+    if (r.tel) { const x = await sendBrevoSms({ to: r.tel, content: sms }).catch(() => ({ ok: false })); ok = !!(x && x.ok); }
+    if (!ok && r.email) {
+      const x = await sendBrevoEmail({ to: r.email, subject: T('Le petit geste de la semaine : rincer le filtre', 'This week’s quick tip: rinse the filter', 'El gesto de la semana: enjuagar el filtro'),
+        html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><p>${sms.replace(/^Loc'Air ?: ?/, '')}</p><p style="color:#4B5873;font-size:13px">Loc’Air · ${r.ref || ''}</p></div>`, senderName: "Loc'Air" }).catch(() => ({ ok: false }));
+      ok = !!(x && x.ok);
+    }
+    if (ok) {
+      await supabase.from('email_log').insert({ reservation_id: r.id, scenario: 'cc_filtre', canal: r.tel ? 'sms' : 'email', destinataire: r.tel || r.email, modele: 'cc_filtre', statut: 'envoye', contenu: sms }).then(() => {}, () => {});
+      n++;
+    }
+  }
+  return n;
 }

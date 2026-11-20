@@ -94,16 +94,21 @@ module.exports = async (req, res) => {
 
     // consignes
     y += 22;
-    doc.roundedRect(M, y, W - 2 * M, 128, 12).fill(BRUME);
-    doc.fillColor(ENCRE).font('Helvetica-Bold').fontSize(13).text(T('Au comptoir', 'At the counter', 'En el mostrador'), M + 18, y + 16);
+    const boxY = y;
     const points = [
       T('Montrez ce QR code, ou scannez celui du commerçant et tapez votre numéro de commande.', 'Show this QR code, or scan the shop’s QR code and enter your order number.', 'Enseña este código QR, o escanea el del comercio y escribe tu número de pedido.'),
       T('Apportez votre pièce d’identité originale (carte d’identité ou passeport).', 'Bring your original ID (ID card or passport).', 'Trae tu documento de identidad original (DNI o pasaporte).'),
       T('Le kit fenêtre n’est pas fourni : la gaine passe par une fenêtre entrouverte.', 'The window kit isn’t included: the hose goes through a half-open window.', 'El kit de ventana no está incluido: el tubo sale por una ventana entreabierta.'),
-      T('Venez en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.'),
+      T('Venez en voiture pour repartir avec l’appareil. Il vous est remis dans sa housse : gardez-la.', 'Come by car to take the unit home. It comes in its cover: keep it.', 'Ven en coche para llevarte el aparato. Se entrega en su funda: guárdala.'),
+      T('Une fois par semaine, rincez le filtre (2 min). Au retour : appareil dans sa housse, filtre propre.', 'Once a week, rinse the filter (2 min). On return: unit in its cover, clean filter.', 'Una vez por semana, enjuaga el filtro (2 min). Al devolverlo: aparato en su funda, filtro limpio.'),
     ];
+    // hauteur du cadre calculée d'après le texte (il ne déborde jamais)
+    doc.font('Helvetica').fontSize(11);
+    const hTexte = points.reduce((h, p) => h + doc.heightOfString('•  ' + p, { width: W - 2 * M - 36 }) + 6, 0);
+    doc.roundedRect(M, boxY, W - 2 * M, 40 + hTexte + 14, 12).fill(BRUME);
+    doc.fillColor(ENCRE).font('Helvetica-Bold').fontSize(13).text(T('Au comptoir', 'At the counter', 'En el mostrador'), M + 18, boxY + 16);
     doc.font('Helvetica').fontSize(11).fillColor(ENCRE);
-    let yy = y + 40;
+    let yy = boxY + 40;
     for (const p of points) { doc.text('•  ' + p, M + 18, yy, { width: W - 2 * M - 36 }); yy += doc.heightOfString('•  ' + p, { width: W - 2 * M - 36 }) + 6; }
 
     // pied
