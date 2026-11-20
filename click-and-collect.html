@@ -1037,6 +1037,8 @@ html[data-ab="B"] .hero h1>.h1-b{display:inline}
 .adr-liste li[aria-selected="true"],.adr-liste li:hover{background:var(--mist)}
 .m-code{margin:12px 0 0;padding:12px 14px;border-radius:14px;background:var(--mist);font-size:14.5px;line-height:1.6;text-align:center}
 .m-code b{font-size:20px}.m-pin{letter-spacing:.06em}.m-code small{color:var(--ink-2);font-size:13px}
+.m-pdf{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0 0;min-height:48px;text-decoration:none}
+.m-pdf svg{width:18px;height:18px}
 .stock-bas{margin:10px 0 16px;padding:9px 12px;border-radius:12px;background:#FFF4E5;color:#8A4B00;font-size:14px;font-weight:700}
 .t-ok{white-space:nowrap}
 .t-et{color:#F5B301}
@@ -1627,6 +1629,7 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
           <b><span lang="fr">Au comptoir, montrez ce QR code et votre pièce d’identité.</span><span lang="en">At the counter, show this QR code and your ID.</span><span lang="es">En el mostrador, enseña este código QR y tu documento de identidad.</span></b>
           <figure class="qr-remise" id="m-qr" hidden><img id="m-qr-img" width="200" height="200" alt="QR code"><figcaption><span lang="fr">Il est aussi dans votre email.</span><span lang="en">It’s also in your email.</span><span lang="es">También está en tu email.</span></figcaption></figure>
           <p class="m-code" id="m-code" hidden><span lang="fr">Votre numéro de commande, à garder jusqu’au retour :</span><span lang="en">Your order number, keep it until you return the unit:</span><span lang="es">Tu número de pedido, guárdalo hasta la devolución:</span><br><b id="m-code-ref" class="m-pin"></b><br><small><span lang="fr">Au comptoir, scannez le QR code du commerçant et tapez ce numéro.</span><span lang="en">At the counter, scan the shop’s QR code and enter this number.</span><span lang="es">En el mostrador, escanea el código QR del comercio y escribe este número.</span></small></p>
+          <a class="btn-2 m-pdf" id="m-pdf" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span lang="fr">Télécharger ma confirmation (PDF)</span><span lang="en">Download my confirmation (PDF)</span><span lang="es">Descargar mi confirmación (PDF)</span></a>
         </li>
         <li>
           <b><span lang="fr">Vous repartez avec votre climatiseur.</span><span lang="en">You leave with your air conditioner.</span><span lang="es">Te vas con tu aire acondicionado.</span></b>
@@ -2761,6 +2764,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('m-texte').textContent = L('Paiement reçu : votre climatiseur est réservé à votre nom. Confirmation envoyée' + (c.email ? ' à ' + c.email : '') + '.', 'Payment received: your air conditioner is reserved in your name. Confirmation sent' + (c.email ? ' to ' + c.email : '') + '.', 'Pago recibido: tu aire acondicionado está reservado a tu nombre. Confirmación enviada' + (c.email ? ' a ' + c.email : '') + '.');
     if(etat.remise && etat.remise.qr){ $('m-qr-img').src = etat.remise.qr; $('m-qr').hidden = false; }
     if(etat.ref){ $('m-code-ref').textContent = etat.ref; $('m-code').hidden = false; } else $('m-code').hidden = true;
+    /* confirmation à télécharger : même code secret que le QR code de retrait */
+    var tk = etat.remise && etat.remise.lien ? (String(etat.remise.lien).split('remise=')[1] || '') : '';
+    if(tk){ $('m-pdf').href = '/api/cc-confirmation?t=' + encodeURIComponent(tk); $('m-pdf').hidden = false; } else $('m-pdf').hidden = true;
     $('m-id').hidden = !etat.idtok; $('m-id-ok').hidden = true;
     /* étape 1 : quand et où aller, en clair */
     var o = p.ouverture || [9, 19], hh = function(x){ return langue() === 'en' ? (x > 12 ? (x - 12) + 'pm' : x + (x === 12 ? 'pm' : 'am')) : langue() === 'es' ? x + ':00' : x + 'h'; };
