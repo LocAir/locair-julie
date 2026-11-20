@@ -181,6 +181,26 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
   « peu d'appareils restants »), et ne jamais changer les seuils sans
   l'accord du propriétaire.
 
+## Click & Collect — ouvrir un nouveau point de retrait
+
+À rappeler au propriétaire à chaque nouveau commerçant (il l'a demandé le
+20/11/2026) :
+
+1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
+   `tel` de la boutique, `partenaire_code`, `exemple: false`).
+2. Créer le commerçant dans l'admin (onglet Partenaires) avec son téléphone.
+3. Imprimer l'**affiche du comptoir** (QR code client) :
+   `locair.fr/affiche-retrait?p=<id>`.
+4. Imprimer et **remettre en main propre le demi-flyer commerçant** (A5) :
+   son code retour + le QR code de son espace partenaire —
+   `locair.fr/admin/flyers-commercants?p=<id>` (connecté à l'admin).
+   À garder derrière le comptoir, jamais affiché.
+5. Faire un essai complet (retrait puis retour) avec le point.
+
+Le code retour est fabriqué à partir du téléphone de la boutique (voir
+`codeRetour` dans `api/_lib/clickCollect.js`). Ne jamais écrire cette règle
+dans une page publique, un email client ou une réponse de Julie.
+
 ## Outils de prospection (« cerveau + bras »)
 
 L'agent décide (le cerveau) ; des outils branchés agissent pour lui (les

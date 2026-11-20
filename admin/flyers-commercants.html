@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flyers commerçants — Loc’Air</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,900&display=swap">
+<!-- Demi-flyer (A5) à remettre à CHAQUE commerçant point de retrait :
+     - son code retour (2 derniers chiffres du téléphone de la boutique), à
+       donner au client qui rapporte un climatiseur ;
+     - un QR code vers son espace partenaire (locair.fr/partenaire).
+     À garder derrière le comptoir : il ne s'affiche jamais.
+     Page réservée à l'admin (même connexion que l'appli admin) : le code
+     n'apparaît jamais dans le site public. ?p=<id> = un seul point. -->
+<style>
+:root{--vif:#1A5EDB;--ink:#0E1726;--ink-2:#4B5873;--ok:#0F7A3D;--line:#E3E9F4}
+*{box-sizing:border-box}
+body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;color:var(--ink)}
+.barre{max-width:900px;margin:0 auto;padding:20px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.barre h1{font-size:22px;margin:0}
+.barre p{margin:4px 0 0;color:var(--ink-2);font-size:14px;max-width:560px}
+.barre button{border:0;background:var(--vif);color:#fff;font:800 15px 'DM Sans',sans-serif;padding:12px 20px;border-radius:100px;cursor:pointer;min-height:44px}
+.feuilles{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;padding:0 16px 40px}
+.flyer{width:148mm;height:210mm;background:#fff;border-radius:6mm;padding:10mm 10mm 8mm;display:flex;flex-direction:column;box-shadow:0 10px 30px -14px rgba(11,30,68,.35);break-after:page;page-break-after:always}
+.haut{display:flex;justify-content:space-between;align-items:baseline}
+.logo{font-weight:900;font-size:8mm;letter-spacing:-.04em;color:var(--vif)}.logo em{font-style:italic}
+.prive{font-size:3mm;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#B42318;border:.4mm solid #B42318;border-radius:2mm;padding:1mm 2mm}
+.point{margin:5mm 0 0;font-size:5.4mm;font-weight:900;letter-spacing:-.02em}
+.adr{margin:1mm 0 0;font-size:3.4mm;color:var(--ink-2)}
+.bloc-code{margin:6mm 0 0;border:.8mm solid var(--ok);border-radius:5mm;padding:5mm;text-align:center;background:#EAF6EF}
+.bloc-code p{margin:0}
+.lbl{font-size:3.4mm;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ok)}
+.code{font-size:30mm;font-weight:900;letter-spacing:.12em;line-height:1;margin:2mm 0 1mm!important}
+.code.vide{font-size:9mm;letter-spacing:0;color:#B42318;margin:5mm 0!important}
+.quand{font-size:3.6mm}
+ol{margin:5mm 0 0;padding:0 0 0 5mm;font-size:3.5mm;line-height:1.45}
+ol b{font-weight:800}
+.bas{margin-top:auto;display:flex;gap:5mm;align-items:center;border-top:.3mm solid var(--line);padding-top:5mm}
+.bas img{width:30mm;height:30mm;flex-shrink:0}
+.bas p{margin:0;font-size:3.4mm;line-height:1.4}
+.bas b{display:block;font-size:4mm}
+.msg{background:#fff;border-radius:14px;padding:16px;color:var(--ink-2);max-width:600px;margin:0 auto}
+@media print{
+  @page{size:A5;margin:0}
+  body{background:#fff}.barre,.msg{display:none}
+  .feuilles{display:block;padding:0}
+  .flyer{box-shadow:none;border-radius:0;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="barre">
+  <div><h1>Flyers commerçants</h1><p>Un demi-flyer (A5) par point de retrait : le code retour à donner aux clients, et le QR code de l’espace partenaire. À remettre en main propre au commerçant, à garder derrière le comptoir.</p></div>
+  <button type="button" onclick="window.print()">Imprimer</button>
+</div>
+<div class="feuilles" id="feuilles"><p class="msg">Chargement…</p></div>
+<script>
+(function(){
+  var TOKEN = ''; try{ TOKEN = localStorage.getItem('a_token') || ''; }catch(e){}
+  var seul = new URLSearchParams(location.search).get('p');
+  var f = document.getElementById('feuilles');
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  if(!TOKEN){ f.innerHTML = '<p class="msg">Connectez-vous d’abord à l’appli admin (<a href="/admin">/admin</a>) dans ce navigateur, puis revenez ici.</p>'; return; }
+  var qr = 'https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=0&ecc=M&data=' + encodeURIComponent('https://www.locair.fr/partenaire');
+  fetch('/api/admin-cc-retours', {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':TOKEN}, body:JSON.stringify({action:'flyers'})})
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(x){
+      if(!x.ok){ f.innerHTML = '<p class="msg">' + esc(x.d.error || 'Accès refusé. Reconnectez-vous à l’appli admin.') + '</p>'; return; }
+      var pts = (x.d.points || []).filter(function(p){ return !seul || p.id === seul; });
+      if(!pts.length){ f.innerHTML = '<p class="msg">Aucun point de retrait.</p>'; return; }
+      var manque = pts.filter(function(p){ return !p.code_retour; }).length;
+      f.innerHTML = (manque ? '<p class="msg">⚠️ ' + manque + ' point(s) sans téléphone enregistré : pas de code. Ajoutez le téléphone de la boutique (champ « tel » du point, ou téléphone du partenaire dans l’onglet Partenaires).</p>' : '') +
+        pts.map(function(p){
+        return '<section class="flyer">' +
+          '<div class="haut"><div class="logo">Loc<em>’Air</em></div><span class="prive">Ne pas afficher</span></div>' +
+          '<p class="point">' + esc(p.nom) + (p.exemple ? ' (exemple)' : '') + '</p>' +
+          '<p class="adr">' + esc(p.adresse || '') + (p.partenaire ? ' · ' + esc(p.partenaire) : '') + '</p>' +
+          '<div class="bloc-code"><p class="lbl">Votre code retour</p>' +
+            (p.code_retour ? '<p class="code">' + esc(p.code_retour) + '</p>' : '<p class="code vide">Téléphone manquant</p>') +
+            '<p class="quand">À donner au client <b>seulement quand il rapporte un climatiseur</b>.</p></div>' +
+          '<ol>' +
+            '<li><b>Retrait</b> : le client scanne l’affiche du comptoir et valide. Il vous montre un <b>écran vert</b> avec son nom et l’heure qui défile. Vérifiez sa <b>pièce d’identité</b> (même nom), puis remettez le climatiseur <b>sous sa housse, avec sa gaine</b>.</li>' +
+            '<li><b>Retour</b> : regardez que le climatiseur est bien <b>sous sa housse, avec sa gaine</b>. Le client le prend en photo, puis vous lui donnez le <b>code ci-dessus</b>. Il le tape : c’est fini.</li>' +
+            '<li>Ne donnez jamais le code à l’avance, ni par téléphone.</li>' +
+            '<li>Un souci ? Le client peut toucher « Signaler un problème » sur son téléphone. Vous : 06 63 79 87 56.</li>' +
+          '</ol>' +
+          '<div class="bas"><img src="' + qr + '" alt="QR code espace partenaire"><p><b>Votre espace partenaire</b>Scannez pour suivre vos clients et vos commissions : locair.fr/partenaire</p></div>' +
+        '</section>';
+      }).join('');
+    }).catch(function(){ f.innerHTML = '<p class="msg">Pas de connexion. Rechargez la page.</p>'; });
+})();
+</script>
+</body>
+</html>
