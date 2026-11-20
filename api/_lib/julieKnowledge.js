@@ -29,7 +29,8 @@ const PRODUITS = `### Climatiseur mobile
 - Prix Click & Collect (différent de la livraison) : 150 € les 7 jours en temps normal ; les durées plus longues suivent la même proportion (le prix exact de chaque durée s'affiche sur la page). Tarification dynamique : de 139 € à 189 € les 7 jours selon la demande (chaleur, stock), jamais en dehors. 7 jours minimum, aucune caution. Pas de livraison : le client vient chercher l'appareil au point (ne pas présenter ça comme « livraison gratuite »).
 - Le kit de fenêtre n'est PAS fourni en Click & Collect (seulement l'appareil) : ne jamais le promettre.
 - Pièce d'identité (carte ou passeport) : toujours montrée en original au comptoir. L'envoyer en ligne juste après le paiement est facultatif (ça va plus vite au comptoir).
-- Au comptoir, deux façons : montrer le QR code reçu par email (le commerçant le scanne), OU scanner le QR code affiché chez le commerçant et taper son numéro de commande (CC-…, dans l'email et le SMS de confirmation). C'est le seul numéro à garder : il reste le même après une prolongation, jusqu'au retour. Au retrait, le client montre sa pièce d'identité au commerçant puis valide lui-même son retrait sur son téléphone. Au retour, le client rend l'appareil complet, le commerçant le vérifie et lui donne le code retour (2 chiffres), que le client tape pour valider.
+- Au comptoir, deux façons : montrer le QR code reçu par email (le commerçant le scanne), OU scanner le QR code affiché chez le commerçant et taper son numéro de commande (CC-…, dans l'email et le SMS de confirmation). C'est le seul numéro à garder : il reste le même après une prolongation, jusqu'au retour. Au retrait, le client montre sa pièce d'identité au commerçant puis valide lui-même son retrait sur son téléphone. Au retour, le client rend l'appareil complet, le commerçant le vérifie et lui donne le code retour, que le client tape pour valider. Ne JAMAIS donner ce code ni expliquer comment il est fait : seul le commerçant le connaît.
+- Click & Collect : pas de télécommande fournie, ni de kit fenêtre. Le client reçoit l'appareil et sa gaine.
 - Les points de retrait sont en cours d'ouverture : si le paiement en ligne n'est pas encore ouvert pour un point (marqué « Exemple »), le client peut réserver par WhatsApp.
 - Un commerçant qui veut devenir point de retrait : onglet « Devenez point de retrait » en bas de la page Click & Collect.
 
@@ -65,7 +66,7 @@ Hors zone → expliquer gentiment qu'on ne livre pas encore là, et proposer de 
 
 const DEPANNAGE = `1. Gaine d'évacuation : bien fixée et orientée vers l'extérieur ?
 2. Filtre : retiré et nettoyé récemment ? Un filtre bouché divise la puissance par deux.
-3. Mode refroidissement ❄️ : sélectionné sur la télécommande (pas ventilation seule) ?
+3. Mode refroidissement ❄️ : sélectionné sur l'appareil ou la télécommande (pas ventilation seule) ? (Click & Collect : pas de télécommande, réglage sur l'appareil.)
 4. Redémarrage : éteindre, débrancher 30 secondes, rebrancher.
 5. Bac à condensats : si l'appareil s'arrête seul, le bac est peut-être plein → utiliser le cordon de vidange à l'arrière.
 Si le problème persiste après ces vérifications, dis au client qu'un technicien le rappellera dans les 2 heures — et termine ta réponse par [ESCALADE].`;
