@@ -99,8 +99,8 @@ module.exports = async (req, res) => {
       T('Montrez ce QR code, ou scannez celui du commerçant et tapez votre numéro de commande.', 'Show this QR code, or scan the shop’s QR code and enter your order number.', 'Enseña este código QR, o escanea el del comercio y escribe tu número de pedido.'),
       T('Apportez votre pièce d’identité originale (carte d’identité ou passeport).', 'Bring your original ID (ID card or passport).', 'Trae tu documento de identidad original (DNI o pasaporte).'),
       T('Le kit fenêtre n’est pas fourni : la gaine passe par une fenêtre entrouverte.', 'The window kit isn’t included: the hose goes through a half-open window.', 'El kit de ventana no está incluido: el tubo sale por una ventana entreabierta.'),
-      T('Venez en voiture pour repartir avec l’appareil. Il vous est remis dans sa housse : gardez-la.', 'Come by car to take the unit home. It comes in its cover: keep it.', 'Ven en coche para llevarte el aparato. Se entrega en su funda: guárdala.'),
-      T('Une fois par semaine, rincez le filtre (2 min). Au retour : appareil dans sa housse, filtre propre.', 'Once a week, rinse the filter (2 min). On return: unit in its cover, clean filter.', 'Una vez por semana, enjuaga el filtro (2 min). Al devolverlo: aparato en su funda, filtro limpio.'),
+      T('Venez en voiture pour repartir avec l’appareil. Il reste sous sa housse : enlevez-la seulement chez vous.', 'Come by car to take the unit home. It stays under its cover: only take it off at home.', 'Ven en coche para llevarte el aparato. Va siempre en su funda: quítala solo en casa.'),
+      T('Une fois par semaine, rincez le filtre (2 min). Avant le retour : remettez la housse chez vous, filtre propre.', 'Once a week, rinse the filter (2 min). Before returning it: put the cover back on at home, clean filter.', 'Una vez por semana, enjuaga el filtro (2 min). Antes de devolverlo: vuelve a ponerle la funda en casa, filtro limpio.'),
     ];
     // hauteur du cadre calculée d'après le texte (il ne déborde jamais)
     doc.font('Helvetica').fontSize(11);

@@ -1312,9 +1312,9 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
         ? T(`Votre climatiseur vous attend demain au point <b>${esc(lieu)}</b>, ouvert ${heures}. Venez avec ce QR code et votre pièce d’identité.`,
             `Your air conditioner is waiting for you tomorrow at <b>${esc(lieu)}</b>, open ${heures}. Bring this QR code and your ID.`,
             `Tu aire acondicionado te espera mañana en <b>${esc(lieu)}</b>, abierto ${heures}. Trae este código QR y tu documento de identidad.`)
-        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}, dans sa housse et avec le filtre rincé. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
-            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}, in its cover with the filter rinsed. Want to keep it? Extend at <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
-            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}, en su funda y con el filtro enjuagado. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
+        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}. Remettez la housse avant de partir de chez vous, filtre rincé. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}. Put the cover back on before leaving home, with the filter rinsed. Want to keep it? Extend at <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}. Vuelve a ponerle la funda antes de salir de casa, con el filtro enjuagado. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
       const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
 <p>${texte}</p>
