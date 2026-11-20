@@ -9,10 +9,10 @@
        Paiement (Stripe) → C'est réservé
      - Chaque étape est une entrée de l'historique : le bouton « retour »
        du téléphone recule d'une étape. L'avancement est gardé dans
-       sessionStorage (rechargement, aller-retour WhatsApp, 3-D Secure).
+       sessionStorage (rechargement, retour de banque, 3-D Secure).
      - Les points de retrait viennent de /api/points-retrait (liste unique :
        api/_lib/pointsRetrait.js). Point « exemple » = paiement refusé,
-       le client est envoyé sur WhatsApp.
+       le client voit « ouvre bientôt » (aucun débit).
      - Paiement : api/checkout-click-collect.js (même mécanique que
        checkout.js : PaymentIntent + réservation « en_attente » confirmée
        par webhook.js, qui envoie un SMS et un email « retrait »).
@@ -1573,7 +1573,6 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
         <button type="submit" class="btn" id="envoyer">Continuer vers le paiement</button>
         <p class="mentions"><span lang="fr">Aucune caution. Vos coordonnées servent uniquement à cette réservation. <a href="/confidentialite">Confidentialité</a></span><span lang="en">No deposit. Your details are only used for this booking. <a href="/confidentialite">Privacy</a></span><span lang="es">Sin fianza. Tus datos solo sirven para esta reserva. <a href="/confidentialite">Privacidad</a></span></p>
       </form>
-      <a id="wa" href="#" hidden target="_blank" rel="noopener noreferrer"></a>
     </section>
 
     <!-- ══ 5. PAIEMENT (Stripe) ══ -->
@@ -1850,7 +1849,6 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     ' d':' d',
     'Dynamic pricing +':'Precio dinámico +',
     ' · price held for 30 min':' · precio garantizado 30 min',
-    'Book on WhatsApp':'Reservar por WhatsApp',
     'Continue to payment · ':'Continuar al pago · ',
     'So we can call you and set your pick-up time.':'Para llamarte y fijar la hora de recogida.',
     'Did you mean ':'¿Quisiste decir ',
@@ -2452,10 +2450,6 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
 
   /* ── 4. vos infos ── */
   function jours(){ return ecart(etat.debut, etat.fin); }
-  function messageWA(){
-    var p = etat.point, n = jours();
-    return L('Bonjour, je réserve un climatiseur en Click & Collect :\n• Retrait : ', 'Hello, I’d like to book an air conditioner (Click & Collect):\n• Pick-up: ') + p.nom + ' (' + p.ville + ')' + L('\n• Du ', '\n• From ') + lisible(etat.debut) + L(' au ', ' to ') + lisible(etat.fin) + ' (' + n + L(' jours)\n• Total : ', ' days)\n• Total: ') + euros(total());
-  }
   function remplirRecap(){
     var p = etat.point, n = jours();
     $('r-point').textContent = p.nom + (p.exemple ? L(' (exemple)', ' (example)') : '');
@@ -2467,8 +2461,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     else rs.hidden = true;
     var prM = (etat.prix && etat.prix.cle === clePrix() && etat.prix.majore) ? etat.prix : null;
     $('r-prix').title = prM ? L('Tarif dynamique +', 'Dynamic pricing +') + prM.majorationPct + ' %' + raisonsTexte(prM.raisons) + L(' · prix garanti 30 min', ' · price held for 30 min') : '';
-    $('wa').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(messageWA());
-    $('envoyer').textContent = p.exemple ? L('Réserver par WhatsApp', 'Book on WhatsApp') : (inl.ok ? L('Payer ', 'Pay ') : L('Continuer vers le paiement · ', 'Continue to payment · ')) + euros(total());
+    $('envoyer').textContent = (inl.ok ? L('Payer ', 'Pay ') : L('Continuer vers le paiement · ', 'Continue to payment · ')) + euros(total());
     monterInline();
     var memo = etat.client; if(!memo){ try{ memo = JSON.parse(localStorage.getItem('locair_cc_client') || 'null'); }catch(e){} }
     if(memo){ ['prenom','nom','email','tel'].forEach(function(k){ if(!$(k).value && memo[k]) $(k).value = memo[k]; }); if(!$('adr').value && memo.adresse) $('adr').value = memo.adresse; }
@@ -2591,7 +2584,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function montantCents(){ return Math.round(total() * 100); }
   function monterInline(){
     var boite = $('paie-inline');
-    if(!etat.point || etat.point.exemple){ boite.hidden = true; return; }
+    if(!etat.point){ boite.hidden = true; return; }
     if(inl.ok){ if(inl.montant !== montantCents()){ inl.montant = montantCents(); try{ inl.el.update({amount:inl.montant}); }catch(e){} } return; }
     if(inl.essai) return;
     boite.hidden = false;
@@ -2614,9 +2607,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     e.preventDefault();
     var err = $('resa-err'), btn = $('envoyer'); err.hidden = true;
     if(etat.point.exemple){
-      /* point fictif : pas de paiement possible, on passe par WhatsApp */
-      err.innerHTML = L('Ce point de retrait est un exemple : le paiement en ligne n’y est pas encore ouvert. Réservez sur ', 'This pick-up point is an example: online payment isn’t open there yet. Book on ') + '<a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>' + '.';
-      err.hidden = false; window.open($('wa').href, '_blank', 'noopener'); return;
+      /* point pas encore ouvert : on ne débite jamais une boutique qui n'existe pas */
+      err.textContent = L('Ce point de retrait ouvre bientôt : le paiement y sera possible dès son ouverture. Choisissez un autre point, ou écrivez à Julie (menu ☰ → Aide).', 'This pick-up point opens soon: payment will be possible as soon as it opens. Choose another point, or chat with Julie (menu ☰ → Help).', 'Este punto de recogida abre pronto: el pago será posible en cuanto abra. Elige otro punto o escribe a Julie (menú ☰ → Ayuda).');
+      err.hidden = false; return;
     }
     var c = {prenom:$('prenom').value.trim(), nom:$('nom').value.trim(), email:$('email').value.trim(), tel:$('tel').value.trim()};
     if(!c.prenom) return invalide('prenom', L('Indiquez votre prénom.', 'Please enter your first name.'));
@@ -2665,7 +2658,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
         }
       });
     }).catch(function(x){
-      err.innerHTML = x.carte ? esc(x.message) : esc(x.message || L('Le paiement n’a pas pu être préparé.', 'Payment could not be prepared.')) + L(' Vous pouvez aussi réserver sur ', ' You can also book on ') + '<a href="' + $('wa').href + '" target="_blank" rel="noopener noreferrer">WhatsApp</a>.';
+      err.innerHTML = x.carte ? esc(x.message) : esc(x.message || L('Le paiement n’a pas pu être préparé.', 'Payment could not be prepared.')) + ' ' + esc(L('Réessayez, ou écrivez à Julie (menu ☰ → Aide).', 'Try again, or chat with Julie (menu ☰ → Help).', 'Inténtalo de nuevo o escribe a Julie (menú ☰ → Ayuda).'));
       err.hidden = false;
     }).then(function(){ btn.disabled = false; btn.removeAttribute('aria-busy'); remplirRecap(); });
   });
