@@ -28,8 +28,8 @@ est en prod.
 ## Offre B2B (Loc'Air Pro)
 
 Une seule offre pro, pour **tous les appareils** loués par Loc'Air.
-Sources de vérité : `pro.html` (rafraîchisseur), `api/_lib/pricing.js`
-(barèmes), `api/_lib/julieKnowledge.js` (PortaSplit). Si un chiffre change,
+Sources de vérité : `api/_lib/pricing.js` (barèmes, dont le
+rafraîchisseur pro), `api/_lib/julieKnowledge.js` (PortaSplit). Si un chiffre change,
 le changer partout. Ne jamais inventer un prix, un délai ou une promesse
 qui n'est pas écrit ici.
 
