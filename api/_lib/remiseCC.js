@@ -1,8 +1,8 @@
 // Remise et retour d'un appareil Click & Collect : règles communes à
 //   - api/partenaire-remise.js : le commerçant scanne le QR code du client ;
 //   - api/cc-comptoir.js       : le client scanne le QR code collé au comptoir,
-//     tape son numéro de commande + son code à 4 chiffres, et le commerçant
-//     confirme avec son code partenaire.
+//     tape son numéro de commande ; au retrait il valide lui-même, au retour
+//     il tape le code commerçant (voir clickCollect.codeRetour).
 // agir(supabase, r, partenaireId, action) → { status, body }
 //   action : 'voir' | 'valider' (remise) | 'rendre' (retour)
 const { getPointRetrait } = require('./pointsRetrait');
