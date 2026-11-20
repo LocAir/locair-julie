@@ -18,6 +18,7 @@ const { verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { agir } = require('./_lib/remiseCC');
+const { pushToAdmin } = require('./_lib/push');
 const { codeRetour } = require('./_lib/clickCollect');
 
 const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
@@ -31,7 +32,7 @@ module.exports = async (req, res) => {
   const lang = b.lang === 'en' || b.lang === 'es' ? b.lang : 'fr';
   const point = getPointRetrait(String(b.point || '').slice(0, 60));
   const ref = String(b.ref || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 40);
-  const action = ['voir', 'valider', 'rendre'].includes(b.action) ? b.action : 'voir';
+  const action = ['voir', 'valider', 'rendre', 'signaler'].includes(b.action) ? b.action : 'voir';
   if (!point) return res.status(404).json({ error: T(lang, 'Ce QR code ne correspond à aucun point de retrait.', 'This QR code doesn’t match any pick-up point.', 'Este código QR no corresponde a ningún punto de recogida.') });
   if (ref.length < 6) return res.status(400).json({ error: T(lang, 'Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.') });
 
@@ -65,6 +66,22 @@ module.exports = async (req, res) => {
       ({ data: partenaire } = await supabase.from('partenaires').select('id, code, pin, pin_hashed, actif, telephone').eq('id', r.partenaire_id).maybeSingle());
     } else if (point.partenaire_code) {
       ({ data: partenaire } = await supabase.from('partenaires').select('id, code, pin, pin_hashed, actif, telephone').eq('code', String(point.partenaire_code).toLowerCase()).maybeSingle());
+    }
+
+    // SIGNALER un problème (casse, appareil abîmé…) au retrait ou au retour :
+    // enregistré comme incident sur la réservation + alerte à l'admin.
+    // Ne bloque rien : le client peut ensuite valider normalement.
+    if (action === 'signaler') {
+      const CATS = { casse: ['materiel_endommage', 'Casse'], abime: ['materiel_endommage', 'Appareil abîmé'], manque: ['autre', 'Élément manquant'], panne: ['probleme_technique', 'Ne fonctionne pas'], autre: ['autre', 'Autre'] };
+      const cat = CATS[b.categorie] || CATS.autre;
+      const moment = b.moment === 'retour' ? 'retour' : 'retrait';
+      const message = String(b.message || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+      await recordFailedAttempt(supabase, cleClient); // limite les envois répétés (même compteur que les essais)
+      const description = `[Click & Collect · déclaré par le client au ${moment} · ${point.nom}] ${cat[1]}${message ? ' — ' + message : ''}`;
+      const { error: incErr } = await supabase.from('incidents').insert({ city_id: r.city_id || null, reservation_id: r.id, type: cat[0], description, statut: 'nouveau' });
+      if (incErr) console.error('[cc-comptoir signaler]', incErr.message);
+      await pushToAdmin(supabase, { title: `⚠️ Click & Collect — ${cat[1].toLowerCase()} signalé(e)`, body: `${r.ref} — ${r.prenom || ''} ${r.nom || ''} — ${point.nom} (${moment})${message ? ' : ' + message : ''}`.trim(), tag: `cc-signal-${r.id}-${Date.now()}` }).catch(() => {});
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'voir') {
