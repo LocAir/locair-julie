@@ -54,7 +54,7 @@ module.exports = async (req, res) => {
   if (tel.replace(/\D/g, '').length < 9) return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
   // Adresse postale du client : pour le contrat, et pour pouvoir le joindre
   // par courrier si l'appareil n'est jamais rendu.
-  const adresseClient = clip(data.adresse_client, 200);
+  const adresseClient = clip(data.adresse_client, 300);
   if (adresseClient.length < 8) return res.status(400).json({ error: 'Adresse postale requise.', code: 'adresse_invalide' });
 
   // Pièce d'identité : carte (recto + verso) ou passeport. Elle est en
