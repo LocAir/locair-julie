@@ -52,6 +52,16 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .commercant p{margin:0 0 14px;color:var(--ink-2);font-size:15px;line-height:1.45}
 .client-ret{margin-top:18px}
 .client-ret p{margin:0 0 14px;color:var(--ink-2);font-size:15.5px;line-height:1.5}
+.signal{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.sig-lien{border:0;background:none;color:var(--ink-2);font:700 15px 'DM Sans',sans-serif;text-decoration:underline;cursor:pointer;padding:10px 0;min-height:44px;text-align:left}
+.sig-form{margin-top:8px}
+.sig-choix{display:grid;gap:8px;margin-bottom:10px}
+.sig-choix label{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15.5px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;min-height:48px}
+.sig-choix input{width:20px;height:20px;accent-color:var(--vif)}
+.sig-choix label:has(input:checked){border-color:var(--vif);background:var(--mist)}
+#sig-msg{width:100%;font:500 16px 'DM Sans',sans-serif;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;resize:vertical;margin-bottom:10px}
+.msg.ok{background:#E8F6EE;color:var(--ok)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .fini{text-align:center;padding:36px 22px}
 .fini .rond{width:84px;height:84px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
 .fini svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
@@ -104,6 +114,23 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
         <button class="btn vert" id="b-com" type="submit"></button>
         <p class="msg err" id="m-com" role="alert" hidden></p>
       </form>
+      <div class="signal" id="sig" hidden>
+        <button type="button" class="sig-lien" id="sig-ouvrir" aria-expanded="false" aria-controls="sig-form">⚠️ <span lang="fr">Signaler un problème (casse, appareil abîmé…)</span><span lang="en">Report a problem (breakage, damage…)</span><span lang="es">Avisar de un problema (rotura, daño…)</span></button>
+        <div class="sig-form" id="sig-form" hidden>
+          <div class="sig-choix" role="radiogroup">
+            <label><input type="radio" name="sig" value="casse" checked><span><span lang="fr">Casse</span><span lang="en">Broken</span><span lang="es">Rotura</span></span></label>
+            <label><input type="radio" name="sig" value="abime"><span><span lang="fr">Appareil abîmé</span><span lang="en">Damaged</span><span lang="es">Aparato dañado</span></span></label>
+            <label><input type="radio" name="sig" value="manque"><span><span lang="fr">Il manque quelque chose</span><span lang="en">Something missing</span><span lang="es">Falta algo</span></span></label>
+            <label><input type="radio" name="sig" value="panne"><span><span lang="fr">Il ne marche pas</span><span lang="en">Doesn’t work</span><span lang="es">No funciona</span></span></label>
+            <label><input type="radio" name="sig" value="autre"><span><span lang="fr">Autre</span><span lang="en">Other</span><span lang="es">Otro</span></span></label>
+          </div>
+          <label for="sig-msg" class="sr">Message</label>
+          <textarea id="sig-msg" maxlength="500" rows="3"></textarea>
+          <button type="button" class="btn" id="sig-envoyer"><span lang="fr">Envoyer le signalement</span><span lang="en">Send report</span><span lang="es">Enviar aviso</span></button>
+          <p class="msg err" id="sig-err" role="alert" hidden></p>
+        </div>
+        <p class="msg ok" id="sig-ok" role="status" hidden></p>
+      </div>
     </div>
   </section>
 
@@ -173,6 +200,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     pc.textContent = r.piece_recue ? L('Reçue en ligne', 'Received online', 'Recibido online') : L('À vérifier au comptoir', 'Check at the counter', 'Comprobar en el mostrador');
     var info = $('r-info'), f = $('f-com'), btn = $('b-com'), nom = $('r-nom').textContent;
     info.hidden = true; f.hidden = true; $('f-cli').hidden = true; etat.action = null;
+    $('sig').hidden = !(r.peut_remettre || r.peut_rendre); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
     if(r.sans_commercant && !r.peut_remettre){ info.textContent = L('Ce point n’est pas encore relié à un commerçant : le retour ne peut pas être confirmé ici. Écrivez à Julie sur locair.fr.', 'This point isn’t linked to a shop yet, so the return can’t be confirmed here. Chat with Julie on locair.fr.', 'Este punto aún no está vinculado a un comercio: la devolución no se puede confirmar aquí. Escribe a Julie en locair.fr.'); info.hidden = false; return; }
     if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; $('r-tendre').hidden = true; return; }
     /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
@@ -190,6 +218,17 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     }
   }
 
+  /* signaler un problème : ne bloque pas la validation */
+  $('sig-ouvrir').addEventListener('click', function(){ var f = $('sig-form'), o = f.hidden; f.hidden = !o; this.setAttribute('aria-expanded', String(o)); $('sig-msg').placeholder = L('Dites-nous en quelques mots (facultatif)', 'Tell us in a few words (optional)', 'Cuéntanos en pocas palabras (opcional)'); });
+  $('sig-envoyer').addEventListener('click', function(){
+    var b = this, c = document.querySelector('input[name="sig"]:checked'); b.disabled = true; erreur($('sig-err'), '');
+    appel({action:'signaler', categorie:c ? c.value : 'autre', moment:etat.moment, message:$('sig-msg').value}).then(function(r){
+      b.disabled = false;
+      if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
+      var ok = $('sig-ok'); ok.textContent = L('Merci, c’est noté. Loc’Air vous recontacte si besoin. Vous pouvez valider normalement.', 'Thanks, noted. Loc’Air will contact you if needed. You can confirm as usual.', 'Gracias, anotado. Loc’Air te contactará si hace falta. Puedes confirmar normalmente.'); ok.hidden = false;
+    }).catch(function(){ b.disabled = false; erreur($('sig-err'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
   $('b-cli').addEventListener('click', function(){
     var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
     appel({action:'valider'}).then(function(r){
