@@ -133,7 +133,7 @@ function buildContratContent({ reservation, appareils, pricing, forfait }) {
       1: `Bailleur : ${SELLER.nomCommercial}, exploité par Aly THIAM, ${SELLER.adresse}. SIRET : ${SELLER.siret}.\n` +
          `Locataire : ${locataireNom}${entreprise}, demeurant au ${domicile}.`,
       2: `Location d’un climatiseur mobile ${modeleConnu ? modele : '(Rowenta RWAC10KA ou FRICO CLIMOB 12)'} (de 9 000 à 12 000 BTU, adapté à une pièce fermée jusqu’à environ 15 m²), ` +
-         `avec sa gaine. Le kit fenêtre et la télécommande ne sont pas fournis. Retrait et retour par le locataire au point de retrait : ${point}.`,
+         `sous sa housse de protection, avec sa gaine d’évacuation. Le kit fenêtre et la télécommande ne sont pas fournis. Retrait et retour par le locataire au point de retrait : ${point}.`,
       4: `Prix de la location payé à la réservation : ${paye} pour ${jours} jours (Click & Collect, tarification selon la demande, prix affiché garanti au moment du paiement).\n` +
          'Aucuns frais de livraison ni d’installation : le locataire retire et rapporte l’appareil au point de retrait, aux horaires d’ouverture.\n' +
          `TVA : ${SELLER.mentionTva}.`,
