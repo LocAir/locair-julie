@@ -50,6 +50,8 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .commercant{margin-top:20px;padding-top:20px;border-top:2px dashed var(--line)}
 .commercant h2{font-size:19px;margin:0 0 8px}
 .commercant p{margin:0 0 14px;color:var(--ink-2);font-size:15px;line-height:1.45}
+.client-ret{margin-top:18px}
+.client-ret p{margin:0 0 14px;color:var(--ink-2);font-size:15.5px;line-height:1.5}
 .fini{text-align:center;padding:36px 22px}
 .fini .rond{width:84px;height:84px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
 .fini svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
@@ -68,7 +70,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   <!-- 1. le client s'identifie -->
   <section id="e-id">
     <h1><span lang="fr">Retirer ou rendre votre climatiseur</span><span lang="en">Pick up or return your air conditioner</span><span lang="es">Recoge o devuelve tu aire acondicionado</span></h1>
-    <p class="sous"><span lang="fr">Tapez votre numéro de commande. Il est dans votre email et votre SMS de confirmation, et reste le même jusqu’au retour.</span><span lang="en">Enter your order number. It’s in your confirmation email and text, and stays the same until you return the unit.</span><span lang="es">Escribe tu número de pedido. Está en tu email y tu SMS de confirmación, y es el mismo hasta la devolución.</span></p>
+    <p class="sous"><span lang="fr">Tapez votre numéro de commande pour valider votre retrait. Il est dans votre email, votre SMS et votre confirmation PDF.</span><span lang="en">Enter your order number. It’s in your confirmation email and text, and stays the same until you return the unit.</span><span lang="es">Escribe tu número de pedido. Está en tu email y tu SMS de confirmación, y es el mismo hasta la devolución.</span></p>
     <p class="point" id="point" hidden></p>
     <form class="carte" id="f-id" novalidate>
       <div class="champ"><label for="ref"><span lang="fr">Numéro de commande</span><span lang="en">Order number</span><span lang="es">Número de pedido</span></label>
@@ -89,6 +91,11 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       <p class="tendre" id="r-tendre"><span lang="fr">Tendez votre téléphone au commerçant.</span><span lang="en">Hand your phone to the shopkeeper.</span><span lang="es">Dale tu teléfono al comerciante.</span></p>
       <p class="msg info" id="r-info" hidden></p>
 
+      <div class="client-ret" id="f-cli" hidden>
+        <p id="c-consigne"></p>
+        <button class="btn vert" id="b-cli" type="button"><span lang="fr">Valider mon retrait</span><span lang="en">Confirm my pick-up</span><span lang="es">Confirmar mi recogida</span></button>
+        <p class="msg err" id="m-cli" role="alert" hidden></p>
+      </div>
       <form class="commercant" id="f-com" novalidate hidden>
         <h2><span lang="fr">Pour le commerçant</span><span lang="en">For the shopkeeper</span><span lang="es">Para el comerciante</span></h2>
         <p id="r-consigne"></p>
@@ -165,14 +172,15 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     var pc = $('r-piece'); pc.className = 'badge ' + (r.piece_recue ? 'ok' : 'att');
     pc.textContent = r.piece_recue ? L('Reçue en ligne', 'Received online', 'Recibido online') : L('À vérifier au comptoir', 'Check at the counter', 'Comprobar en el mostrador');
     var info = $('r-info'), f = $('f-com'), btn = $('b-com'), nom = $('r-nom').textContent;
-    info.hidden = true; f.hidden = true; etat.action = null;
-    if(r.sans_commercant){ info.textContent = L('Ce point n’est pas encore relié à un commerçant : la remise ne peut pas être confirmée ici. Écrivez à Julie sur locair.fr.', 'This point isn’t linked to a shop yet, so the handover can’t be confirmed here. Chat with Julie on locair.fr.', 'Este punto aún no está vinculado a un comercio: la entrega no se puede confirmar aquí. Escribe a Julie en locair.fr.'); info.hidden = false; return; }
+    info.hidden = true; f.hidden = true; $('f-cli').hidden = true; etat.action = null;
+    if(r.sans_commercant && !r.peut_remettre){ info.textContent = L('Ce point n’est pas encore relié à un commerçant : le retour ne peut pas être confirmé ici. Écrivez à Julie sur locair.fr.', 'This point isn’t linked to a shop yet, so the return can’t be confirmed here. Chat with Julie on locair.fr.', 'Este punto aún no está vinculado a un comercio: la devolución no se puede confirmar aquí. Escribe a Julie en locair.fr.'); info.hidden = false; return; }
     if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; $('r-tendre').hidden = true; return; }
-    $('r-tendre').hidden = false;
+    /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
+       RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
+    $('r-tendre').hidden = !r.peut_rendre;
     if(r.peut_remettre){
-      etat.action = 'valider';
-      $('r-consigne').textContent = L('Vérifiez la pièce d’identité originale : le nom doit être ' + nom + '. Remettez l’appareil (sans kit fenêtre), puis tapez votre code.', 'Check the original ID: the name must be ' + nom + '. Hand over the unit (no window kit), then enter your code.', 'Comprueba el documento original: el nombre debe ser ' + nom + '. Entrega el aparato (sin kit de ventana) y escribe tu código.');
-      btn.textContent = L('Confirmer la remise', 'Confirm handover', 'Confirmar la entrega'); f.hidden = false;
+      $('c-consigne').textContent = L('Montrez votre pièce d’identité originale au commerçant (nom : ' + nom + '). Quand il vous donne le climatiseur, appuyez sur le bouton.', 'Show your original ID to the shopkeeper (name: ' + nom + '). When they hand you the air conditioner, tap the button.', 'Enseña tu documento de identidad original al comerciante (nombre: ' + nom + '). Cuando te entregue el aire acondicionado, pulsa el botón.');
+      $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
       $('r-consigne').textContent = L('Vérifiez que l’appareil est complet (appareil, gaine, télécommande), puis tapez votre code.', 'Check the unit is complete (unit, hose, remote), then enter your code.', 'Comprueba que el aparato está completo (aparato, tubo, mando) y escribe tu código.');
@@ -182,6 +190,16 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     }
   }
 
+  $('b-cli').addEventListener('click', function(){
+    var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
+    appel({action:'valider'}).then(function(r){
+      b.disabled = false;
+      if(!r.ok) return erreur($('m-cli'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
+      $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!');
+      $('f-texte').textContent = L('Retrait validé. Rapportez l’appareil ici le ', 'Pick-up confirmed. Bring the unit back here on ', 'Recogida confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + L('. Gardez votre numéro de commande.', '. Keep your order number.', '. Guarda tu número de pedido.');
+    }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
   $('f-com').addEventListener('submit', function(e){
     e.preventDefault();
     var code = $('code-com').value.trim(); if(!code) return erreur($('m-com'), L('Tapez votre code partenaire.', 'Enter your partner code.', 'Escribe tu código de colaborador.'));
