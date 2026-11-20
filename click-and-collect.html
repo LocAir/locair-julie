@@ -3111,7 +3111,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(h && h !== 'paiement' && h !== 'merci' && sv){ try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){} if(h !== 'ville') aller(h); else aller('ville', true); }
     else aller('ville');
   }
-  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine, demain:CC.demain}; majPrixTextes(); } })
+  fetch('/api/points-retrait' + (/[?&]test=1\b/.test(location.search) ? '?test=1' : '')).then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine, demain:CC.demain}; majPrixTextes(); } })
     .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (menu ☰ → Aide).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (bubble, bottom right).'); $('loc-err').hidden = false; })
     .then(demarrer).then(function(){ majSimu(); if(POINTS.length) gcQuandVisible(); });
   majPrixTextes();
