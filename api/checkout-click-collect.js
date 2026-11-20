@@ -18,7 +18,7 @@ const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
-const { getPricingConfig } = require('./_lib/pricing');
+const { getPricingConfig, isSiretValide } = require('./_lib/pricing');
 const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
@@ -56,6 +56,14 @@ module.exports = async (req, res) => {
   // par courrier si l'appareil n'est jamais rendu.
   const adresseClient = clip(data.adresse_client, 300);
   if (adresseClient.length < 8) return res.status(400).json({ error: 'Adresse postale requise.', code: 'adresse_invalide' });
+  // Facture au nom d'une société (facultatif). Le SIRET est facultatif
+  // (société étrangère), mais s'il est donné il doit être valide. Le prix ne
+  // change pas : c'est seulement le nom sur la facture.
+  const raisonSociale = clip(data.raison_sociale, 200);
+  const siretClient = String(data.siret || '').replace(/\s/g, '').slice(0, 20);
+  if (raisonSociale && siretClient && !isSiretValide(siretClient)) {
+    return res.status(400).json({ error: 'Numéro SIRET invalide.', code: 'siret_invalide' });
+  }
 
   // Pièce d'identité : carte (recto + verso) ou passeport. Elle est en
   // principe ajoutée APRÈS le paiement (api/click-collect-identite.js), pour
@@ -198,7 +206,9 @@ module.exports = async (req, res) => {
       source: 'site',
       source_channel: 'click_collect',
       lang: data.lang === 'en' || data.lang === 'es' ? data.lang : 'fr',
-      type_client: 'particulier',
+      type_client: raisonSociale ? 'entreprise' : 'particulier',
+      raison_sociale: raisonSociale || null,
+      siret: raisonSociale && siretClient ? siretClient : null,
       cgv_accepted_at: new Date().toISOString(),
       piece_identite_paths: chemins.length ? chemins : null,
       point_retrait_id: point.id,
