@@ -75,6 +75,18 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .fini svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .fini h2{font-size:28px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px}
 .fini p{color:var(--ink-2);margin:0;font-size:16px;line-height:1.5}
+.montrer{border:2px solid var(--ok);border-radius:18px;padding:18px 14px;margin:6px 0 18px;background:#EAF6EF}
+.fini .montrer p{color:var(--ink)}
+.fini .m-a{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ok)}
+.fini .m-nom{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:8px 0 4px}
+.fini .m-ref{font-size:18px;font-weight:700;letter-spacing:.06em}
+.fini .m-horloge{font-size:34px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ok);margin:10px 0 4px}
+.fini .m-piece{font-size:14px;color:var(--ink-2)}
+.code-l{display:block;font-weight:800;margin:16px 0 6px}
+.code-com{width:100%;min-height:58px;border:1.5px solid var(--line);border-radius:14px;font:900 28px 'DM Sans',sans-serif;letter-spacing:.3em;text-align:center;color:var(--ink);background:#fff}
+.code-com:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94,219,.18)}
+.code-com[aria-invalid="true"]{border-color:var(--err)}
+.code-aide{font-size:13.5px;color:var(--ink-2);margin:6px 0 14px}
 [hidden]{display:none!important}
 html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):not([data-l="es"]) [lang="es"],html[data-l="en"] [lang="fr"],html[data-l="en"] [lang="es"],html[data-l="es"] [lang="fr"],html[data-l="es"] [lang="en"]{display:none}
 </style>
@@ -118,6 +130,9 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
         <h2><span lang="fr">Rendre le climatiseur</span><span lang="en">Return the air conditioner</span><span lang="es">Devolver el aire acondicionado</span></h2>
         <p id="r-consigne"></p>
         <label class="photo-retour" id="ph-ret"><input type="file" id="ph-file" accept="image/*" capture="environment" hidden><span id="ph-txt">📷 <span lang="fr">Photo du climatiseur dans sa housse</span><span lang="en">Photo of the air conditioner in its cover</span><span lang="es">Foto del aire acondicionado en su funda</span></span><img id="ph-img" alt="" hidden></label>
+        <label class="code-l" for="code-com"><span lang="fr">Code commerçant</span><span lang="en">Shop code</span><span lang="es">Código de comercio</span></label>
+        <input class="code-com" id="code-com" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••" aria-describedby="code-aide">
+        <p class="code-aide" id="code-aide"><span lang="fr">Demandez-le au commerçant.</span><span lang="en">Ask the shopkeeper for it.</span><span lang="es">Pídeselo al comerciante.</span></p>
         <button class="btn vert" id="b-com" type="submit"></button>
         <p class="msg err" id="m-com" role="alert" hidden></p>
       </form>
@@ -149,6 +164,13 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     <div class="carte fini">
       <div class="rond"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
       <h2 id="f-titre"></h2>
+      <div class="montrer" id="f-montrer" hidden>
+        <p class="m-a"><span lang="fr">À montrer au commerçant</span><span lang="en">Show this to the shopkeeper</span><span lang="es">Enséñaselo al comerciante</span></p>
+        <p class="m-nom" id="f-nom"></p>
+        <p class="m-ref" id="f-ref"></p>
+        <p class="m-horloge" id="f-horloge" aria-live="off"></p>
+        <p class="m-piece"><span lang="fr">Vérifiez la pièce d’identité : même nom.</span><span lang="en">Check the ID: same name.</span><span lang="es">Comprueba el documento de identidad: mismo nombre.</span></p>
+      </div>
       <p id="f-texte"></p>
     </div>
   </section>
@@ -216,11 +238,11 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
     $('r-tendre').hidden = true;
     if(r.peut_remettre){
-      $('c-consigne').textContent = L('Montrez votre pièce d’identité originale au commerçant (nom : ' + nom + '). Quand il vous donne le climatiseur (sous sa housse, avec sa gaine d’évacuation), appuyez sur le bouton. Enlevez la housse seulement chez vous.', 'Show your original ID to the shopkeeper (name: ' + nom + '). When they hand you the air conditioner (under its cover, with its exhaust hose), tap the button. Only take the cover off at home.', 'Enseña tu documento de identidad original al comerciante (nombre: ' + nom + '). Cuando te entregue el aire acondicionado (con su funda y su tubo de evacuación), pulsa el botón. Quita la funda solo en casa.');
+      $('c-consigne').textContent = L('Appuyez sur le bouton, puis montrez l’écran de confirmation et votre pièce d’identité originale (nom : ' + nom + ') au commerçant. Il vous remet le climatiseur sous sa housse, avec sa gaine d’évacuation. Enlevez la housse seulement chez vous.', 'Tap the button, then show the confirmation screen and your original ID (name: ' + nom + ') to the shopkeeper. They hand you the air conditioner under its cover, with its exhaust hose. Only take the cover off at home.', 'Pulsa el botón y enseña la pantalla de confirmación y tu documento de identidad original (nombre: ' + nom + ') al comerciante. Te entrega el aire acondicionado con su funda y su tubo de evacuación. Quita la funda solo en casa.');
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
-      $('r-consigne').textContent = L('Déposez le climatiseur dans sa housse, avec sa gaine d’évacuation. Prenez-le en photo, puis validez : c’est fini.', 'Leave the air conditioner in its cover, with its exhaust hose. Take a photo, then confirm: you’re done.', 'Deja el aire acondicionado en su funda, con su tubo de evacuación. Hazle una foto y confirma: listo.');
+      $('r-consigne').textContent = L('Déposez le climatiseur dans sa housse, avec sa gaine d’évacuation. Prenez-le en photo, demandez le code au commerçant, puis validez.', 'Leave the air conditioner in its cover, with its exhaust hose. Take a photo, ask the shopkeeper for the code, then confirm.', 'Deja el aire acondicionado en su funda, con su tubo de evacuación. Hazle una foto, pide el código al comerciante y confirma.');
       btn.textContent = L('Valider mon retour', 'Confirm my return', 'Confirmar mi devolución'); f.hidden = false;
     } else {
       info.textContent = r.remise_message || L('Rien à faire aujourd’hui pour cette réservation.', 'Nothing to do today for this booking.', 'Nada que hacer hoy con esta reserva.'); info.hidden = false;
@@ -276,32 +298,49 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       var ok = $('sig-ok'); ok.textContent = L('Merci, c’est noté. Loc’Air vous recontacte si besoin. Vous pouvez valider normalement.', 'Thanks, noted. Loc’Air will contact you if needed. You can confirm as usual.', 'Gracias, anotado. Loc’Air te contactará si hace falta. Puedes confirmar normalmente.'); ok.hidden = false;
     }).catch(function(x){ b.disabled = false; b.innerHTML = lib; erreur($('sig-err'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
+  /* écran de confirmation à montrer au commerçant : nom, numéro, et une
+     horloge qui tourne à la seconde (une capture d'écran ne bouge pas) */
+  var minuterie = null;
+  function montrerAuCommercant(){
+    $('f-nom').textContent = ((etat.resa.prenom || '') + ' ' + (etat.resa.nom || '')).trim();
+    $('f-ref').textContent = etat.resa.ref || etat.ref;
+    $('f-montrer').hidden = false;
+    var loc = langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR';
+    function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }
+    tic(); clearInterval(minuterie); minuterie = setInterval(tic, 1000);
+  }
   $('b-cli').addEventListener('click', function(){
     var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
     appel({action:'valider'}).then(function(r){
       b.disabled = false;
       if(!r.ok) return erreur($('m-cli'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
-      $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!');
-      $('f-texte').textContent = L('Retrait validé. Rapportez l’appareil ici le ', 'Pick-up confirmed. Bring the unit back here on ', 'Recogida confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + L('. Gardez votre numéro de commande.', '. Keep your order number.', '. Guarda tu número de pedido.');
+      $('f-titre').textContent = L('Retrait validé ✓', 'Pick-up confirmed ✓', 'Recogida confirmada ✓');
+      montrerAuCommercant();
+      $('f-texte').textContent = L('Le commerçant vous remet le climatiseur sous sa housse, avec sa gaine. Rapportez l’appareil ici le ', 'Pick-up confirmed. Bring the unit back here on ', 'Recogida confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + L('. Gardez votre numéro de commande.', '. Keep your order number.', '. Guarda tu número de pedido.');
     }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
-  var photoRetour = null;
+  var photoRetour = null, photoChemin = null;
   $('ph-file').addEventListener('change', function(){
     var f = this.files && this.files[0]; this.value = ''; if(!f) return;
-    reduire(f).then(function(b){ photoRetour = b; var im = $('ph-img'); im.src = URL.createObjectURL(b); im.hidden = false; $('ph-txt').innerHTML = '🔄 ' + L('Reprendre la photo', 'Retake the photo', 'Repetir la foto'); erreur($('m-com'), ''); });
+    reduire(f).then(function(b){ photoRetour = b; photoChemin = null; var im = $('ph-img'); im.src = URL.createObjectURL(b); im.hidden = false; $('ph-txt').innerHTML = '🔄 ' + L('Reprendre la photo', 'Retake the photo', 'Repetir la foto'); erreur($('m-com'), ''); });
   });
+  $('code-com').addEventListener('input', function(){ this.removeAttribute('aria-invalid'); erreur($('m-com'), ''); });
   $('f-com').addEventListener('submit', function(e){
     e.preventDefault();
     if(!photoRetour) return erreur($('m-com'), L('Prenez d’abord une photo du climatiseur dans sa housse.', 'First take a photo of the air conditioner in its cover.', 'Primero haz una foto del aire acondicionado en su funda.'));
+    var code = $('code-com').value.replace(/\s/g, '');
+    if(!code){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').focus(); return erreur($('m-com'), L('Demandez le code commerçant au commerçant et tapez-le.', 'Ask the shopkeeper for the shop code and enter it.', 'Pide el código de comercio al comerciante e introdúcelo.')); }
     var b = $('b-com'); b.disabled = true; erreur($('m-com'), '');
     var action = etat.action;
-    appel({action:'photo', type:photoRetour.type || 'image/jpeg'}).then(function(u){
+    /* la photo ne part qu'une fois, même si le code est faux et qu'on réessaie */
+    var envoiPhoto = photoChemin ? Promise.resolve(photoChemin) : appel({action:'photo', type:photoRetour.type || 'image/jpeg'}).then(function(u){
       if(!u.ok || !u.j.signedUrl) throw new Error(u.j.error || '');
-      return fetch(u.j.signedUrl, {method:'PUT', headers:{'Content-Type': photoRetour.type || 'image/jpeg'}, body:photoRetour}).then(function(x){ if(!x.ok) throw new Error(L('La photo n’a pas pu partir. Réessayez.', 'The photo couldn’t be sent. Try again.', 'No se pudo enviar la foto. Inténtalo de nuevo.')); return appel({action:'rendre', photo:u.j.path}); });
-    }).then(function(r){
+      return fetch(u.j.signedUrl, {method:'PUT', headers:{'Content-Type': photoRetour.type || 'image/jpeg'}, body:photoRetour}).then(function(x){ if(!x.ok) throw new Error(L('La photo n’a pas pu partir. Réessayez.', 'The photo couldn’t be sent. Try again.', 'No se pudo enviar la foto. Inténtalo de nuevo.')); photoChemin = u.j.path; return photoChemin; });
+    });
+    envoiPhoto.then(function(chemin){ return appel({action:'rendre', photo:chemin, code_commercant:code}); }).then(function(r){
       b.disabled = false;
-      if(!r.ok) return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      if(!r.ok){ if(r.j.code === 'code_commercant'){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').select(); } return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.')); }
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       if(action === 'valider'){ $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!'); $('f-texte').textContent = L('Remise confirmée. Rapportez l’appareil ici le ', 'Handover confirmed. Bring the unit back here on ', 'Entrega confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.'; }
       else { $('f-titre').textContent = L('Retour confirmé, merci !', 'Return confirmed, thank you!', '¡Devolución confirmada, gracias!'); $('f-texte').textContent = L('Votre location est terminée. Votre confirmation et votre facture arrivent par email et SMS.', 'Your rental is over. Your confirmation and invoice are on their way by email and text.', 'Tu alquiler ha terminado. Tu confirmación y tu factura llegan por email y SMS.'); return; $('f-texte').textContent = L('Votre location est terminée. À bientôt chez Loc’Air.', 'Your rental is over. See you soon at Loc’Air.', 'Tu alquiler ha terminado. Hasta pronto en Loc’Air.'); }

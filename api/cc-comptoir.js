@@ -5,8 +5,10 @@
 //    après une prolongation, jusqu'au retour. Il est long et tiré au hasard
 //    (32^8 possibilités) : impossible à deviner, et les essais sont limités.
 // 2. RETRAIT : il montre sa pièce d'identité au commerçant et valide lui-même
-//    le retrait sur son téléphone. RETOUR : il dépose l'appareil dans sa housse,
-//    prend une photo et valide — en 15 secondes, sans code (voir apresRetour).
+//    le retrait sur son téléphone, puis montre l'écran de confirmation au
+//    commerçant. RETOUR : il dépose l'appareil dans sa housse, prend une photo,
+//    tape le code commerçant (donné par le commerçant, voir
+//    clickCollect.codeRetour) et valide (voir apresRetour).
 //
 // POST { point, ref, action: 'voir'|'valider'|'rendre'|'signaler'|'photo', photo, categorie, message }
 // Les règles (dates, statut, colonnes) sont celles de _lib/remiseCC.js,
@@ -15,6 +17,9 @@ const { getSupabase } = require('./_lib/supabase');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { agir } = require('./_lib/remiseCC');
+const { codeRetour } = require('./_lib/clickCollect');
+const { safeEqual } = require('./_lib/auth');
+const { verifyPin } = require('./_lib/pinHash');
 const { pushToAdmin } = require('./_lib/push');
 
 const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
@@ -112,15 +117,33 @@ module.exports = async (req, res) => {
       return res.status(out.status).json(out.body);
     }
 
-    // RETOUR en 15 secondes (décision du propriétaire, 20/11/2026) : le client
-    // dépose le climatiseur dans sa housse, prend UNE photo (preuve du dépôt),
-    // et valide. Pas de code commerçant. La location est close, le client
+    // RETOUR (décision du propriétaire, 20/11/2026) : le client dépose le
+    // climatiseur dans sa housse, prend UNE photo (preuve du dépôt), tape le
+    // code que lui donne le commerçant (sinon on pourrait déclarer « rendu »
+    // depuis chez soi) et valide. La location est close, le client
     // reçoit sa confirmation de retour + sa facture, l'appareil passe
     // « À reconditionner » (page admin/cc-retours.html).
     if (action === 'rendre') {
       const photo = String(b.photo || '');
       if (!photo.startsWith(`signalements/${r.id}-`) || photo.includes('..')) {
         return res.status(400).json({ error: T(lang, 'Prenez une photo du climatiseur dans sa housse pour valider le retour.', 'Take a photo of the air conditioner in its cover to confirm the return.', 'Haz una foto del aire acondicionado en su funda para confirmar la devolución.'), code: 'photo_requise' });
+      }
+      const cr = codeRetour(point, partenaire);
+      if (!cr && !(partenaire && partenaire.pin)) {
+        return res.status(409).json({ error: T(lang, 'Ce point n’a pas encore de code commerçant. Écrivez à Julie sur locair.fr : on valide votre retour.', 'This point has no shop code yet. Chat with Julie on locair.fr: we’ll confirm your return.', 'Este punto aún no tiene código de comercio. Escribe a Julie en locair.fr: confirmamos tu devolución.') });
+      }
+      const cleCode = `comptoir-code:${point.id}`;
+      if (await isRateLimited(supabase, cleCode)) {
+        return res.status(429).json({ error: T(lang, 'Trop de codes incorrects. Réessayez dans 15 minutes.', 'Too many wrong codes. Try again in 15 minutes.', 'Demasiados códigos incorrectos. Inténtalo en 15 minutos.') });
+      }
+      // Le code commerçant (2 derniers chiffres du téléphone de la boutique).
+      // Le code secret du commerçant marche aussi, s'il préfère le taper lui-même.
+      const code = String(b.code_commercant || '').replace(/\s/g, '').slice(0, 12);
+      const bon = !!code && ((cr && safeEqual(code, cr))
+        || (partenaire && partenaire.pin && (partenaire.pin_hashed ? verifyPin(code, partenaire.pin) : safeEqual(code, String(partenaire.pin)))));
+      if (!bon) {
+        await recordFailedAttempt(supabase, cleCode);
+        return res.status(401).json({ error: T(lang, code ? 'Code commerçant incorrect. Demandez-le au commerçant.' : 'Demandez le code commerçant au commerçant et tapez-le.', code ? 'Wrong shop code. Ask the shopkeeper.' : 'Ask the shopkeeper for the shop code and enter it.', code ? 'Código de comercio incorrecto. Pídeselo al comerciante.' : 'Pide el código de comercio al comerciante e introdúcelo.'), code: 'code_commercant' });
       }
       const out = await agir(supabase, r, partenaire ? partenaire.id : null, 'rendre');
       if (out.status === 200 && out.body && out.body.ok && !out.body.deja) {

@@ -42,7 +42,7 @@ const POINTS_RETRAIT = [
   // seulement sur /click-and-collect?test=1. Sert à faire un vrai paiement
   // de bout en bout (puis le rembourser dans Stripe) avant la 1re boutique.
   // Jamais compté dans le stock, le prix ou la carte des vrais points.
-  { id: 'test-locair', ville: 'Nice', nom: 'Point test Loc’Air', lat: 43.7031, lng: 7.2661, adresse: 'Point de test — ne pas utiliser, 06000 Nice', horaires: 'Tous les jours · 0h–24h', fermes: [], ouverture: [0, 24], stock: 1, exemple: false, test: true },
+  { id: 'test-locair', ville: 'Nice', nom: 'Point test Loc’Air', lat: 43.7031, lng: 7.2661, adresse: 'Point de test — ne pas utiliser, 06000 Nice', horaires: 'Tous les jours · 0h–24h', fermes: [], ouverture: [0, 24], stock: 1, exemple: false, test: true, tel: '04 00 00 00 00' },
   { id: 'nice-centre',      ville: 'Nice',                 nom: 'Nice Centre',          lat: 43.7009, lng: 7.2683, adresse: 'Adresse à venir, 06000 Nice',                 horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 60,  exemple: true },
   { id: 'nice-port',        ville: 'Nice',                 nom: 'Nice Port',            lat: 43.6966, lng: 7.2852, adresse: 'Adresse à venir, 06300 Nice',                 horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 60,  exemple: true },
   { id: 'nice-ouest',       ville: 'Nice',                 nom: 'Nice Ouest',           lat: 43.6845, lng: 7.2010, adresse: 'Adresse à venir, 06200 Nice',                 horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 60,  exemple: true },
