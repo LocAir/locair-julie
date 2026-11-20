@@ -1024,6 +1024,12 @@ html[data-style="brut"] .ugc-play{border-radius:0;border:2.5px solid var(--noir)
 .t-ok{display:inline-flex;align-items:center;gap:6px;color:var(--ok)}
 .t-ok::before{content:"";width:18px;height:18px;border-radius:50%;background:#E8F6EE url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230F7A3D' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E") center/11px no-repeat}
 .t-sep{color:var(--ink-3)}
+.h1-b{display:none}
+html[data-ab="B"] .hero h1>.ligne{display:none}
+html[data-ab="B"] .hero h1>.h1-b{display:inline}
+.hero-preuve{margin:10px 0 0;font-weight:800;font-size:15px;color:#fff;text-shadow:0 1px 10px rgba(4,16,44,.5)}
+.hero-preuve::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#34D27B;margin-right:8px;vertical-align:middle;box-shadow:0 0 0 4px rgba(52,210,123,.25)}
+.gf-promesse{margin:8px 0 0;font-weight:800;color:var(--vif-d);font-size:15px}
 .t-var{display:block;font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.3}
 .adr-boite{position:relative}
 .adr-liste{position:absolute;left:0;right:0;top:calc(100% - 22px);z-index:20;list-style:none;margin:0;padding:6px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 30px -12px rgba(11,30,68,.35)}
@@ -1181,6 +1187,17 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
 .nav .lg-menu+.espace{margin-left:8px}
 </style>
 <script>
+/* TEST A/B du titre : A = « Réservez. Récupérez à … », B = « Le frais, à deux pas
+   de chez vous. ». Tirée au hasard une fois par navigateur (rien de personnel),
+   ?ab=A ou ?ab=B pour forcer. Le résultat se lit dans admin/cc-stats.html. */
+(function(){
+  try{
+    var f = new URLSearchParams(location.search).get('ab'), v = f === 'A' || f === 'B' ? f : localStorage.getItem('locair_cc_ab');
+    if(v !== 'A' && v !== 'B') v = Math.random() < .5 ? 'A' : 'B';
+    localStorage.setItem('locair_cc_ab', v);
+    document.documentElement.setAttribute('data-ab', v);
+  }catch(e){ document.documentElement.setAttribute('data-ab', 'A'); }
+})();
 /* STYLE BRUT (essai) : ?style=brut l'active, ?style=normal le retire. */
 (function(){
   try{
@@ -1257,17 +1274,17 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
 
       <div class="col">
         <p class="chaleur" id="chaleur" hidden></p>
-        <h1><span class="ligne"><span lang="fr">Réservez.</span><span lang="en">Book.</span><span lang="es">Reserva.</span></span> <span class="ligne"><span lang="fr">Récupérez</span><span lang="en">Pick up</span><span lang="es">Recoge</span></span> <span class="ligne"><span class="anim" aria-hidden="true"><span lang="fr">à</span><span lang="en">in</span><span lang="es">en</span> <span class="tourne" id="tourne"><span class="on">Nice</span></span></span><span class="cote" aria-hidden="true"><span lang="fr">sur la Côte</span><span lang="en">on the Riviera</span><span lang="es">en la Costa Azul</span></span><span class="sr"><span lang="fr">votre climatiseur sur la Côte d’Azur</span><span lang="en">your air conditioner on the French Riviera</span><span lang="es">tu aire acondicionado en la Costa Azul</span></span></span></h1>
+        <h1><span class="ligne"><span lang="fr">Réservez.</span><span lang="en">Book.</span><span lang="es">Reserva.</span></span> <span class="ligne"><span lang="fr">Récupérez</span><span lang="en">Pick up</span><span lang="es">Recoge</span></span> <span class="ligne"><span class="anim" aria-hidden="true"><span lang="fr">à</span><span lang="en">in</span><span lang="es">en</span> <span class="tourne" id="tourne"><span class="on">Nice</span></span></span><span class="cote" aria-hidden="true"><span lang="fr">sur la Côte</span><span lang="en">on the Riviera</span><span lang="es">en la Costa Azul</span></span><span class="sr"><span lang="fr">votre climatiseur sur la Côte d’Azur</span><span lang="en">your air conditioner on the French Riviera</span><span lang="es">tu aire acondicionado en la Costa Azul</span></span></span><span class="h1-b"><span lang="fr">Le frais, à deux pas de chez vous.</span><span lang="en">Cool air, just around the corner.</span><span lang="es">El fresco, a dos pasos de casa.</span></span></h1>
         <p class="hero-sous mission" id="hero-sous"><span lang="fr">Un climatiseur vous attend chez un commerçant de votre quartier. Réservation en ligne, 24&nbsp;h/24.</span><span lang="en">An air conditioner is waiting for you at a shop in your neighbourhood. Book online, 24/7.</span><span lang="es">Un aire acondicionado te espera en una tienda de tu barrio. Reserva online, las 24 horas.</span></p>
-        <p class="hero-sous mission" id="hero-bientot" hidden><span lang="fr">Bientôt, un climatiseur vous attendra chez un commerçant de votre quartier.</span><span lang="en">Soon, an air conditioner will be waiting for you at a shop near you.</span><span lang="es">Pronto, un aire acondicionado te esperará en una tienda de tu barrio.</span></p>
+        <p class="hero-preuve" id="hero-preuve" hidden></p>
         <a class="ticket epure" href="#choix" id="ticket">
           <span class="t-haut">
             <img class="t-img" src="/clim-mobile-9000.webp" width="512" height="630" alt="" decoding="async">
             <span class="t-info">
               <b class="t-nom"><span lang="fr">Climatiseur mobile</span><span lang="en">Portable air conditioner</span><span lang="es">Aire acondicionado portátil</span></b>
               <span class="t-sous"><span lang="fr">Prêt à brancher · pièce jusqu’à 15&nbsp;m²</span><span lang="en">Plug and play · rooms up to 15&nbsp;m²</span><span lang="es">Listo para enchufar · hasta 15&nbsp;m²</span></span>
-              <span class="t-prix"><b><span class="t-eur" lang="en">€</span><span id="prix-mini">150</span></b><em><span lang="fr">€ la semaine</span><span lang="en">a week</span><span lang="es">€ a la semana</span></em></span>
-              <span class="t-var"><span lang="fr">en temps normal · 139 à 189 € selon la demande</span><span lang="en">usual price · €139–€189 depending on demand</span><span lang="es">precio habitual · de 139 a 189 € según la demanda</span></span>
+              <span class="t-prix"><small class="t-des" id="t-des" hidden><span lang="fr">dès</span><span lang="en">from</span><span lang="es">desde</span></small><b><span class="t-eur" lang="en">€</span><span id="prix-mini">150</span></b><em><span lang="fr">€ la semaine</span><span lang="en">a week</span><span lang="es">€ a la semana</span></em></span>
+              <span class="t-var" id="t-var"><span lang="fr">en temps normal · 139 à 189 € selon la demande</span><span lang="en">usual price · €139–€189 depending on demand</span><span lang="es">precio habitual · de 139 a 189 € según la demanda</span></span>
             </span>
           </span>
           <span class="t-confiance"><span class="t-ok"><span lang="fr">Sans caution</span><span lang="en">No deposit</span><span lang="es">Sin fianza</span></span><span class="t-sep" aria-hidden="true">·</span><span class="t-note"><span class="t-et" aria-hidden="true">★</span> <span lang="fr" id="t-note-fr">4,9</span><span lang="en" id="t-note-en">4.9</span><span lang="es" id="t-note-es">4,9</span> <small>(<span id="t-nb">38</span> <span lang="fr">avis Google</span><span lang="en">Google reviews</span><span lang="es">reseñas Google</span>)</small></span></span>
@@ -1307,39 +1324,7 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
       </div>
     </div>
 
-    <!-- ══ COMMENT ÇA MARCHE (4 étapes illustrées) ══ -->
-    <section class="cmt" aria-labelledby="t-cmt"><div class="col">
-      <h2 id="t-cmt"><span lang="fr">Comment ça marche&nbsp;?</span><span lang="en">How does it work?</span><span lang="es">¿Cómo funciona?</span></h2>
-      <ol class="cmt-etapes">
-        <li><figure><svg viewBox="0 0 160 124" aria-hidden="true"><circle cx="80" cy="62" r="54" fill="#EFF4FD"/>
-  <rect x="54" y="14" width="52" height="96" rx="10" fill="#0E1726"/><rect x="58" y="22" width="44" height="78" rx="4" fill="#fff"/>
-  <rect x="64" y="30" width="32" height="6" rx="3" fill="#1A5EDB"/>
-  <g fill="#DDE6F5"><rect x="64" y="42" width="8" height="8" rx="2"/><rect x="76" y="42" width="8" height="8" rx="2"/><rect x="88" y="42" width="8" height="8" rx="2"/><rect x="64" y="54" width="8" height="8" rx="2"/><rect x="88" y="54" width="8" height="8" rx="2"/><rect x="64" y="66" width="8" height="8" rx="2"/><rect x="76" y="66" width="8" height="8" rx="2"/></g>
-  <rect x="76" y="54" width="8" height="8" rx="2" fill="#1A5EDB"/>
-  <rect x="64" y="82" width="32" height="10" rx="5" fill="#1A5EDB"/>
-  <circle cx="112" cy="34" r="15" fill="#0F7A3D"/><path d="M105 34l5 5 9-10" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-</svg></figure><b><span lang="fr">Réservez en ligne</span><span lang="en">Book online</span><span lang="es">Reserva online</span></b><p><span lang="fr">Choisissez votre point et vos dates, puis payez en ligne.</span><span lang="en">Choose your point and dates, then pay online.</span><span lang="es">Elige tu punto y tus fechas, y paga online.</span></p></li>
-        <li><figure><svg viewBox="0 0 160 124" aria-hidden="true"><circle cx="80" cy="62" r="54" fill="#EFF4FD"/>
-  <rect x="34" y="44" width="92" height="62" rx="4" fill="#fff" stroke="#0E1726" stroke-width="3"/>
-  <path d="M30 30h100l-6 18H36z" fill="#1A5EDB"/>
-  <g fill="#fff"><path d="M46 30h10l-2 18h-10z"/><path d="M66 30h10l-1 18h-10z"/><path d="M86 30h10l1 18h-10z"/><path d="M106 30h10l2 18h-10z"/></g>
-  <rect x="44" y="60" width="30" height="46" rx="2" fill="#9CC4FF"/><circle cx="68" cy="84" r="2" fill="#0E1726"/>
-  <rect x="84" y="58" width="32" height="26" rx="3" fill="#EFF4FD" stroke="#0E1726" stroke-width="2"/>
-  <g fill="#0E1726"><rect x="89" y="63" width="8" height="8"/><rect x="103" y="63" width="8" height="8"/><rect x="89" y="74" width="5" height="5"/><rect x="99" y="72" width="4" height="4"/><rect x="106" y="75" width="5" height="4"/></g>
-  <path d="M40 112h80" stroke="#0E1726" stroke-width="3" stroke-linecap="round"/>
-</svg></figure><b><span lang="fr">Récupérez-le au point</span><span lang="en">Pick it up</span><span lang="es">Recógelo</span></b><p><span lang="fr">Chez le commerçant, aux horaires d’ouverture. Montrez votre QR code et votre pièce d’identité.</span><span lang="en">At the shop, during opening hours. Show your QR code and your ID.</span><span lang="es">En la tienda, en su horario de apertura. Enseña tu código QR y tu documento de identidad.</span></p></li>
-        <li><figure><svg viewBox="0 0 160 124" aria-hidden="true"><circle cx="80" cy="62" r="54" fill="#EFF4FD"/>
-  <path d="M30 26h56l-4 12H34z" fill="#1A5EDB"/><rect x="34" y="38" width="48" height="40" rx="3" fill="#fff" stroke="#0E1726" stroke-width="3"/>
-  <rect x="42" y="50" width="16" height="28" fill="#9CC4FF"/>
-  <rect x="104" y="58" width="26" height="44" rx="6" fill="#fff" stroke="#0E1726" stroke-width="3"/><rect x="104" y="58" width="26" height="7" rx="3.5" fill="#0E1726"/>
-  <g stroke="#0E1726" stroke-width="2" stroke-linecap="round"><path d="M110 72h14M110 78h14"/></g>
-  <path d="M116 50c0-22-14-30-28-26" fill="none" stroke="#0F7A3D" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 9"/>
-  <path d="M92 16l-6 8 9 3" fill="none" stroke="#0F7A3D" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M28 104h108" stroke="#0E1726" stroke-width="3" stroke-linecap="round"/>
-</svg></figure><b><span lang="fr">Rapportez-le</span><span lang="en">Bring it back</span><span lang="es">Devuélvelo</span></b><p><span lang="fr">Au même point, le jour du retour. C’est tout.</span><span lang="en">To the same point, on your return day. That’s it.</span><span lang="es">En el mismo punto, el día de la devolución. Eso es todo.</span></p></li>
-      </ol>
-      
-    </div></section>
+    
 
     <!-- ══ TARIFS (calculés depuis le barème en base, jamais écrits en dur) ══ -->
     <section class="tarifs epure" aria-labelledby="t-tarifs"><div class="col">
@@ -1694,7 +1679,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   if(!t || !c) return;
   [].forEach.call(document.querySelectorAll('#cmt-cta,[data-vers-choix]'), function(t2){ t2.addEventListener('click', function(e){ e.preventDefault(); c.scrollIntoView({behavior:'smooth', block:'start'}); }); });
   t.addEventListener('click', function(e){
-    e.preventDefault();
+    e.preventDefault(); if(window.mesurer) window.mesurer('cc_ticket');
     c.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     /* et cherche tout de suite le point le plus proche (le téléphone demande l'autorisation) :
        carte si elle est prête, sinon le bouton de la liste */
@@ -1702,7 +1687,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     (function localiser(){
       var g = document.getElementById('gc-loc'), l = document.getElementById('localiser');
       if(g && g.offsetParent) return g.click();
-      if(++essais < 6) return setTimeout(localiser, 300);
+      if(++essais < 10) return setTimeout(localiser, 300);
       if(l && l.offsetParent) l.click();
     })();
     var b = document.getElementById('localiser'); if(b) setTimeout(function(){ b.focus({ preventScroll: true }); }, 450);
@@ -1755,7 +1740,19 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function repondre(v){ try{ localStorage.setItem(CLE, v); }catch(e){} b.classList.remove('on'); document.body.classList.remove('a-cook'); if(v === 'accepted') charger(); }
   document.getElementById('cook-oui').onclick = function(){ repondre('accepted'); };
   document.getElementById('cook-non').onclick = function(){ repondre('refused'); };
-  window.mesurer = function(nom){ if(typeof window.gtag === 'function') window.gtag('event', nom, {value: window._ccValeur || 0, currency:'EUR'}); };
+  window.mesurer = function(nom){
+    if(typeof window.gtag === 'function') window.gtag('event', nom, {value: window._ccValeur || 0, currency:'EUR'});
+    /* compteur maison : nom de l'étape + variante du titre + un numéro de visite tiré au
+       hasard (oublié à la fermeture de l'onglet). Ni cookie, ni adresse IP, ni donnée personnelle. */
+    try{
+      var s = sessionStorage.getItem('locair_cc_visite');
+      if(!s){ s = Math.random().toString(36).slice(2, 12); sessionStorage.setItem('locair_cc_visite', s); }
+      var corps = JSON.stringify({e:nom, v:document.documentElement.getAttribute('data-ab') || 'A', s:s});
+      if(navigator.sendBeacon) navigator.sendBeacon('/api/cc-evenement', new Blob([corps], {type:'application/json'}));
+      else fetch('/api/cc-evenement', {method:'POST', headers:{'Content-Type':'application/json'}, body:corps, keepalive:true});
+    }catch(e){}
+  };
+  window.mesurer('cc_vue');
   /* Paiement réel : la vraie conversion d'achat Google Ads (même étiquette
      que le tunnel avec livraison), avec le montant payé et la référence. */
   window.conversionAchat = function(valeur, ref){
@@ -2252,7 +2249,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   });
 
   /* ── prix affiché dans le titre ── */
-  function majPrixTextes(){ $('prix-mini').textContent = String(CC.base); dessinerTarifs(); try{ window.dispatchEvent(new Event('cc-langue')); }catch(e){} }
+  function majPrixTextes(){ $('prix-mini').textContent = String(CC.demain || CC.base); dessinerTarifs(); try{ window.dispatchEvent(new Event('cc-langue')); }catch(e){} }
   function dessinerTarifs(){
     var ol = $('tf-paliers'); if(!ol) return;
     var D = [[7,13,L('1 semaine','1 week')],[14,20,L('2 semaines','2 weeks')],[21,29,L('3 semaines','3 weeks')],[30,9999,L('1 mois','1 month')]];
@@ -2816,6 +2813,16 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
      proche ; sinon, bouton « Me localiser » (jamais de demande surprise).
      Un point touché → petite fiche → « Choisir ce point » → les dates. */
   var gc = {carte:null, pins:[], vous:null, pos:null};
+  /* « Votre climatiseur est à 600 m. Disponible demain dès 9 h. » : calculé pour ce
+     client (distance réelle, prochain jour d'ouverture, heure d'ouverture du point) */
+  function promesse(p, k){
+    var j = prochainOuvert(dans(1)), o = (p.ouverture || [9, 19])[0], l = langue();
+    var h = l === 'en' ? (o > 12 ? (o - 12) + 'pm' : o + 'am') : l === 'es' ? o + ':00' : o + ' h';
+    var quand = j === dans(1) ? L('demain', 'tomorrow', 'mañana') : court(j);
+    var loin = k == null ? '' : (k < 1 ? Math.max(100, Math.round(k * 10) * 100) + ' m' : String(Math.round(k * 10) / 10).replace('.', l === 'en' ? '.' : ',') + ' km');
+    return (loin ? L('Votre climatiseur est à ' + loin + '. ', 'Your air conditioner is ' + loin + ' away. ', 'Tu aire acondicionado está a ' + loin + '. ') : '') +
+      L('Disponible ' + quand + ' dès ' + h + '.', 'Ready ' + quand + ' from ' + h + '.', 'Disponible ' + quand + ' desde las ' + h + '.');
+  }
   function gcFiche(p, k){
     gc.pins.forEach(function(x, i){ x.el.classList.toggle('on', i === k); });
     var d = gc.pos ? dist(km(gc.pos, p)) : '';
@@ -2827,6 +2834,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       ((plusProche || p.exemple) ? '<span class="gf-tags">' + (plusProche ? '<span class="badge badge-proche">' + L('Le plus proche', 'Nearest') + '</span>' : '') + (p.exemple ? '<span class="badge badge-ex">' + L('Exemple', 'Example') + '</span>' : '') + '</span>' : '') +
       '<h3>' + esc(p.nom) + '</h3><p>' + (d ? esc(d) + ' · ' : '') + esc(p.adresse) + '</p><p>' + esc(horairesTexte(p)) + '</p>' +
       (ov.txt ? '<span class="ouvert ' + (ov.ouvert ? 'oui' : 'non') + '">' + esc(ov.txt) + '</span>' : '') +
+      (!p.exemple ? '<p class="gf-promesse">' + esc(promesse(p, gc.pos ? km(gc.pos, p) : null)) + '</p>' : '') +
       '<button type="button" class="gf-btn" data-gc="' + esc(p.id) + '">' + L('Choisir ce point', 'Choose this point') + ' →</button>';
     f.hidden = false; $('gc-astuce').hidden = true;
   }
@@ -2891,7 +2899,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   /* charge la carte quand le bloc approche de l'écran (le haut de page reste rapide) */
   function gcQuandVisible(){
     if(!('IntersectionObserver' in window)){ gcDemarrer(); return; }
-    var io = new IntersectionObserver(function(es){ if(es.some(function(x){ return x.isIntersecting; })){ io.disconnect(); gcDemarrer(); } }, {rootMargin:'300px'});
+    var io = new IntersectionObserver(function(es){ if(es.some(function(x){ return x.isIntersecting; })){ io.disconnect(); gcDemarrer(); } }, {rootMargin:'0px', threshold:0.2});
     io.observe($('choix'));
   }
 
@@ -3091,10 +3099,24 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(h && h !== 'paiement' && h !== 'merci' && sv){ try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){} if(h !== 'ville') aller(h); else aller('ville', true); }
     else aller('ville');
   }
-  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine}; majPrixTextes(); } })
+  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine, demain:CC.demain}; majPrixTextes(); } })
     .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (menu ☰ → Aide).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (bubble, bottom right).'); $('loc-err').hidden = false; })
     .then(demarrer).then(function(){ majSimu(); if(POINTS.length) gcQuandVisible(); });
   majPrixTextes();
+  /* vrai prix de demain (7 jours) + nombre de locations de la semaine (affiché à partir de 10) */
+  fetch('/api/click-collect-prix?apercu=1').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+    if(!j) return;
+    if(j.totalCents > 0){
+      CC.demain = Math.round(j.totalCents / 100); majPrixTextes();
+      $('t-des').hidden = !j.plusieursPoints;
+      $('t-var').innerHTML = '<span lang="fr">pour 7 jours à partir de demain · 139 à 189 € selon la demande</span><span lang="en">7 days from tomorrow · €139–€189 depending on demand</span><span lang="es">7 días desde mañana · de 139 a 189 € según la demanda</span>';
+    }
+    if(j.loues7j >= 10){
+      var el = $('hero-preuve');
+      el.innerHTML = '<span lang="fr">' + j.loues7j + ' climatiseurs loués cette semaine sur la Côte d’Azur</span><span lang="en">' + j.loues7j + ' air conditioners rented this week on the Riviera</span><span lang="es">' + j.loues7j + ' aires acondicionados alquilados esta semana en la Costa Azul</span>';
+      el.hidden = false;
+    }
+  }).catch(function(){});
   fetch('/api/pricing-config').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
     var c = j && j.pricing; if(!c) return;
     var n = function(v){ return Number(v); };
