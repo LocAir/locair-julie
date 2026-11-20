@@ -4,10 +4,11 @@
 //    le SMS de confirmation). C'est le SEUL numéro du séjour : il reste valable
 //    après une prolongation, jusqu'au retour. Il est long et tiré au hasard
 //    (32^8 possibilités) : impossible à deviner, et les essais sont limités.
-// 2. Il tend son téléphone au commerçant, qui vérifie la pièce d'identité
-//    originale et confirme avec SON code partenaire (le même que pour son
-//    espace partenaire). Sans ce code, rien n'est enregistré : un QR code
-//    pris en photo ne permet pas de déclarer une remise ou un retour de chez soi.
+// 2. RETRAIT : il montre sa pièce d'identité au commerçant et valide lui-même
+//    le retrait sur son téléphone. RETOUR : il tend son téléphone au commerçant,
+//    qui vérifie l'appareil et confirme avec SON code partenaire (le même que
+//    pour son espace partenaire). Sans ce code, aucun retour n'est enregistré :
+//    une carte QR prise en photo ne permet pas de déclarer « rendu » de chez soi.
 //
 // POST { point, ref, action: 'voir'|'valider'|'rendre', code_commercant }
 // Les règles (dates, statut, colonnes) sont celles de _lib/remiseCC.js,
@@ -77,7 +78,16 @@ module.exports = async (req, res) => {
       return res.status(out.status).json(out.body);
     }
 
-    // Remise ou retour : code du commerçant obligatoire.
+    // RETRAIT : le client le valide lui-même avec son numéro de commande,
+    // après avoir montré sa pièce d'identité au commerçant (décision du
+    // propriétaire, 20/11/2026). Le commerçant n'a rien à taper.
+    if (action === 'valider') {
+      const out = await agir(supabase, r, partenaire ? partenaire.id : null, 'valider');
+      return res.status(out.status).json(out.body);
+    }
+
+    // RETOUR : le commerçant confirme avec son code (sinon un client pourrait
+    // déclarer « rendu » depuis chez lui sans rapporter l'appareil).
     if (!partenaire || partenaire.actif === false) {
       return res.status(409).json({ error: T(lang, 'Ce point n’est pas encore relié à un commerçant. Le commerçant peut écrire à Loc’Air.', 'This point isn’t linked to a shop yet. The shop can contact Loc’Air.', 'Este punto aún no está vinculado a un comercio. El comercio puede contactar con Loc’Air.') });
     }
