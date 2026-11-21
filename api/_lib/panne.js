@@ -7,9 +7,9 @@
 //      'changement') reliée au ticket : mission faite = ticket fermé.
 //
 // Les suites possibles (champ `issue`) :
-//   'technicien'          livraison à domicile : un transporteur échange
-//                         l'appareil chez le client, le jour même (avant
-//                         14 h) ou le lendemain.
+//   JAMAIS de transporteur chez le client pour une panne (décision du
+//   propriétaire, 21/11/2026) : un client livré à domicile rapporte lui
+//   aussi l'appareil au point Click & Collect le plus proche.
 //   'echange_comptoir'    Click & Collect, il reste un appareil au point :
 //                         le commerçant en donne un autre tout de suite.
 //   'rapporter_au_point'  Click & Collect, panne chez soi, il reste un
@@ -30,7 +30,8 @@ const { notifyTransporteur } = require('./transporteurNotif');
 const { pushToAdmin } = require('./push');
 const { todayParis, heureParis, addDays } = require('./dates');
 const { occupationParPoint } = require('./clickCollect');
-const { STOCK_PAR_DEFAUT } = require('./pointsRetrait');
+const { STOCK_PAR_DEFAUT, POINTS_RETRAIT } = require('./pointsRetrait');
+const { extractPostalCode } = require('./postal');
 const { INCIDENT_OPEN_STATUSES } = require('./incidentStatus');
 
 const OUVERTS = ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme'];
@@ -63,24 +64,50 @@ async function appareilsLibresAuPoint(supabase, point) {
   return stock - (occ[point.id] || 0) - enAttente.length;
 }
 
+// Adresse d'une mission au point : c'est elle que voit le transporteur (et
+// non l'adresse du client), et elle sert à compter les missions du point.
+function adressePoint(point) { return `${point.nom} — ${point.adresse}`; }
+
 async function missionsOuvertesAuPoint(supabase, point) {
   const { data } = await supabase.from('livraisons')
-    .select('id, date_prevue, creneau, reservation:reservations!inner(point_retrait_id)')
+    .select('id, date_prevue, creneau')
     .eq('type', 'changement').in('statut', OUVERTS)
-    .eq('reservation.point_retrait_id', point.id).limit(50);
+    .eq('adresse_libre', adressePoint(point)).limit(50);
   return Array.isArray(data) ? data : [];
 }
 
+// Point Click & Collect le plus proche d'un client livré à domicile (vrais
+// points seulement, jamais un point d'exemple ou de test). Adresse placée
+// sur la carte par la Base Adresse Nationale ; sinon, même code postal ;
+// sinon, le premier point ouvert de sa ville.
+async function pointLePlusProche(r) {
+  const points = POINTS_RETRAIT.filter((p) => !p.test && !p.exemple);
+  if (!points.length) return null;
+  try {
+    const u = 'https://api-adresse.data.gouv.fr/search/?limit=1&q=' + encodeURIComponent(String(r.adresse || '').slice(0, 200));
+    const j = await (await fetch(u, { signal: AbortSignal.timeout(3000) })).json();
+    const c = j && j.features && j.features[0] && j.features[0].geometry && j.features[0].geometry.coordinates;
+    if (c) {
+      const d = (p) => Math.hypot((p.lat - c[1]) * 111, (p.lng - c[0]) * 111 * Math.cos(c[1] * Math.PI / 180));
+      return points.slice().sort((a, b) => d(a) - d(b))[0];
+    }
+  } catch (e) { /* carte indisponible : on se replie sur le code postal */ }
+  const cp = extractPostalCode(r.adresse || '');
+  return points.find((p) => cp && String(p.adresse || '').includes(cp)) || points[0];
+}
+
 async function creerMission(supabase, r, { date, creneau, incidentId, urgent, libelle, point }) {
+  // les missions de panne se font toujours au point : jamais chez le client
   // pas de doublon : un remplacement déjà ouvert pour cette location suffit
   const { data: deja } = await supabase.from('livraisons').select('id, transporteur_id, date_prevue')
     .eq('reservation_id', r.id).eq('type', 'changement').in('statut', OUVERTS).limit(1);
   if (deja && deja.length) return Object.assign({ existait: true }, deja[0]);
-  const tid = await pickTransporteurForMission(supabase, { cityId: r.city_id, dateISO: date, creneau: null, adresse: r.adresse, usedInBatch: new Set(), type: 'changement', installation: null }).catch(() => null);
+  const tid = await pickTransporteurForMission(supabase, { cityId: r.city_id, dateISO: date, creneau: null, adresse: point ? adressePoint(point) : r.adresse, usedInBatch: new Set(), type: 'changement', installation: null }).catch(() => null);
   const { data: ra } = await supabase.from('reservation_appareils').select('appareils(numero)').eq('reservation_id', r.id).limit(1);
   const { data: liv, error } = await supabase.from('livraisons').insert({
     reservation_id: r.id, type: 'changement', date_prevue: date, statut: 'a_faire',
     transporteur_id: tid || null, incident_id: incidentId || null, creneau: String(creneau).slice(0, 100),
+    adresse_libre: point ? adressePoint(point) : null,
     ancien_appareil_numero: (ra && ra[0] && ra[0].appareils && ra[0].appareils.numero) || null,
   }).select('id, transporteur_id, date_prevue').single();
   if (error) { console.error('[panne mission]', error.message); return null; }
@@ -96,14 +123,19 @@ async function creerMission(supabase, r, { date, creneau, incidentId, urgent, li
 
 // moment : 'location' (chez soi, page /panne), 'retrait', 'echange' (au
 // comptoir pendant la location), 'retour'.
-async function declarerPanne(supabase, { r, point, categorie: c, moment, message, photos, canal }) {
+async function declarerPanne(supabase, { r, point, categorie: c, moment, message, photos, canal, appareil }) {
+  // client livré : seul un CLIMATISEUR MOBILE se rapporte au point (un
+  // PortaSplit fixé à la fenêtre ou un rafraîchisseur ne se transporte pas) ;
+  // pour les autres appareils, ticket : l'admin organise la suite.
+  const transportable = r.source_channel === 'click_collect' || !appareil || appareil === 'climatiseur';
+  const nomAppareil = { climatiseur: 'climatiseur mobile', portasplit: 'PortaSplit', rafraichisseur: 'rafraîchisseur' }[appareil] || '';
   const cle = categorie(c);
   const [typeIncident, libelle] = CATS[cle];
   const msg = String(message || '').replace(/\s+/g, ' ').trim().slice(0, 500);
   const ph = (Array.isArray(photos) ? photos : []).slice(0, 3);
-  const ou = point ? `Click & Collect · ${point.nom}` : 'livraison à domicile';
+  const ou = (r.source_channel === 'click_collect' ? 'Click & Collect' : 'Client livré à domicile') + (point ? ` · ${point.nom}` : '');
   const quand = { location: 'pendant la location (chez lui)', retrait: 'au retrait', echange: 'au comptoir, en cours de location', retour: 'au retour' }[moment] || moment;
-  const description = `[${ou} · déclaré par le client ${quand}${canal ? ' · ' + canal : ''}] ${libelle}${msg ? ' — ' + msg : ''}`;
+  const description = `[${ou} · déclaré par le client ${quand}${canal ? ' · ' + canal : ''}${nomAppareil ? ' · ' + nomAppareil : ''}] ${libelle}${msg ? ' — ' + msg : ''}`;
 
   // 1. ticket admin — UNE panne = UN dossier : si le client a déjà déclaré
   // cette panne (ex. chez lui sur /panne, puis il vient l'échanger au
@@ -128,16 +160,16 @@ async function declarerPanne(supabase, { r, point, categorie: c, moment, message
   const dossier = incidentId ? 'P-' + incidentId : null;
 
   // 2. la suite, décidée toute seule
-  let issue = 'ticket', mission = null;
+  let issue = 'ticket', mission = null, sansPoint = false, nonTransportable = false;
   const jour = todayParis(), demain = addDays(jour, 1);
   try {
     if (cle === 'autre' || !r.city_id) {
       issue = 'ticket';
-    } else if (!point) {
-      // livraison à domicile : le transporteur échange chez le client
-      issue = 'technicien';
-      const date = heureParis() < 14 ? jour : demain;
-      mission = await creerMission(supabase, r, { date, creneau: `${URGENT} · ${libelle}${msg ? ' : ' + msg : ''}`, incidentId, urgent: true, libelle });
+    } else if (!transportable) {
+      issue = 'ticket'; nonTransportable = true;
+    } else if (!point && !(point = await pointLePlusProche(r))) {
+      // client livré, mais aucun point Click & Collect ouvert : ticket, l'admin décide
+      issue = 'ticket'; sansPoint = true;
     } else {
       const libres = await appareilsLibresAuPoint(supabase, point);
       // date d'une reprise sans urgence : la prochaine mission déjà prévue à
@@ -165,18 +197,18 @@ async function declarerPanne(supabase, { r, point, categorie: c, moment, message
 
   // 3. prévenir l'admin (une seule alerte, avec la suite déjà décidée)
   const SUITE = {
-    technicien: '🔧 remplacement chez le client', echange_comptoir: '🔁 échange immédiat au comptoir',
+echange_comptoir: '🔁 échange immédiat au comptoir',
     rapporter_au_point: '🔁 le client rapporte au point (échange sur place)', reapprovisionnement: '🚨 plus d’appareil au point : remplacement URGENT',
-    ticket: '📋 ticket',
+    ticket: nonTransportable ? `📋 ${nomAppareil} en panne chez le client : À ORGANISER (rappeler le client)` : sansPoint ? '📋 client livré, AUCUN point ouvert : à gérer' : '📋 ticket',
   };
   const attrib = mission ? (mission.transporteur_id ? ' · transporteur attribué' : ' · À ATTRIBUER') : '';
   await pushToAdmin(supabase, {
-    title: `⚠️ ${libelle} — ${point ? point.nom : 'à domicile'}`,
+    title: `⚠️ ${libelle} — ${point ? point.nom : 'client livré'}`,
     body: `${dossier || ''} ${r.ref || ''} — ${r.prenom || ''} ${r.nom || ''} · ${SUITE[issue]}${attrib}${msg ? ' · « ' + msg + ' »' : ''}${ph.length ? ' · 📷 ' + ph.length : ''}`.replace(/\s+/g, ' ').trim(),
     tag: `panne-${r.id}`,
   }).catch(() => {});
 
-  return { issue, dossier, incidentId, mission: mission ? { id: mission.id, date: mission.date_prevue, attribuee: !!mission.transporteur_id } : null };
+  return { issue, dossier, incidentId, point: point || null, mission: mission ? { id: mission.id, date: mission.date_prevue, attribuee: !!mission.transporteur_id } : null };
 }
 
 module.exports = { declarerPanne, appareilsLibresAuPoint, CATS, URGENT, SANS_URGENCE };

@@ -45,8 +45,11 @@ module.exports = async (req, res) => {
     if (await isRateLimited(supabase, cleClient)) {
       return res.status(429).json({ error: T(lang, 'Trop d’essais. Réessayez dans 15 minutes ou écrivez à Julie sur locair.fr.', 'Too many attempts. Try again in 15 minutes or chat with Julie on locair.fr.', 'Demasiados intentos. Vuelve a intentarlo en 15 minutos o escribe a Julie en locair.fr.') });
     }
+    // Click & Collect, ou client LIVRÉ qui vient échanger un appareil en panne
+    // (décision du propriétaire, 21/11/2026 : jamais de transporteur chez le
+    // client pour une panne, il rapporte l'appareil au point le plus proche).
     const { data: lignes } = await supabase.from('reservations').select('*')
-      .eq('ref', ref).eq('source_channel', 'click_collect').order('id', { ascending: true }).limit(1);
+      .eq('ref', ref).order('id', { ascending: true }).limit(1);
     let r = lignes && lignes[0];
     // Numéro d'une prolongation tapé par erreur : on revient à la location d'origine.
     if (r && r.reservation_origine_id) {
@@ -57,7 +60,18 @@ module.exports = async (req, res) => {
       await recordFailedAttempt(supabase, cleClient);
       return res.status(404).json({ error: T(lang, 'Numéro de commande introuvable. Vérifiez-le dans votre email de confirmation.', 'Order number not found. Check it in your confirmation email.', 'Número de pedido no encontrado. Revísalo en tu email de confirmación.') });
     }
-    if ((r.point_retrait_id || '') !== point.id) {
+    if (r.source_channel !== 'click_collect') {
+      // client livré : il peut seulement échanger un appareil en panne (ou le signaler)
+      const jour = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+      const enCours = r.statut === 'confirmee' && r.date_debut <= jour && r.date_fin >= jour;
+      if (action === 'voir') {
+        if (!enCours) return res.status(409).json({ error: T(lang, 'Cette location n’est pas en cours.', 'This rental isn’t ongoing.', 'Este alquiler no está en curso.') });
+        return res.status(200).json({ reservation: { ref: r.ref, prenom: r.prenom, nom: r.nom, date_debut: r.date_debut, date_fin: r.date_fin, livraison: true, peut_echanger: true } });
+      }
+      if (!['echanger', 'signaler', 'photo'].includes(action) || !enCours) {
+        return res.status(409).json({ error: T(lang, 'Au comptoir, une location livrée peut seulement être échangée en cas de panne.', 'At the counter, a delivered rental can only be swapped if it’s broken.', 'En el mostrador, un alquiler con entrega solo puede cambiarse si está averiado.') });
+      }
+    } else if ((r.point_retrait_id || '') !== point.id) {
       const prevu = getPointRetrait(r.point_retrait_id || '');
       return res.status(409).json({ error: T(lang, `Votre réservation est prévue dans un autre point : ${prevu ? prevu.nom : 'voir votre email de confirmation'}.`, `Your booking is at another pick-up point: ${prevu ? prevu.nom : 'see your confirmation email'}.`, `Tu reserva es en otro punto: ${prevu ? prevu.nom : 'mira tu email de confirmación'}.`) });
     }

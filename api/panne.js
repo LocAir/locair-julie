@@ -1,8 +1,9 @@
 // Page /panne : le client déclare une panne depuis chez lui, sans appeler.
 // Il s'identifie avec son numéro de commande + les 4 derniers chiffres de son
 // téléphone (essais limités). La suite est décidée par _lib/panne.js (une
-// seule règle pour tous les canaux) : technicien à domicile, ou échange au
-// point Click & Collect, ou réapprovisionnement urgent du point.
+// seule règle pour tous les canaux) : échange au point Click & Collect (le
+// plus proche pour un client livré), ou réapprovisionnement urgent du point.
+// Jamais de transporteur chez le client pour une panne.
 //
 // POST { action: 'trouver' | 'photo' | 'declarer', ref, tel4, categorie, message, photos, type, lang }
 const crypto = require('crypto');
@@ -79,22 +80,23 @@ module.exports = async (req, res) => {
     await recordFailedAttempt(supabase, cle); // limite les déclarations répétées
     const photos = (Array.isArray(b.photos) ? b.photos : []).map(String)
       .filter((x) => x.startsWith(`signalements/${r.id}-`) && !x.includes('..')).slice(0, 3);
-    const out = await declarerPanne(supabase, { r, point, categorie: b.categorie, moment: 'location', message: b.message, photos, canal: 'page /panne' });
+    const appareil = ['climatiseur', 'portasplit', 'rafraichisseur'].includes(b.appareil) ? b.appareil : null;
+    const out = await declarerPanne(supabase, { r, point, categorie: b.categorie, moment: 'location', message: b.message, photos, canal: 'page /panne', appareil });
 
     // SMS de confirmation au client : son numéro de dossier et la suite
+    const pt = out.point || point;   // client livré : le point le plus proche
     const l = r.lang || lang;
     const dossier = out.dossier ? ` (dossier ${out.dossier})` : '';
     const sms = {
-      technicien: T(l, `Loc'Air : panne bien reçue${dossier}. Un technicien vient échanger votre appareil le jour même ou le lendemain ; il vous appelle avant de passer.`, `Loc'Air: fault received${dossier}. A technician will swap your unit the same day or the next; they will call you first.`, `Loc'Air: avería recibida${dossier}. Un técnico cambiará tu aparato el mismo día o al día siguiente; te llamará antes.`),
-      rapporter_au_point: T(l, `Loc'Air : panne bien reçue${dossier}. Rapportez l'appareil au point ${point ? point.nom : ''}, aux horaires d'ouverture : vous repartez avec un autre. Au comptoir, scannez le QR code et touchez « Échanger mon appareil ».`, `Loc'Air: fault received${dossier}. Bring the unit back to ${point ? point.nom : ''} during opening hours and leave with another one. At the counter, scan the QR code and tap "Swap my unit".`, `Loc'Air: avería recibida${dossier}. Devuelve el aparato en ${point ? point.nom : ''} en horario de apertura y llévate otro. En el mostrador, escanea el código QR y pulsa «Cambiar mi aparato».`),
-      reapprovisionnement: T(l, `Loc'Air : panne bien reçue${dossier}. On apporte un climatiseur au point ${point ? point.nom : ''} le jour même ou le lendemain. Vous recevez un SMS dès qu'il vous attend.`, `Loc'Air: fault received${dossier}. We're bringing a unit to ${point ? point.nom : ''} the same day or the next. You'll get a text as soon as it's waiting for you.`, `Loc'Air: avería recibida${dossier}. Llevamos un aparato a ${point ? point.nom : ''} el mismo día o al siguiente. Recibirás un SMS en cuanto te espere.`),
-      ticket: T(l, `Loc'Air : votre message est bien reçu${dossier}. On vous recontacte rapidement.`, `Loc'Air: message received${dossier}. We'll get back to you quickly.`, `Loc'Air: mensaje recibido${dossier}. Te contactamos rápidamente.`),
+      rapporter_au_point: T(l, `Loc'Air : panne bien reçue${dossier}. Rapportez l'appareil au point ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''}, aux horaires d'ouverture : vous repartez avec un autre. Au comptoir, scannez le QR code et touchez « Échanger mon appareil ».`, `Loc'Air: fault received${dossier}. Bring the unit back to ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''} during opening hours and leave with another one. At the counter, scan the QR code and tap "Swap my unit".`, `Loc'Air: avería recibida${dossier}. Devuelve el aparato en ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''} en horario de apertura y llévate otro. En el mostrador, escanea el código QR y pulsa «Cambiar mi aparato».`),
+      reapprovisionnement: T(l, `Loc'Air : panne bien reçue${dossier}. On apporte un climatiseur au point ${pt ? pt.nom : ''} le jour même ou le lendemain. Vous recevez un SMS dès qu'il vous attend.`, `Loc'Air: fault received${dossier}. We're bringing a unit to ${pt ? pt.nom : ''} the same day or the next. You'll get a text as soon as it's waiting for you.`, `Loc'Air: avería recibida${dossier}. Llevamos un aparato a ${pt ? pt.nom : ''} el mismo día o al siguiente. Recibirás un SMS en cuanto te espere.`),
+      ticket: T(l, `Loc'Air : votre message est bien reçu${dossier}. On vous rappelle rapidement pour organiser la suite.`, `Loc'Air: message received${dossier}. We'll get back to you quickly.`, `Loc'Air: mensaje recibido${dossier}. Te contactamos rápidamente.`),
     }[out.issue] || null;
     if (sms && r.tel) await sendBrevoSms({ to: r.tel, content: sms }).catch(() => {});
 
     let libres = null;
-    if (point && out.issue === 'rapporter_au_point') libres = await appareilsLibresAuPoint(supabase, point).catch(() => null);
-    return res.status(200).json({ ok: true, issue: out.issue, dossier: out.dossier, point: point ? { nom: point.nom, adresse: point.adresse, horaires: point.horaires || '' } : null, libres });
+    if (pt && out.issue === 'rapporter_au_point') libres = await appareilsLibresAuPoint(supabase, pt).catch(() => null);
+    return res.status(200).json({ ok: true, issue: out.issue, dossier: out.dossier, point: pt ? { nom: pt.nom, adresse: pt.adresse, horaires: pt.horaires || '' } : null, libres });
   } catch (e) {
     console.error('[panne]', e.message);
     return res.status(500).json({ error: T(lang, 'Erreur serveur. Réessayez, ou écrivez à Julie sur locair.fr.', 'Server error. Try again, or chat with Julie on locair.fr.', 'Error del servidor. Inténtalo de nuevo o escribe a Julie en locair.fr.') });

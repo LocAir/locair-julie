@@ -650,12 +650,12 @@ module.exports = async (req, res) => {
       if (changementUpdErr) throw changementUpdErr;
       if (!changementClaimed || !changementClaimed.length) return res.status(409).json({ error: 'Étape déjà validée (double envoi ?)' });
       await closeMissionIncident(supabase, liv);
-      // Click & Collect, remplacement URGENT (plus d'appareil au point, voir
-      // _lib/panne.js) : le client est prévenu qu'un appareil l'attend.
-      if (liv.reservation?.source_channel === 'click_collect' && String(liv.creneau || '').startsWith('URGENT') && liv.reservation?.tel) {
-        const pt = require('./_lib/pointsRetrait').getPointRetrait(liv.reservation.point_retrait_id || '');
+      // Panne, remplacement URGENT (plus d'appareil au point, voir
+      // _lib/panne.js) : le client est prévenu qu'un appareil l'attend au point.
+      // (missions de panne au point : adresse_libre = « nom — adresse » du point)
+      if (liv.adresse_libre && String(liv.creneau || '').startsWith('URGENT') && liv.reservation?.tel) {
         const l = liv.reservation.lang;
-        const nom = pt ? pt.nom : '';
+        const nom = String(liv.adresse_libre).split(' — ')[0];
         const content = l === 'en' ? `Loc'Air: a replacement air conditioner is waiting for you at ${nom}. Scan the QR code at the counter and enter your order number ${liv.reservation.ref || ''}.`
           : l === 'es' ? `Loc'Air: un aire acondicionado de sustitución te espera en ${nom}. Escanea el código QR del mostrador y escribe tu número de pedido ${liv.reservation.ref || ''}.`
           : `Loc'Air : un climatiseur de remplacement vous attend au point ${nom}. Scannez le QR code du comptoir et tapez votre numéro de commande ${liv.reservation.ref || ''}.`;

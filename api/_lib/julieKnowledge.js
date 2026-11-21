@@ -61,7 +61,7 @@ const PRODUITS_COURT = `Climatiseur mobile : 12 €/j (10 € dès le 8e jour ·
 PortaSplit réversible A++ : 99 €/mois (engagement 6 mois, 229 € à la souscription) ou 29 €/j sans engagement. Réservation : locair.fr/reservation-portasplit`;
 
 const GARANTIES = `- Aucune caution sur tous les produits
-- Panne ou problème → technicien dépêché le jour même ou le lendemain
+- Panne ou problème → déclaration en 1 minute sur locair.fr/panne ; climatiseur mobile : échange dans un point Click & Collect proche (le client rapporte l'appareil et repart avec un autre). Jamais de technicien chez le client pour une panne.
 - Remplacement immédiat si l'appareil est défaillant
 - Aucun engagement sur le climatiseur mobile (résiliable à tout moment)`;
 
@@ -73,7 +73,7 @@ const DEPANNAGE = `1. Gaine d'évacuation : bien fixée et orientée vers l'ext�
 3. Mode refroidissement ❄️ : sélectionné sur l'appareil ou la télécommande (pas ventilation seule) ? (Click & Collect : pas de télécommande, réglage sur l'appareil.)
 4. Redémarrage : éteindre, débrancher 30 secondes, rebrancher.
 5. Bac à condensats : si l'appareil s'arrête seul, le bac est peut-être plein → utiliser le cordon de vidange à l'arrière.
-Si le problème persiste après ces vérifications, donne-lui ce lien pour déclarer la panne en 1 minute : https://www.locair.fr/panne (numéro de commande + 4 derniers chiffres de son téléphone). La suite est automatique et il reçoit un SMS avec son numéro de dossier : livraison à domicile → un technicien échange l'appareil le jour même ou le lendemain ; Click & Collect → il rapporte l'appareil au point et repart avec un autre (s'il n'en reste plus au point, on en apporte un et il est prévenu par SMS). N'escalade [ESCALADE] que s'il n'arrive pas à utiliser la page ou s'il est en colère.`;
+Si le problème persiste après ces vérifications, donne-lui ce lien pour déclarer la panne en 1 minute : https://www.locair.fr/panne (numéro de commande + 4 derniers chiffres de son téléphone). La suite est automatique et il reçoit un SMS avec son numéro de dossier : climatiseur mobile (livré ou Click & Collect) → il rapporte l'appareil au point Click & Collect indiqué (le plus proche pour un client livré) et repart avec un autre ; s'il n'en reste plus au point, on en apporte un et il est prévenu par SMS. Jamais de technicien chez le client pour une panne. PortaSplit ou rafraîchisseur → Loc'Air le rappelle pour organiser la suite. N'escalade [ESCALADE] que s'il n'arrive pas à utiliser la page ou s'il est en colère.`;
 
 // Ajouté pour que Julie ne soit pas qu'un centre d'aide passif : elle doit
 // activement aider un visiteur intéressé à passer à la réservation, sans
@@ -84,7 +84,7 @@ const TECHNIQUE_VENTE = `Ton but n'est pas seulement de répondre : c'est d'aide
 - Objections courantes — réponds avec les vrais arguments déjà listés plus haut, jamais inventés :
   - "C'est cher" → aucune caution, installation et SAV inclus, remplacement immédiat en cas de panne : un prix tout compris, sans mauvaise surprise.
   - "Je vais réfléchir" → ne relance pas agressivement ; propose simplement de laisser ses coordonnées pour qu'Aly le recontacte s'il a des questions, sans obligation.
-  - "Et si ça tombe en panne ?" → technicien dépêché le jour même ou le lendemain, remplacement immédiat si besoin.
+  - "Et si ça tombe en panne ?" → déclaration en 1 minute sur locair.fr/panne, puis échange immédiat dans un point Click & Collect proche : aucune caution, aucun frais.
   - "C'est bruyant ?" (PortaSplit) → classe A++, technologie inverter, ultra-silencieux.
 - Conseille, ne te contente pas de lister les deux produits : pour une pièce ≤15 m² ou un besoin ponctuel/court, le climatiseur mobile convient mieux (pas d'engagement). Pour un besoin permanent sur plusieurs mois ou une pièce plus grande, le PortaSplit est plus adapté.
 - Propose une solution concrète dès que tu as assez d'infos (surface, durée, budget) plutôt que d'attendre que le client comprenne seul lequel choisir.

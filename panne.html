@@ -134,6 +134,14 @@ textarea:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 4px rgba(26
   <section id="e-quoi" hidden><form class="carte" id="f-quoi" novalidate>
     <p class="etape-n"><span lang="fr">Étape 3 sur 3</span><span lang="en">Step 3 of 3</span><span lang="es">Paso 3 de 3</span></p>
     <h2 style="font-size:22px;margin:0 0 12px"><span lang="fr">Qu’est-ce qui ne va pas&nbsp;?</span><span lang="en">What’s wrong?</span><span lang="es">¿Qué pasa?</span></h2>
+    <div id="bloc-app" hidden>
+      <p style="font-weight:800;margin:0 0 8px"><span lang="fr">Votre appareil</span><span lang="en">Your unit</span><span lang="es">Tu aparato</span></p>
+      <div class="sig-choix" role="radiogroup" style="margin-bottom:16px">
+        <label><input type="radio" name="app" value="climatiseur" checked><span><span lang="fr">Climatiseur mobile</span><span lang="en">Portable air conditioner</span><span lang="es">Aire acondicionado portátil</span></span></label>
+        <label><input type="radio" name="app" value="portasplit"><span>PortaSplit</span></label>
+        <label><input type="radio" name="app" value="rafraichisseur"><span><span lang="fr">Rafraîchisseur d’air</span><span lang="en">Air cooler</span><span lang="es">Climatizador evaporativo</span></span></label>
+      </div>
+    </div>
     <div class="sig-choix" role="radiogroup">
       <label><input type="radio" name="cat" value="froid" checked><span><span lang="fr">Il ne refroidit pas</span><span lang="en">It doesn’t cool</span><span lang="es">No enfría</span></span></label>
       <label><input type="radio" name="cat" value="allume"><span><span lang="fr">Il ne s’allume pas</span><span lang="en">It doesn’t turn on</span><span lang="es">No se enciende</span></span></label>
@@ -208,7 +216,7 @@ textarea:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 4px rgba(26
     /* Click & Collect : pas de télécommande, le réglage se fait sur l'appareil */
     if(etat.loc.type === 'click_collect') $('v-mode').textContent = L('Sur l’appareil, choisissez le mode froid (pas la ventilation seule).', 'On the unit, choose cooling mode (not fan only).', 'En el aparato, elige el modo frío (no solo ventilación).');
   }
-  function aller(cat){ if(cat){ var x = document.querySelector('input[name="cat"][value="' + cat + '"]'); if(x) x.checked = true; } montrer('e-quoi'); }
+  function aller(cat){ $('bloc-app').hidden = !(etat.loc && etat.loc.type === 'livraison'); if(cat){ var x = document.querySelector('input[name="cat"][value="' + cat + '"]'); if(x) x.checked = true; } montrer('e-quoi'); }
   $('b-panne').onclick = function(){ aller(null); };
   $('b-casse').onclick = function(){ aller('casse'); };
   $('b-ok').onclick = function(){
@@ -248,7 +256,8 @@ textarea:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 4px rgba(26
     var b = $('b-envoyer'); b.disabled = true; erreur($('m-quoi'), '');
     var cat = (document.querySelector('input[name="cat"]:checked') || {}).value || 'autre';
     envoyerPhotos().then(function(chemins){
-      return appel({action:'declarer', categorie:cat, message:$('msg').value, photos:chemins});
+      var app = (document.querySelector('input[name="app"]:checked') || {}).value;
+      return appel({action:'declarer', categorie:cat, message:$('msg').value, photos:chemins, appareil:(etat.loc && etat.loc.type === 'livraison') ? app : null});
     }).then(function(r){
       b.disabled = false;
       if(!r.ok) return erreur($('m-quoi'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
@@ -259,11 +268,10 @@ textarea:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 4px rgba(26
     var pt = j.point || {}, et = $('r-etapes');
     if(j.dossier){ $('r-dossier').textContent = L('Dossier ', 'Case ', 'Expediente ') + j.dossier; $('r-dossier').hidden = false; }
     var T = {
-      technicien: [L('C’est noté, on s’en occupe', 'Noted, we’re on it', 'Anotado, nos ocupamos'), L('Un technicien vient échanger votre appareil le jour même ou le lendemain. Il vous appelle avant de passer.', 'A technician will swap your unit the same day or the next. They will call you before coming.', 'Un técnico cambiará tu aparato el mismo día o al siguiente. Te llamará antes de pasar.'), null],
-      rapporter_au_point: [L('Échange immédiat au point', 'Instant swap at the point', 'Cambio inmediato en el punto'), L('Rapportez votre climatiseur au point ', 'Bring your air conditioner back to ', 'Devuelve tu aire acondicionado en ') + (pt.nom || '') + (pt.horaires ? ' (' + pt.horaires + ')' : '') + L(' : vous repartez avec un autre.', ': you leave with another one.', ': te llevas otro.'),
+      rapporter_au_point: [L('Échange immédiat au point', 'Instant swap at the point', 'Cambio inmediato en el punto'), L('Rapportez votre climatiseur au point ', 'Bring your air conditioner back to ', 'Devuelve tu aire acondicionado en ') + (pt.nom || '') + (pt.adresse ? ', ' + pt.adresse : '') + (pt.horaires ? ' (' + pt.horaires + ')' : '') + L(' : vous repartez avec un autre.', ': you leave with another one.', ': te llevas otro.'),
         [L('Remettez la housse et prenez la gaine.', 'Put the cover back on and take the hose.', 'Vuelve a ponerle la funda y lleva el tubo.'), L('Au comptoir, scannez le QR code et tapez votre numéro de commande.', 'At the counter, scan the QR code and enter your order number.', 'En el mostrador, escanea el código QR y escribe tu número de pedido.'), L('Touchez « Échanger mon appareil » et montrez l’écran vert au commerçant.', 'Tap “Swap my unit” and show the green screen to the shopkeeper.', 'Pulsa «Cambiar mi aparato» y enseña la pantalla verde al comerciante.')]],
       reapprovisionnement: [L('C’est noté, on s’en occupe', 'Noted, we’re on it', 'Anotado, nos ocupamos'), L('On apporte un climatiseur au point ', 'We’re bringing an air conditioner to ', 'Llevamos un aire acondicionado a ') + (pt.nom || '') + L(' le jour même ou le lendemain. Vous recevez un SMS dès qu’il vous attend.', ' the same day or the next. You’ll get a text as soon as it’s waiting for you.', ' el mismo día o al siguiente. Recibirás un SMS en cuanto te espere.'), null],
-      ticket: [L('Message bien reçu', 'Message received', 'Mensaje recibido'), L('On vous recontacte rapidement.', 'We’ll get back to you quickly.', 'Te contactamos rápidamente.'), null]
+      ticket: [L('Message bien reçu', 'Message received', 'Mensaje recibido'), L('On vous rappelle rapidement pour organiser la suite.', 'We’ll call you back quickly to sort it out.', 'Te llamamos rápidamente para organizarlo.'), null]
     }[j.issue] || [L('Message bien reçu', 'Message received', 'Mensaje recibido'), L('On vous recontacte rapidement.', 'We’ll get back to you quickly.', 'Te contactamos rápidamente.'), null];
     $('r-titre').textContent = T[0]; $('r-texte').textContent = T[1] + ' ' + L('Vous avez aussi reçu un SMS de confirmation.', 'You also got a confirmation text.', 'También has recibido un SMS de confirmación.');
     if(T[2]){ et.innerHTML = T[2].map(function(x){ var li = document.createElement('li'); li.textContent = x; return li.outerHTML; }).join(''); et.hidden = false; } else et.hidden = true;
