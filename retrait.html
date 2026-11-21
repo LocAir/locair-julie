@@ -83,6 +83,11 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .fini .m-ref{font-size:18px;font-weight:700;letter-spacing:.06em}
 .fini .m-horloge{font-size:34px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ok);margin:10px 0 4px}
 .fini .m-piece{font-size:14px;color:var(--ink-2)}
+/* échange : couleur orange et flèches, pour que le commerçant ne le confonde
+   jamais avec un retrait (vert) */
+.fini.ech .rond{background:#C2410C}
+.fini.ech .montrer{border-color:#C2410C;background:#FFF1E6}
+.fini.ech .m-a,.fini.ech .m-horloge{color:#C2410C}
 .code-l{display:block;font-weight:800;margin:16px 0 6px}
 .code-com{width:100%;min-height:58px;border:1.5px solid var(--line);border-radius:14px;font:900 28px 'DM Sans',sans-serif;letter-spacing:.3em;text-align:center;color:var(--ink);background:#fff}
 .code-com:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94,219,.18)}
@@ -333,7 +338,14 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   /* écran de confirmation à montrer au commerçant : nom, numéro, et une
      horloge qui tourne à la seconde (une capture d'écran ne bouge pas) */
   var minuterie = null;
-  function montrerAuCommercant(){
+  var COCHE = '<path d="M5 12.5l4.5 4.5L19 7.5"/>', FLECHES = '<path d="M4 9h13l-4-4M20 15H7l4 4"/>';
+  function montrerAuCommercant(sorte){
+    var ech = sorte === 'echange';
+    document.querySelector('#e-fini .carte').classList.toggle('ech', ech);
+    document.querySelector('#e-fini .rond svg').innerHTML = ech ? FLECHES : COCHE;
+    document.querySelector('#e-fini .m-piece').textContent = ech
+      ? L('Reprenez son appareil et donnez-en un autre.', 'Take back the unit and hand over another one.', 'Recoge su aparato y entrégale otro.')
+      : L('Vérifiez la pièce d’identité : même nom.', 'Check the ID: same name.', 'Comprueba el documento de identidad: mismo nombre.');
     $('f-nom').textContent = ((etat.resa.prenom || '') + ' ' + (etat.resa.nom || '')).trim();
     $('f-ref').textContent = etat.resa.ref || etat.ref;
     $('f-montrer').hidden = false;
@@ -348,8 +360,8 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       if(!r.ok) return erreur($('m-ech'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       if(r.j.issue === 'echange_comptoir'){
         $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
-        $('f-titre').textContent = L('Échange validé ✓', 'Swap confirmed ✓', 'Cambio confirmado ✓');
-        montrerAuCommercant();
+        $('f-titre').textContent = L('Échange validé ⇄', 'Swap confirmed ⇄', 'Cambio confirmado ⇄');
+        montrerAuCommercant('echange');
         $('f-texte').textContent = L('Le commerçant reprend votre appareil et vous en donne un autre, sous sa housse, avec sa gaine. Votre location continue jusqu’au ', 'The shopkeeper takes your unit and gives you another one, in its cover, with its hose. Your rental continues until ', 'El comerciante recoge tu aparato y te da otro, con su funda y su tubo. Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
       } else {
         $('f-ech').hidden = false; b.hidden = true;
