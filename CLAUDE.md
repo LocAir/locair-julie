@@ -4,6 +4,19 @@
 
 Toujours expliquer les choses simplement, comme si le propriétaire était un adolescent qui n'y connaît rien en technique. Pas de jargon, pas de termes complexes — des phrases courtes, concrètes, qui vont droit au but. Cette règle s'applique à toutes les réponses, synthèses et résumés, sur l'ensemble du projet Loc'Air (site, app admin, app transporteur).
 
+## L'ADN de Loc'Air : simplicité et clarté
+
+Tout ce qu'on fabrique (site, emails, flyers, présentations, écrans du
+commerçant et du client) suit la même règle :
+
+- **Le moins de mots possible.** Une idée par bloc, une phrase courte par
+  idée. Si une image ou une couleur peut remplacer un texte, on la prend.
+- **Un écran = une action.** Le client ou le commerçant sait tout de suite
+  quoi faire.
+- **Des repères visuels constants** : au comptoir, vert ✓ = retrait,
+  bleu ↩ = retour, orange ⇄ = échange. Partout pareil.
+- Avant de livrer, se demander : « Qu'est-ce que je peux enlever ? »
+
 ## Déploiement
 
 Quand une pull request de correctifs/améliorations est prête sur la branche de
