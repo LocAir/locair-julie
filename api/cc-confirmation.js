@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
     let y = 122;
     doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('VOTRE NUMÉRO DE COMMANDE', 'YOUR ORDER NUMBER', 'TU NÚMERO DE PEDIDO'), M, y, { characterSpacing: 1 });
     doc.fillColor(ENCRE).font('Helvetica-Bold').fontSize(40).text(numeroComptoir(r.ref), M, y + 14, { characterSpacing: 6 });
-    doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('À taper au comptoir, au retrait et au retour.', 'To enter at the counter, at pick-up and return.', 'Para escribir en el mostrador, en la recogida y la devolución.'), M, y + 60, { width: W - 2 * M });
+    doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('À taper au comptoir, au retrait et au retour.', 'To enter at the counter, at pick-up and return.', 'Para escribir en el mostrador, en la recogida y la devolución.') + ((r.quantite || 1) > 1 ? T(` Valable pour vos ${r.quantite} climatiseurs.`, ` Valid for your ${r.quantite} air conditioners.`, ` Vale para tus ${r.quantite} aparatos.`) : ''), M, y + 60, { width: W - 2 * M });
 
 
     // détails

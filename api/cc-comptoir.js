@@ -66,6 +66,11 @@ module.exports = async (req, res) => {
       const rang = (x) => (x.statut === 'confirmee' && !x.remis_at && x.date_debut <= jourJ) ? 0
         : (x.statut === 'confirmee' && x.remis_at && !x.rendu_at) ? 1 : x.statut !== 'terminee' ? 2 : 3;
       memes.sort((u, v) => rang(u) - rang(v) || String(u.date_fin).localeCompare(String(v.date_fin)));
+      const actifs = memes.filter((x) => x.statut === 'confirmee' && !x.rendu_at);
+      const qui = (x) => String(x.email || '').toLowerCase() + '|' + String(x.tel || '').replace(/\D/g, '').slice(-9);
+      if (new Set(actifs.map(qui)).size > 1) {
+        return res.status(409).json({ error: T(lang, 'Ce numéro correspond à deux réservations. Tapez la référence complète (CC-…) de votre email de confirmation.', 'This number matches two bookings. Enter the full reference (CC-…) from your confirmation email.', 'Este número corresponde a dos reservas. Escribe la referencia completa (CC-…) de tu email de confirmación.') });
+      }
       r = memes[0] || null;
     } else {
       const { data: lignes } = await supabase.from('reservations').select('*')
