@@ -1294,7 +1294,8 @@ module.exports = async (req, res) => {
   // (fr / en / es), une seule fois par réservation (verrou email_sent).
   try {
     report.ccRappels = await envoyerRappelsClickCollect(supabase, todayStr);
-    report.ccFiltres = await rappelerFiltreClickCollect(supabase, todayStr);
+    // « Nettoyez le filtre » chaque semaine : retiré le 21/11/2026 (message
+    // en trop, décision du propriétaire). La fonction reste plus bas si besoin.
   } catch (e) {
     console.error('[Cron rappels Click & Collect]', e.message);
   }
@@ -1349,8 +1350,12 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
   const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   let envoyes = 0;
   for (const r of rows || []) {
-    if (!r.email) continue;
+    if (!r.email && !r.tel) continue;
     for (const scenario of rappelsClickCollectDus(r, todayStr)) {
+      // Veille du RETOUR : un SMS seulement (l'email disait la même chose).
+      // Veille du RETRAIT : l'email (itinéraire, horaires, numéro).
+      const parSms = scenario === 'cc_rappel_retour' && !!r.tel;
+      if (!parSms && !r.email) continue;
       // verrou : jamais deux fois le même rappel pour la même réservation
       const { error: lockErr } = await supabase.from('email_sent')
         .insert({ reservation_id: r.id, scenario, sent_at: new Date().toISOString() });
@@ -1358,6 +1363,26 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
       const l = r.lang === 'en' || r.lang === 'es' ? r.lang : 'fr';
       const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
       const pt = getPointRetrait(r.point_retrait_id || '') || null;
+      if (parSms) {
+        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
+        const nomPoint = pt ? pt.nom : T('votre point de retrait', 'your pick-up point', 'tu punto de recogida');
+        const n = Math.max(1, r.quantite || 1);
+        const sms = n > 1
+          ? T(`Loc'Air : votre location se termine demain. Rapportez les ${n} climatiseurs au point ${nomPoint}, en scannant le QR code du comptoir. Envie de les garder ? Prolongez : ${lien}`,
+            `Loc'Air: your rental ends tomorrow. Bring the ${n} air conditioners back to ${nomPoint} and scan the QR code at the counter. Want to keep them? Extend: ${lien}`,
+            `Loc'Air: tu alquiler termina mañana. Devuelve los ${n} aparatos en ${nomPoint} y escanea el código QR del mostrador. ¿Quieres quedártelos? Amplía: ${lien}`)
+          : T(`Loc'Air : votre location se termine demain. Rapportez le climatiseur au point ${nomPoint}, en scannant le QR code du comptoir. Envie de le garder ? Prolongez : ${lien}`,
+            `Loc'Air: your rental ends tomorrow. Bring the air conditioner back to ${nomPoint} and scan the QR code at the counter. Want to keep it? Extend: ${lien}`,
+            `Loc'Air: tu alquiler termina mañana. Devuelve el aire acondicionado en ${nomPoint} y escanea el código QR del mostrador. ¿Quieres quedártelo? Amplía: ${lien}`);
+        const rs = await sendBrevoSms({ to: r.tel, content: sms }).catch((e) => ({ ok: false, error: e.message }));
+        if (!rs || !rs.ok) {
+          await supabase.from('email_sent').delete().eq('reservation_id', r.id).eq('scenario', scenario).then(() => {}, () => {});
+          continue;
+        }
+        await supabase.from('email_log').insert({ reservation_id: r.id, scenario, canal: 'sms', destinataire: r.tel, modele: scenario, statut: 'envoye', contenu: sms }).then(() => {}, () => {});
+        envoyes++;
+        continue;
+      }
       const lieu = pt ? `${pt.nom} — ${pt.adresse}` : String(r.adresse || '').replace(/^CLICK & COLLECT — /, '');
       const o = (pt && pt.ouverture) || [9, 19];
       const heures = T(`de ${o[0]}h à ${o[1]}h`, `${o[0]}:00–${o[1]}:00`, `de ${o[0]}:00 a ${o[1]}:00`);
@@ -1380,7 +1405,7 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
 <p>${combien}${texte}</p>
 ${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
 <p style="font-size:15px">${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:20px;letter-spacing:.12em">${numComptoir(r.ref)}</b></p>
-<p style="color:#4B5873;font-size:13px">${T('Référence', 'Reference', 'Referencia')} : ${esc(r.ref || '')} · Loc’Air · locair.fr</p></div>`;
+<p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
       const res = await sendBrevoEmail({ to: r.email, subject, html, senderName: "Loc'Air" });
       if (!res.ok) {
         await supabase.from('email_sent').delete().eq('reservation_id', r.id).eq('scenario', scenario).then(() => {}, () => {});
@@ -1388,15 +1413,6 @@ ${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5E
       }
       await supabase.from('email_log').insert({ reservation_id: r.id, scenario, canal: 'email', destinataire: r.email, modele: scenario, statut: 'envoye' }).then(() => {}, () => {});
       envoyes++;
-      // La veille du retour : aussi un SMS, avec le lien pour prolonger en un geste.
-      if (!retrait && r.tel) {
-        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
-        const nomPoint = pt ? pt.nom : 'votre point de retrait';
-        const sms = T(`Loc'Air : votre location se termine demain. Envie de garder votre climatiseur ? Prolongez en 1 clic : ${lien} Sinon, rapportez-le demain au point ${nomPoint}.`,
-          `Loc'Air: your rental ends tomorrow. Want to keep your air conditioner? Extend in 1 tap: ${lien} Otherwise, bring it back tomorrow to ${nomPoint}.`,
-          `Loc'Air: tu alquiler termina mañana. ¿Quieres quedarte el aire acondicionado? Amplía en 1 clic: ${lien} Si no, devuélvelo mañana en ${nomPoint}.`);
-        await sendBrevoSms({ to: r.tel, content: sms }).catch((e) => console.error('[SMS rappel retour CC]', e.message));
-      }
     }
   }
   return envoyes;

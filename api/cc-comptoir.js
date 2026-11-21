@@ -217,7 +217,7 @@ async function apresRetour(supabase, r, point, photo, lang) {
   const Tx = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
   const quand = new Date().toLocaleString(l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
   const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
+  const { sendBrevoEmail } = require('./_lib/brevo');
   const n = Math.max(1, r.quantite || 1), num = numeroComptoir(r.ref);
   const vos = n > 1
     ? Tx(`Vos ${n} climatiseurs ont bien été rendus`, `Your ${n} air conditioners were returned`, `Tus ${n} aparatos se devolvieron`)
@@ -233,7 +233,5 @@ async function apresRetour(supabase, r, point, photo, lang) {
 <p style="color:#4B5873;font-size:13px">${Tx('Numéro de commande', 'Order number', 'Número de pedido')} : ${esc(num)} · Loc’Air · locair.fr</p></div>`,
     }).catch(() => {});
   }
-  if (r.tel) {
-    await sendBrevoSms({ to: r.tel, content: Tx(`Loc'Air : retour confirmé${n > 1 ? ` (${n} climatiseurs)` : ''}, commande n° ${num}. Merci ! Votre facture : ${lienFacture}`, `Loc'Air: return confirmed${n > 1 ? ` (${n} units)` : ''}, order no. ${num}. Thank you! Your invoice: ${lienFacture}`, `Loc'Air: devolución confirmada${n > 1 ? ` (${n} aparatos)` : ''}, pedido n.º ${num}. ¡Gracias! Tu factura: ${lienFacture}`) }).catch(() => {});
-  }
+  // Pas de SMS en plus : l'email (avec la facture) suffit (21/11/2026).
 }
