@@ -23,8 +23,8 @@
 //             sur les mêmes dates
 //   partenaire_code  code du commerçant dans l'admin (onglet Partenaires) :
 //             la réservation lui est rattachée et sa commission comptée
-//   commission_pct   commission du commerçant sur la location payée (15 %,
-//             décidé par le propriétaire le 18/11/2026)
+//   commission_pct   commission du commerçant sur la location payée (20 %,
+//             décidé par le propriétaire le 21/11/2026 ; 15 % avant)
 //   tel       téléphone de la boutique (affiché au besoin)
 //   zone      'cote-azur' ou 'madrid' (page et langue)
 //   ouverture [heure d'ouverture, heure de fermeture] des jours ouverts,
@@ -36,7 +36,7 @@
 //             commerçant, AVEC SON ACCORD — jamais de photo Google Maps.
 //             Vide = rien ne change à l'écran.
 const STOCK_PAR_DEFAUT = 4;
-const COMMISSION_POINT_PCT = 15;
+const COMMISSION_POINT_PCT = 20;
 const POINTS_RETRAIT = [
   // POINT DE TEST (propriétaire) : invisible pour les clients, visible
   // seulement sur /click-and-collect?test=1. Sert à faire un vrai paiement

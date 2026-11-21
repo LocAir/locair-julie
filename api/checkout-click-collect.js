@@ -124,7 +124,7 @@ module.exports = async (req, res) => {
   }
 
   // Commerçant du point : la réservation lui est rattachée et sa commission
-  // (15 % de la location payée) comptée, comme pour les autres partenaires
+  // (20 % de la location payée) comptée, comme pour les autres partenaires
   // (espace partenaire, virements). Point sans partenaire = pas de commission.
   let partenaireId = null, commissionCents = 0;
   if (point.partenaire_code) {
