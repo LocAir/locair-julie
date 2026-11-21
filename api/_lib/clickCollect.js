@@ -6,7 +6,7 @@
 // Modèle « stock figé » (plan opérationnel du propriétaire) : chaque point a
 // un nombre fixe d'appareils pour la saison. Le prix suit la tarification
 // dynamique de _lib/tarifDynamique.js (stock de la ville, chaleur prévue,
-// dernière minute, période calme), toujours entre 139 € et 189 € les 7 jours.
+// dernière minute, période calme), toujours entre 99 € et 119 € les 3 jours, 139 € et 189 € les 7 jours.
 const crypto = require('crypto');
 const { calcTieredPrice } = require('./pricing');
 const { pointsDuCluster } = require('./pointsRetrait');
@@ -23,7 +23,7 @@ const MAJORATION_PCT  = 25;       // +25 % (décidé par le propriétaire le 18/
 const ATTENTE_MAX_MIN = 30;
 // Durée d'une location Click & Collect : 7 à 90 jours (fixe, ne dépend pas
 // du barème de la livraison). Retrait au plus tard dans 1 an.
-const JOURS_MIN_CC = 7, JOURS_MAX_CC = 90, AVANCE_MAX_JOURS = 365;
+const JOURS_MIN_CC = 3, JOURS_MAX_CC = 90, AVANCE_MAX_JOURS = 365;
 
 function chevauche(q, debut, fin) {
   // [date_debut, date_fin) recoupe [debut, fin)
@@ -125,7 +125,7 @@ async function prixClickCollect(supabase, point, debut, jours, pricing) {
   const tauxOccupation = capacite ? pris / capacite : 0;
   const libresAuPoint = Math.max(0, (point.stock || 0) - (occStock[point.id] || 0));
 
-  // prix de base Click & Collect : 150 € les 7 jours (voir _lib/tarifDynamique.js)
+  // prix de base Click & Collect : 99 € les 3 jours, 150 € les 7 jours (voir _lib/tarifDynamique.js)
   const normalCents = baseCents(jours, calcTieredPrice, pricing);
   const t = await appliquer({ normalCents, tauxOccupation, debut, fin, aujourdhui: todayParis(), point });
   return { fin, normalCents, totalCents: t.totalCents, plancherCents: t.plancherCents, plafondCents: t.plafondCents, remise: t.remise, variationPct: t.variationPct, majore: t.majore, majorationPct: t.majorationPct, raisons: t.raisons, signaux: t.signaux, multiplicateur: t.multiplicateur, libresAuPoint, tauxOccupation };

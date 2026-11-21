@@ -15,9 +15,10 @@
 // Les effets se multiplient, puis passent par les barrières.
 //
 // ── Les barrières de sécurité ─────────────────────────────────────────────
-//  • Plancher : jamais moins de 139 € les 7 jours (et la même proportion
-//    pour les autres durées).
-//  • Plafond  : jamais plus de 189 € les 7 jours, quoi qu'il arrive.
+//  • Plancher : jamais moins de 139 € les 7 jours, 99 € les 3 jours (voir
+//    bornes() pour les autres durées).
+//  • Plafond  : jamais plus de 189 € les 7 jours, 119 € les 3 jours, quoi
+//    qu'il arrive.
 //  • Baisse   : seulement en période calme (temps frais prévu ET peu de
 //    réservations), jamais par défaut.
 //  • Même prix pour tout le monde au même moment : aucun signal lié à la
@@ -40,13 +41,19 @@
 const crypto = require('crypto');
 const { maxPeriode } = require('./meteo');
 
-// Prix Click & Collect décidés par le propriétaire (19/11/2026) : 150 € les
-// 7 jours en temps normal, jamais moins de 139 €, jamais plus de 189 €.
-// Les autres durées suivent la même proportion (barème dégressif × 150/prix
-// de 7 jours au barème). La livraison (/reserver) n'est pas concernée.
+// Prix Click & Collect décidés par le propriétaire :
+//  • 7 jours (19/11/2026) : 150 € en temps normal, jamais moins de 139 €,
+//    jamais plus de 189 €. Au-delà de 7 jours : barème dégressif × 150/prix
+//    de 7 jours au barème, bornes dans la même proportion.
+//  • 3 jours (21/11/2026, durée minimale) : 99 € en temps normal, qui est
+//    aussi le plus bas ; jamais plus de 119 €.
+//  • 4 à 6 jours : entre les deux, en ligne droite (base, minimum, maximum).
+// La livraison (/reserver) n'est pas concernée.
 const BASE_SEMAINE_EUR = 150, MIN_SEMAINE_EUR = 139, MAX_SEMAINE_EUR = 189;
+const JOURS_COURT = 3, BASE_COURT_EUR = 99, MIN_COURT_EUR = 99, MAX_COURT_EUR = 119;
 const REGLES = {
   baseSemaineEur: BASE_SEMAINE_EUR, minSemaineEur: MIN_SEMAINE_EUR, maxSemaineEur: MAX_SEMAINE_EUR,
+  court: { jours: JOURS_COURT, base: BASE_COURT_EUR, min: MIN_COURT_EUR, max: MAX_COURT_EUR },
   plancher: MIN_SEMAINE_EUR / BASE_SEMAINE_EUR,   // ≈ 0,927 (−7 %)
   plafond: MAX_SEMAINE_EUR / BASE_SEMAINE_EUR,    // 1,26 (+26 %)
   // [part du stock déjà réservé, effet] — haut de courbe = plafond
@@ -66,15 +73,16 @@ function joursEntre(a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Da
 // ctx : { normalCents, tauxOccupation, debut, fin, aujourdhui, point:{lat,lng} }
 // → { totalCents, multiplicateur, majore, majorationPct, raisons:[...], signaux:{...} }
 async function appliquer(ctx) {
+  const jours = Math.max(1, joursEntre(ctx.debut, ctx.fin));
   const signaux = { stock: 1, chaleur: 1, derniereMinute: 1, calme: 1, temperature: null, occupation: Math.round((ctx.tauxOccupation || 0) * 100) / 100 };
-  if (!actif()) return finir(ctx.normalCents, 1, signaux, ['desactive']);
+  if (!actif()) return finir(ctx.normalCents, 1, signaux, ['desactive'], jours);
 
   signaux.stock = palier(REGLES.stock, ctx.tauxOccupation || 0);
   try {
     const t = ctx.point ? await maxPeriode(ctx.point.lat, ctx.point.lng, ctx.debut, ctx.fin) : null;
     if (Number.isFinite(t)) { signaux.temperature = t; signaux.chaleur = palier(REGLES.chaleur, t); }
   } catch (e) { /* météo indisponible : signal neutre */ }
-  if (Number.isFinite(signaux.temperature) && signaux.temperature < REGLES.calme.temperatureMax && (ctx.tauxOccupation || 0) < REGLES.calme.occupationMax) signaux.calme = REGLES.plancher;
+  if (Number.isFinite(signaux.temperature) && signaux.temperature < REGLES.calme.temperatureMax && (ctx.tauxOccupation || 0) < REGLES.calme.occupationMax) signaux.calme = ratios(jours).plancher;
   const delai = joursEntre(ctx.aujourdhui, ctx.debut);
   if (delai <= REGLES.derniereMinute.joursMax && (signaux.stock > 1 || signaux.chaleur > 1)) signaux.derniereMinute = REGLES.derniereMinute.effet;
 
@@ -84,15 +92,37 @@ async function appliquer(ctx) {
   if (signaux.chaleur > 1) raisons.push('chaleur');
   if (signaux.derniereMinute > 1) raisons.push('derniere_minute');
   if (signaux.calme < 1) raisons.push('calme');
-  return finir(ctx.normalCents, brut, signaux, raisons);
+  return finir(ctx.normalCents, brut, signaux, raisons, jours);
 }
 
-function bornesCents(normalCents) {
-  return { min: Math.round(normalCents * REGLES.plancher / 100) * 100, max: Math.round(normalCents * REGLES.plafond / 100) * 100 };
+// Bornes en euros pour une durée : { base, min, max }.
+// 3 jours → 99/99/119 ; 7 jours → 150/139/189 ; 4 à 6 jours en ligne
+// droite ; plus de 7 jours → barème dégressif × facteur, bornes dans la
+// même proportion que les 7 jours.
+function bornes(jours, calcTieredPrice, pricing) {
+  const c = REGLES.court;
+  if (jours < 7) {
+    const t = Math.max(0, (jours - c.jours) / (7 - c.jours));
+    const lin = (a, b) => Math.round(a + (b - a) * t);
+    return { base: lin(c.base, BASE_SEMAINE_EUR), min: lin(c.min, MIN_SEMAINE_EUR), max: lin(c.max, MAX_SEMAINE_EUR) };
+  }
+  const base = Math.round(calcTieredPrice(jours, pricing) * facteurCC(calcTieredPrice, pricing));
+  return { base, min: Math.round(base * MIN_SEMAINE_EUR / BASE_SEMAINE_EUR), max: Math.round(base * MAX_SEMAINE_EUR / BASE_SEMAINE_EUR) };
 }
-function finir(normalCents, brut, signaux, raisons) {
-  const m = Math.min(REGLES.plafond, Math.max(REGLES.plancher, brut));
-  const b = bornesCents(normalCents);
+// Plancher et plafond en proportion du prix normal, pour une durée.
+function ratios(jours) {
+  if (jours >= 7) return { plancher: REGLES.plancher, plafond: REGLES.plafond };
+  const b = bornes(jours);
+  return { plancher: b.min / b.base, plafond: b.max / b.base };
+}
+function bornesCents(normalCents, jours) {
+  const r = ratios(jours || 7);
+  return { min: Math.round(normalCents * r.plancher / 100) * 100, max: Math.round(normalCents * r.plafond / 100) * 100 };
+}
+function finir(normalCents, brut, signaux, raisons, jours) {
+  const r = ratios(jours || 7);
+  const m = Math.min(r.plafond, Math.max(r.plancher, brut));
+  const b = bornesCents(normalCents, jours);
   let total = Math.round(normalCents * m / 100) * 100;            // arrondi à l'euro
   total = Math.min(b.max, Math.max(b.min, total));
   const pct = Math.round((total / normalCents - 1) * 100);
@@ -101,11 +131,9 @@ function finir(normalCents, brut, signaux, raisons) {
     raisons: total !== normalCents ? raisons : [], signaux };
 }
 // Prix de base Click & Collect (avant tarif dynamique), en centimes, arrondi
-// à l'euro : barème dégressif × (150 € / prix de 7 jours au barème).
+// à l'euro (voir bornes()).
 function baseCents(jours, calcTieredPrice, pricing) {
-  const sept = calcTieredPrice(7, pricing);
-  const f = sept > 0 ? REGLES.baseSemaineEur / sept : 1;
-  return Math.round(calcTieredPrice(jours, pricing) * f) * 100;
+  return bornes(jours, calcTieredPrice, pricing).base * 100;
 }
 function facteurCC(calcTieredPrice, pricing) { const sept = calcTieredPrice(7, pricing); return sept > 0 ? REGLES.baseSemaineEur / sept : 1; }
 
@@ -130,4 +158,4 @@ function lireDevis(devis, { point, debut, jours }) {
   } catch (e) { return null; }
 }
 
-module.exports = { appliquer, signerDevis, lireDevis, baseCents, facteurCC, bornesCents, REGLES };
+module.exports = { appliquer, signerDevis, lireDevis, baseCents, bornes, facteurCC, bornesCents, REGLES };

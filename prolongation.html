@@ -443,8 +443,14 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
     noerr('extend-error');
     const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
     let price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
-    /* Click & Collect : même calcul que le serveur (barème × facteur C&C × réduction du départ) */
-    if(resa.cc&&resa.cc.facteur){price=Math.round(Math.round(price*resa.cc.facteur)*(resa.cc.coef||1));}
+    /* Click & Collect : même calcul que le serveur (_lib/prolongCC.js) :
+       prix C&C de la nouvelle durée − prix C&C de la durée actuelle, × réduction du départ */
+    if(resa.cc&&resa.cc.facteur){
+      const k=resa.cc.court,sem=resa.cc.semaine;
+      const ccBase=function(j){if(k&&sem&&j<7){const t=Math.max(0,(j-k.jours)/(7-k.jours));return Math.round(k.base+(sem.base-k.base)*t);}return Math.round(calcBase(j)*resa.cc.facteur);};
+      const d=ccBase(tot)-ccBase(resa.orig_days);
+      price=Math.round((d>0?d*(resa.quantite||1):Math.round(price*resa.cc.facteur))*(resa.cc.coef||1));
+    }
     cents=price*100;
     document.getElementById('price-days').textContent='+ '+ext+' jour'+(ext>1?'s':'');
     document.getElementById('price-amount').textContent=price+' €';
