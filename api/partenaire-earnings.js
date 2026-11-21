@@ -101,7 +101,7 @@ module.exports = async (req, res) => {
       // manuelle (les montants déjà calculés par réservation restent eux
       // corrects, seul ce texte explicatif était faux).
       const { data: partenaireRow } = await supabase
-        .from('partenaires').select('taux_commission_pct, code, telephone').eq('id', partenaireId).maybeSingle();
+        .from('partenaires').select('taux_commission_pct, code, telephone, iban').eq('id', partenaireId).maybeSingle();
       // Commerçant point de retrait Click & Collect : son code retour (2 derniers
       // chiffres du téléphone de la boutique), à donner au client qui rapporte
       // un climatiseur. Montré seulement à lui, une fois connecté.
@@ -111,6 +111,8 @@ module.exports = async (req, res) => {
 
       return res.status(200).json({
         taux_commission_pct: partenaireRow?.taux_commission_pct ?? null,
+        // Virement mensuel : le partenaire voit s'il manque son RIB (jamais le RIB lui-même).
+        rib_ok: !!(partenaireRow && partenaireRow.iban && String(partenaireRow.iban).trim()),
         point_retrait: pointCC ? { nom: pointCC.nom, code_retour: codeRetour(pointCC, partenaireRow) } : null,
         reservations_aujourdhui: reservationsAujourdhui,
         gain_aujourdhui_euros:   gainAujourdhui / 100,

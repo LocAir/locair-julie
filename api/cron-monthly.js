@@ -244,6 +244,68 @@ async function runDormantClientsWinback(supabase) {
   return { relancesDormants: relanceCount };
 }
 
+// Commissions partenaires : virées UNE FOIS PAR MOIS (plus de bouton
+// « Demander le virement »). Le 1er du mois, l'admin reçoit la liste des
+// partenaires à payer avec leur montant et s'il manque le RIB. Le virement
+// lui-même reste fait à la main, puis marqué « versé » dans l'admin
+// (onglet Partenaires), ce qui prévient le partenaire par email.
+async function runRecapPartenaires(supabase) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { data: dejaSent } = await supabase
+    .from('email_log').select('id')
+    .eq('scenario', 'recap_mensuel_partenaires')
+    .gte('sent_at', todayStr + 'T00:00:00Z')
+    .maybeSingle();
+  if (dejaSent) return { skipped: true, reason: 'already_sent_today' };
+
+  const { data: resas } = await supabase
+    .from('reservations')
+    .select('partenaire_id, partenaire_commission_cents')
+    .not('partenaire_id', 'is', null)
+    .in('statut', ['confirmee', 'terminee']).eq('masquee', false)
+    .eq('partenaire_commission_payee', false)
+    .gt('partenaire_commission_cents', 0);
+  if (!resas || !resas.length) return { message: 'Aucune commission à virer' };
+
+  const dus = {};
+  for (const r of resas) dus[r.partenaire_id] = (dus[r.partenaire_id] || 0) + (r.partenaire_commission_cents || 0);
+  const { data: partenaires } = await supabase
+    .from('partenaires').select('id, nom, iban').in('id', Object.keys(dus).map(Number));
+  const entries = (partenaires || [])
+    .map(p => ({ nom: p.nom, iban: !!(p.iban && String(p.iban).trim()), total: dus[p.id] || 0 }))
+    .filter(e => e.total > 0)
+    .sort((a, b) => b.total - a.total);
+  if (!entries.length) return { message: 'Aucune commission à virer' };
+
+  const grandTotal = entries.reduce((s, e) => s + e.total, 0);
+  const sansRib = entries.filter(e => !e.iban).length;
+  const now = new Date();
+  const moisPrec = MOIS_FR[new Date(now.getFullYear(), now.getMonth() - 1, 1).getMonth()];
+  const adminEmail = process.env.ADMIN_EMAIL || 'contact@locair.fr';
+  const rows = entries.map(e =>
+    `<tr><td style="padding:10px 0;border-bottom:1px solid #eee">${escHtml(e.nom)}${e.iban ? '' : '<br><small style="color:#B42318">RIB manquant : à lui demander</small>'}</td><td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right"><strong>${(e.total / 100).toFixed(2).replace('.', ',')} €</strong></td></tr>`
+  ).join('');
+
+  await sendBrevoEmail({
+    to: adminEmail,
+    subject: `Commissions partenaires à virer — fin ${moisPrec}`,
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;background:#f4f0ea;margin:0;padding:16px">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:24px 28px">
+<h1 style="font-size:20px;margin:0 0 6px">Virement mensuel des partenaires</h1>
+<p style="color:#555;font-size:14px;margin:0 0 16px">${entries.length} partenaire${entries.length > 1 ? 's' : ''} à payer · total <strong>${(grandTotal / 100).toFixed(2).replace('.', ',')} €</strong>${sansRib ? ` · <span style="color:#B42318">${sansRib} sans RIB</span>` : ''}</p>
+<table style="width:100%;border-collapse:collapse;font-size:14px">${rows}</table>
+<p style="font-size:13px;color:#555;margin:16px 0 0">Faites les virements depuis votre banque, puis cliquez « Marquer versé » pour chacun dans l'admin (onglet Partenaires) : le partenaire reçoit un email de confirmation.</p>
+<p style="text-align:center;margin:20px 0 0"><a href="https://www.locair.fr/admin" style="background:#1A5EDB;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px">Ouvrir l'admin →</a></p>
+</div></body></html>`,
+  });
+  const { error: logError } = await supabase.from('email_log').insert({
+    scenario: 'recap_mensuel_partenaires', canal: 'email', destinataire: adminEmail,
+    modele: 'recap_mensuel_partenaires', statut: 'envoye', sent_at: new Date().toISOString(),
+  });
+  if (logError) throw new Error('[recap_mensuel_partenaires log] ' + logError.message);
+  return { partenaires: entries.length, total_cents: grandTotal, sans_rib: sansRib };
+}
+
 // Conservé comme endpoint indépendant (déclenchable manuellement avec
 // CRON_SECRET) même si non planifié directement — voir cron-daily.js qui
 // l'appelle le 1er de chaque mois.
@@ -260,3 +322,4 @@ module.exports = async (req, res) => {
 };
 module.exports.runMonthlyRecap = runMonthlyRecap;
 module.exports.runDormantClientsWinback = runDormantClientsWinback;
+module.exports.runRecapPartenaires = runRecapPartenaires;
