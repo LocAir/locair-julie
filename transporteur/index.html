@@ -2110,7 +2110,7 @@ function weekMissionItemHtml(m){
   const c = m.client || {};
   const isAutre = m.type==='autre';
   const nom = isAutre ? escHtml(m.titre||'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
-  const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
+  const adresse = (isAutre || m.adresse_libre) ? (m.adresse_libre||'') : (c.adresse||'');
   // Le créneau part maintenant devant la mission (badge avant l'icône, voir
   // plus bas) plutôt que noyé ici avec l'adresse.
   const metaParts = [adresse?escHtml(adresse):''].filter(Boolean);
@@ -2216,7 +2216,7 @@ function renderDashboard(){
   const heroFor = (m, eyebrow, cta, ctaLabel) => {
     const c = m.client || {};
     const nom = m.type==='autre' ? (m.titre||'Mission libre') : (escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Mission');
-    const adresse = m.type==='autre' ? (m.adresse_libre||'Adresse à confirmer') : (c.adresse||'Adresse à confirmer');
+    const adresse = (m.type==='autre' || m.adresse_libre) ? (m.adresse_libre||'Adresse à confirmer') : (c.adresse||'Adresse à confirmer');
     return `
       <div class="dash-hero">
         <div class="eyebrow">${eyebrow}</div>
@@ -2560,7 +2560,7 @@ function missionCardHtml(m){
   // d'alerte permet de la repérer d'un coup d'œil dans la liste.
   const isLate = ['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue < todayStr;
   const lateBadge = isLate ? `<span class="mcard-late-badge">⏰ En retard</span>` : '';
-  const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
+  const adresse = (isAutre || m.adresse_libre) ? (m.adresse_libre||'') : (c.adresse||'');
   const mapsUrl = adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(adresse)}` : '';
   // "hors zone" change le tarif payé au livreur (barème dédié, plus élevé) —
   // sans ce badge, deux missions du même type affichaient des montants
@@ -2937,7 +2937,7 @@ function postalCode(adresse){
 }
 function missionsByPostalHtml(items){
   const groups = {};
-  items.forEach(m => { const cp = postalCode(m.type==='autre' ? m.adresse_libre : (m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
+  items.forEach(m => { const cp = postalCode((m.type==='autre' || m.adresse_libre) ? m.adresse_libre : (m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
   const codes = Object.keys(groups);
   // Un seul secteur dans le groupe : le sous-titre code postal n'apporte rien
   // (même seuil que renderPostalFilter, qui masque déjà son propre filtre
@@ -4088,7 +4088,7 @@ function renderDetail(){
   }
   const c = m.client || {};
   const isAutre = m.type === 'autre';
-  const mapsUrl = isAutre
+  const mapsUrl = (isAutre || m.adresse_libre)
     ? (m.adresse_libre ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.adresse_libre)}` : '')
     : (c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '');
   const started = m.statut !== 'a_faire';
@@ -4103,7 +4103,7 @@ function renderDetail(){
     ` : started ? `
       ${(m.appareil_numeros&&m.appareil_numeros.length&&!['livraison','changement'].includes(m.type))?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Climatiseur${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
       <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?' · 🏢 '+escHtml(c.raison_sociale):''}</span></div>
-      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(m.adresse_libre||c.adresse||'—')}</span></div>
       ${m.type==='recuperation'&&c.date_fin?`<div class="info-row"><span class="info-ic">📅</span><span class="info-label">Location</span><span class="info-val">jusqu'au ${new Date(c.date_fin+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span></div>`:''}
       <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage||'—')} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+escHtml(c.ascenseur):''}</span></div>
       <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre||'—')}${m.fenetre_photo_ok?` <button onclick="voirPhotoFenetre(${m.id})" class="btn-chip">📷 Voir photo</button>`:''}</span></div>
@@ -4126,7 +4126,7 @@ function renderDetail(){
         return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${tSms}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a>${wWa?`<a class="media-btn" href="https://wa.me/${wWa}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a>`:''}</div>`;
       })():''}
     ` : `
-      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(m.adresse_libre||c.adresse||'—')}</span></div>
       ${c.etage&&c.etage!=='—'?`<div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage)}${c.ascenseur&&c.ascenseur!=='—'?' · Ascenseur : '+escHtml(c.ascenseur):''}</span></div>`:''}
       ${m.type==='recuperation'&&c.date_fin?`<div class="info-row"><span class="info-ic">📅</span><span class="info-label">Location</span><span class="info-val">jusqu'au ${new Date(c.date_fin+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span></div>`:''}
       ${(c.quantite&&c.quantite>1)?`<div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite} climatiseur${c.quantite>1?'s':''} à ${m.type==='recuperation'?'récupérer':'livrer'}</span></div>`:''}
@@ -6025,7 +6025,7 @@ const MissionChat = (() => {
     const earn = m.montant_preview ? `💶 ${Math.round(m.montant_preview / 100)} €` : '';
     _bot(`Nouvelle mission pour vous ! 📋`);
     _typing(700);
-    _bot(`<b>${escHtml(_typeLabel(m.type))}</b> chez <b>${escHtml(c.prenom || c.nom || 'le client')}</b><br>📍 ${escHtml(c.adresse || '')}${m.creneau ? `<br>🕐 ${escHtml(m.creneau)}` : ''}${earn ? `<br>${earn}` : ''}`, 1300);
+    _bot(`<b>${escHtml(_typeLabel(m.type))}</b> chez <b>${escHtml(c.prenom || c.nom || 'le client')}</b><br>📍 ${escHtml(m.adresse_libre || c.adresse || '')}${m.creneau ? `<br>🕐 ${escHtml(m.creneau)}` : ''}${earn ? `<br>${earn}` : ''}`, 1300);
     setTimeout(() => {
       _bot(`Pouvez-vous prendre cette mission ?`);
       _actions([
