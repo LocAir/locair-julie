@@ -23,7 +23,7 @@ const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
-const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite, numeroComptoir } = require('./_lib/clickCollect');
+const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite, numeroComptoir, JOURS_MIN_CC } = require('./_lib/clickCollect');
 const { lireDevis } = require('./_lib/tarifDynamique');
 
 const JOURS_MAX = 90;
@@ -91,8 +91,8 @@ module.exports = async (req, res) => {
   const dateDebut = clip(data.date, 10);
   const duree = parseInt(data.jours, 10);
   if (!isValidDate(dateDebut) || dateDebut < todayParis()) return res.status(400).json({ error: 'Date de retrait invalide.' });
-  if (!Number.isFinite(duree) || duree < pricing.duree_min_jours || duree > JOURS_MAX) {
-    return res.status(400).json({ error: `Durée : entre ${pricing.duree_min_jours} et ${JOURS_MAX} jours.` });
+  if (!Number.isFinite(duree) || duree < JOURS_MIN_CC || duree > JOURS_MAX) {
+    return res.status(400).json({ error: `Durée : entre ${JOURS_MIN_CC} et ${JOURS_MAX} jours.` });
   }
   const dateFin = addDays(dateDebut, duree);
   if (pointFermeLe(point, dateDebut) || pointFermeLe(point, dateFin)) {

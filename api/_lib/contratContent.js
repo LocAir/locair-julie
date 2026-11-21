@@ -138,6 +138,8 @@ function buildContratContent({ reservation, appareils, pricing, forfait }) {
       4: `Prix de la location payé à la réservation : ${paye} pour ${jours} jours${nbCC > 1 ? ` et ${nbCC} appareils` : ''} (Click & Collect, tarification selon la demande, prix affiché garanti au moment du paiement).\n` +
          'Aucuns frais de livraison ni d’installation : le locataire retire et rapporte l’appareil au point de retrait, aux horaires d’ouverture.\n' +
          `TVA : ${SELLER.mentionTva}.`,
+      3: `La durée minimale de location est de 3 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
+         `${fmtDate(reservation.date_fin)}, pour une durée de ${jours} jours.`,
       6: 'Annulation : selon les conditions générales de location.\n' +
          'Garantie panne : en cas de défaillance technique non imputable au client, l’appareil est remplacé dans les meilleurs ' +
          'délais. À défaut, les jours de location restants sont intégralement remboursés.\n' +

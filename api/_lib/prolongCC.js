@@ -5,9 +5,9 @@
 //
 // En Click & Collect, le client rapporte lui-même l'appareil au point où il
 // l'a pris. Donc, pour prolonger :
-//   1. le prix suit la même proportion que son prix de base (150 € les
-//      7 jours, _lib/tarifDynamique.js) — jamais de prix majoré sur une
-//      prolongation ;
+//   1. le prix des jours ajoutés = prix de la nouvelle durée − prix de la
+//      durée actuelle (99 € les 3 jours, 150 € les 7 jours,
+//      _lib/tarifDynamique.js) — jamais de prix majoré sur une prolongation ;
 //   2. le point doit être ouvert le jour du nouveau retour ;
 //   3. le point doit avoir encore un appareil libre sur les jours ajoutés
 //      (petit stock fixe par point) ;
@@ -25,6 +25,16 @@ function estClickCollect(resa) {
 // Collect, arrondi à l'euro (comme le prix de base).
 function montantProlongationCC(montantDomicileCents, pricing) {
   return Math.round(montantDomicileCents * facteurCC(calcTieredPrice, pricing) / 100) * 100;
+}
+
+// Prix des jours ajoutés, en centimes, avant la réduction du départ :
+// prix Click & Collect de la nouvelle durée totale − prix de la durée
+// actuelle (voir tarifDynamique.bornes). Ainsi, 3 jours prolongés à 7 ne
+// coûtent jamais plus que 7 jours réservés d'un coup. Repli : barème × facteur.
+function prixJoursAjoutesCC(orig, debut, fin, qty, montantDomicileCents, pricing) {
+  const avant = jours(orig.date_debut, debut), apres = jours(orig.date_debut, fin);
+  const delta = (apres > avant && avant >= 1) ? baseCents(apres, calcTieredPrice, pricing) - baseCents(avant, calcTieredPrice, pricing) : 0;
+  return delta > 0 ? delta * Math.max(1, qty || 1) : montantProlongationCC(montantDomicileCents, pricing);
 }
 
 // Prix de prolongation (décision du propriétaire, 21/11/2026) : on garde
@@ -63,7 +73,7 @@ async function preparerProlongationCC(supabase, { orig, debut, fin, qty, montant
     return { ok: false, status: 422, error: 'L’appareil a déjà été rendu au point de retrait : la location est terminée.' };
   }
   const coef = await coefPrixPaye(supabase, orig, pricing);
-  const amountCents = Math.round(montantProlongationCC(montantDomicileCents, pricing) * coef / 100) * 100;
+  const amountCents = Math.round(prixJoursAjoutesCC(orig, debut, fin, qty, montantDomicileCents, pricing) * coef / 100) * 100;
   const point = getPointRetrait(orig.point_retrait_id || '');
   if (point) {
     if (pointFermeLe(point, fin)) {
@@ -100,4 +110,4 @@ async function refDepuisNumero(supabase, email, saisie) {
   return r ? r.ref : saisie;
 }
 
-module.exports = { refDepuisNumero, estClickCollect, montantProlongationCC, preparerProlongationCC, champsLigneCC, coefPrixPaye };
+module.exports = { prixJoursAjoutesCC, refDepuisNumero, estClickCollect, montantProlongationCC, preparerProlongationCC, champsLigneCC, coefPrixPaye };

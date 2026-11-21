@@ -210,20 +210,26 @@ Toujours partir du problème, pas de la machine.
 Réglages et barrières dans `api/_lib/tarifDynamique.js` (seul endroit où
 changer un chiffre). Inspirée de Beyond / PriceLabs.
 
-- **Prix Click & Collect (décidé le 19/11/2026)** : **150 € les 7 jours**
-  en temps normal, **jamais moins de 139 €, jamais plus de 189 €** (les
-  autres durées suivent la même proportion du barème). La livraison
-  (`/reserver`) garde son propre barème.
+- **Prix Click & Collect** : location **dès 3 jours** (décidé le 21/11/2026).
+  - **3 jours : 99 €** en temps normal, qui est aussi le plus bas ;
+    **jamais plus de 119 €**.
+  - **7 jours : 150 €** en temps normal (décidé le 19/11/2026), **jamais
+    moins de 139 €, jamais plus de 189 €**.
+  - 4 à 6 jours : entre les deux. Plus de 7 jours : même proportion du
+    barème que les 7 jours.
+  - La livraison (`/reserver`) garde son propre barème (7 jours minimum).
 - **Signaux** : stock déjà réservé dans la ville (80 % → maximum), chaleur
   prévue sur la période (7 jours, Open-Meteo), dernière minute (seulement
   si la demande est déjà là), période calme (temps frais ET peu de
   réservations → minimum).
-- **Barrières, jamais franchies** : jamais sous 139 €/7 jours ; jamais au-
-  dessus de 189 €/7 jours ; même prix pour tout le monde au même moment (aucune
+- **Barrières, jamais franchies** : jamais sous 99 €/3 jours ni 139 €/7
+  jours ; jamais au-dessus de 119 €/3 jours ni 189 €/7 jours ; même prix pour tout le monde au même moment (aucune
   donnée personnelle) ; un signal en panne compte pour rien (prix plus bas,
   jamais plus haut) ; prix affiché garanti 30 min (devis signé) ;
   prolongations jamais majorées.
-- **Prolongations (décidé le 21/11/2026)** : barème dégressif gardé. Un client
+- **Prolongations (décidé le 21/11/2026)** : barème dégressif gardé : les
+  jours ajoutés coûtent la différence entre le prix de la nouvelle durée et
+  celui de la durée actuelle (3 → 7 jours = 150 − 99 = 51 €). Un client
   qui avait payé moins que le prix normal garde sa réduction ; jamais plus
   cher que le prix normal (`coefPrixPaye`, `api/_lib/prolongCC.js`).
 - **Interrupteur** : variable Vercel `TARIF_DYNAMIQUE=off` → barème seul.

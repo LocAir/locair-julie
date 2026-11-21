@@ -15,5 +15,5 @@ module.exports = (req, res) => {
   const CHAMPS = ['id', 'ville', 'nom', 'lat', 'lng', 'adresse', 'horaires', 'fermes', 'ouverture', 'photos', 'exemple', 'zone', 'livraison'];
   const points = POINTS_RETRAIT.filter((p) => test || !p.test)
     .map((p) => Object.fromEntries(CHAMPS.filter((k) => k in p).map((k) => [k, p[k]])));
-  return res.status(200).json({ points, tarif: { baseSemaine: REGLES.baseSemaineEur, minSemaine: REGLES.minSemaineEur, maxSemaine: REGLES.maxSemaineEur } });
+  return res.status(200).json({ points, tarif: { baseSemaine: REGLES.baseSemaineEur, minSemaine: REGLES.minSemaineEur, maxSemaine: REGLES.maxSemaineEur, court: REGLES.court } });
 };

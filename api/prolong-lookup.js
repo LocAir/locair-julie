@@ -5,7 +5,7 @@ const { getEffectiveDateFin } = require('./_lib/reservations');
 const { todayParis } = require('./_lib/dates');
 const { refDepuisNumero, coefPrixPaye } = require('./_lib/prolongCC');
 const { getPricingConfig, calcTieredPrice } = require('./_lib/pricing');
-const { facteurCC } = require('./_lib/tarifDynamique');
+const { facteurCC, REGLES } = require('./_lib/tarifDynamique');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -96,13 +96,14 @@ module.exports = async (req, res) => {
     date_fin:   resa.date_fin,
     quantite:   resa.quantite || 1,
     orig_days:  origDays,
-    // Click & Collect : le prix des jours ajoutés = barème × facteur C&C ×
+    // Click & Collect : le prix des jours ajoutés = (prix C&C de la nouvelle
+    // durée − prix C&C de la durée actuelle) ×
     // réduction éventuelle du départ (jamais plus que le prix normal),
     // exactement comme le calcule prolong-pay.js. 1 = livraison à domicile.
     ...(await (async () => {
       if (resa.source_channel !== 'click_collect') return { cc: null };
       const pricing = await getPricingConfig(supabase);
-      return { cc: { facteur: facteurCC(calcTieredPrice, pricing), coef: await coefPrixPaye(supabase, resa, pricing) } };
+      return { cc: { facteur: facteurCC(calcTieredPrice, pricing), court: REGLES.court, semaine: { base: REGLES.baseSemaineEur }, coef: await coefPrixPaye(supabase, resa, pricing) } };
     })()),
   });
 };
