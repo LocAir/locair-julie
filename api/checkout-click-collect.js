@@ -155,15 +155,30 @@ module.exports = async (req, res) => {
 
   // Référence toujours créée ici, jamais reprise du navigateur : réutiliser
   // celle d'un essai précédent (carte refusée) bloquait tout nouveau paiement.
-  // Le numéro à 4 chiffres tapé au comptoir doit être unique parmi les
-  // locations encore ouvertes de ce point : sinon, on tire une autre référence.
+  // NUMÉRO À 4 CHIFFRES (tapé au comptoir) :
+  //  - un client qui a déjà une location Click & Collect en cours GARDE SON
+  //    NUMÉRO, même dans un autre point (ex. 2 à Nice + 2 à Cannes faute de
+  //    stock) : la nouvelle référence est tirée pour donner le même numéro ;
+  //  - ce numéro ne doit pas être celui d'un AUTRE client encore en cours au
+  //    même point ; sinon (très rare), on lui donne un nouveau numéro.
   const nouvelle = () => 'CC-' + Array.from(require('crypto').randomBytes(8), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
   let ref = nouvelle();
   try {
     const depuis = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
-    const { data: ouvertes } = await supabase.from('reservations').select('ref')
-      .eq('point_retrait_id', point.id).in('statut', ['en_attente', 'confirmee']).gte('date_fin', depuis).limit(2000);
-    const pris = new Set((ouvertes || []).map((x) => numeroComptoir(x.ref)));
+    const telCle = tel.replace(/\D/g, '').slice(-9);
+    const memeClient = (x) => String(x.email || '').toLowerCase() === email || (telCle.length === 9 && String(x.tel || '').replace(/\D/g, '').slice(-9) === telCle);
+    const { data: ouvertes } = await supabase.from('reservations').select('ref, email, tel, point_retrait_id, id')
+      .eq('source_channel', 'click_collect').is('reservation_origine_id', null)
+      .in('statut', ['en_attente', 'confirmee']).gte('date_fin', depuis).order('id', { ascending: false }).limit(3000);
+    const toutes = ouvertes || [];
+    const pris = new Set(toutes.filter((x) => x.point_retrait_id === point.id && !memeClient(x)).map((x) => numeroComptoir(x.ref)));
+    const sienne = toutes.find(memeClient);
+    const voulu = sienne ? numeroComptoir(sienne.ref) : null;
+    if (voulu && !pris.has(voulu)) {
+      // ~10 000 essais en moyenne (quelques millisecondes)
+      for (let i = 0; i < 200000 && numeroComptoir(ref) !== voulu; i++) ref = nouvelle();
+      if (numeroComptoir(ref) !== voulu) ref = nouvelle();
+    }
     for (let i = 0; i < 50 && pris.has(numeroComptoir(ref)); i++) ref = nouvelle();
   } catch (e) { console.error('[CC numéro comptoir]', e.message); }
   const adresseResa = `CLICK & COLLECT — ${point.nom} — ${point.adresse}`;

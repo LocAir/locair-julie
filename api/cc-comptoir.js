@@ -59,7 +59,14 @@ module.exports = async (req, res) => {
         .in('statut', ['en_attente', 'confirmee', 'terminee']).gte('date_fin', depuis)
         .order('id', { ascending: false }).limit(2000);
       const memes = (ouvertes || []).filter((x) => numeroComptoir(x.ref) === ref);
-      r = memes.find((x) => x.statut !== 'terminee') || memes[0] || null;
+      // Même client, plusieurs commandes au même point (même numéro) : on
+      // prend celle qui a quelque chose à faire aujourd'hui — d'abord un
+      // retrait possible, puis un retour, puis la plus récente.
+      const jourJ = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+      const rang = (x) => (x.statut === 'confirmee' && !x.remis_at && x.date_debut <= jourJ) ? 0
+        : (x.statut === 'confirmee' && x.remis_at && !x.rendu_at) ? 1 : x.statut !== 'terminee' ? 2 : 3;
+      memes.sort((u, v) => rang(u) - rang(v) || String(u.date_fin).localeCompare(String(v.date_fin)));
+      r = memes[0] || null;
     } else {
       const { data: lignes } = await supabase.from('reservations').select('*')
         .eq('ref', ref).order('id', { ascending: true }).limit(1);
