@@ -96,9 +96,9 @@ module.exports = async (req, res) => {
     for (const p of points) { doc.text('•  ' + p, M + 18, yy, { width: W - 2 * M - 36 }); yy += doc.heightOfString('•  ' + p, { width: W - 2 * M - 36 }) + 6; }
 
     // pied
-    doc.fillColor(GRIS).fontSize(10).text(T('Une question ? Écrivez à Julie, notre assistante, sur locair.fr/click-and-collect. Pour prolonger : locair.fr/client.',
-      'Any question? Chat with Julie, our assistant, on locair.fr/click-and-collect. To extend: locair.fr/client.',
-      '¿Alguna pregunta? Escribe a Julie, nuestra asistente, en locair.fr/click-and-collect. Para ampliar: locair.fr/client.'), M, 780, { width: W - 2 * M, align: 'center' });
+    doc.fillColor(GRIS).fontSize(10).text(T('Une question ? Écrivez à Julie, notre assistante, sur locair.fr/click-and-collect. Pour prolonger : locair.fr/client. Une panne : locair.fr/panne.',
+      'Any question? Chat with Julie, our assistant, on locair.fr/click-and-collect. To extend: locair.fr/client. A fault: locair.fr/panne.',
+      '¿Alguna pregunta? Escribe a Julie, nuestra asistente, en locair.fr/click-and-collect. Para ampliar: locair.fr/client. Una avería: locair.fr/panne.'), M, 780, { width: W - 2 * M, align: 'center' });
     doc.end();
     await fini;
     const pdf = Buffer.concat(morceaux);

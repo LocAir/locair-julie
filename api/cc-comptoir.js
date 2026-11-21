@@ -21,9 +21,7 @@ const { codeRetour } = require('./_lib/clickCollect');
 const { safeEqual } = require('./_lib/auth');
 const { verifyPin } = require('./_lib/pinHash');
 const { pushToAdmin } = require('./_lib/push');
-const { pickTransporteurForMission } = require('./_lib/reservations');
-const { notifyTransporteur } = require('./_lib/transporteurNotif');
-const { todayParis } = require('./_lib/dates');
+const { declarerPanne } = require('./_lib/panne');
 
 const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
 
@@ -36,7 +34,7 @@ module.exports = async (req, res) => {
   const lang = b.lang === 'en' || b.lang === 'es' ? b.lang : 'fr';
   const point = getPointRetrait(String(b.point || '').slice(0, 60));
   const ref = String(b.ref || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 40);
-  const action = ['voir', 'valider', 'rendre', 'signaler', 'photo'].includes(b.action) ? b.action : 'voir';
+  const action = ['voir', 'valider', 'rendre', 'signaler', 'echanger', 'photo'].includes(b.action) ? b.action : 'voir';
   if (!point) return res.status(404).json({ error: T(lang, 'Ce QR code ne correspond à aucun point de retrait.', 'This QR code doesn’t match any pick-up point.', 'Este código QR no corresponde a ningún punto de recogida.') });
   if (ref.length < 6) return res.status(400).json({ error: T(lang, 'Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.') });
 
@@ -85,52 +83,21 @@ module.exports = async (req, res) => {
       return res.status(200).json({ path: up.path, signedUrl: up.signedUrl });
     }
 
-    if (action === 'signaler') {
-      const CATS = { casse: ['materiel_endommage', 'Casse'], abime: ['materiel_endommage', 'Appareil abîmé'], manque: ['autre', 'Élément manquant'], panne: ['probleme_technique', 'Ne fonctionne pas'], autre: ['autre', 'Autre'] };
-      const cat = CATS[b.categorie] || CATS.autre;
-      const moment = b.moment === 'retour' ? 'retour' : 'retrait';
-      const message = String(b.message || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+    if (action === 'signaler' || action === 'echanger') {
+      // Une seule règle pour toutes les pannes : _lib/panne.js.
+      // 'signaler' : au retrait ou au retour. 'echanger' : le client revient
+      // au comptoir PENDANT sa location avec un appareil en panne : il repart
+      // avec un autre du stock du point (décision du propriétaire, 21/11/2026).
+      const moment = action === 'echanger' ? 'echange' : (b.moment === 'retour' ? 'retour' : 'retrait');
+      if (action === 'echanger' && !r.remis_at && !(r.statut === 'confirmee' && r.date_debut <= new Date().toISOString().slice(0, 10))) {
+        return res.status(409).json({ error: T(lang, 'Cette location n’a pas encore commencé.', 'This rental hasn’t started yet.', 'Este alquiler aún no ha empezado.') });
+      }
       await recordFailedAttempt(supabase, cleClient); // limite les envois répétés (même compteur que les essais)
-      const description = `[Click & Collect · déclaré par le client au ${moment} · ${point.nom}] ${cat[1]}${message ? ' — ' + message : ''}`;
       // photos : seulement celles rangées sous CETTE réservation (3 au plus)
       const photos = (Array.isArray(b.photos) ? b.photos : []).map(String)
         .filter((x) => x.startsWith(`signalements/${r.id}-`) && !x.includes('..')).slice(0, 3);
-      // 1. TICKET ADMIN : un incident « nouveau », visible dans l'appli admin.
-      const { data: inc, error: incErr } = await supabase.from('incidents').insert({ city_id: r.city_id || null, reservation_id: r.id, type: cat[0], description, photos: photos.length ? photos : null, statut: 'nouveau' }).select('id').single();
-      if (incErr) console.error('[cc-comptoir signaler]', incErr.message);
-      // 2. TICKET TRANSPORTEUR (décision du propriétaire, 21/11/2026) : casse,
-      // appareil abîmé, pièce manquante ou panne → une mission « Remplacement »
-      // au point de retrait, pour le jour même : le transporteur apporte un
-      // appareil en bon état et reprend l'ancien. Reliée à l'incident : quand
-      // la mission est faite, le ticket admin se ferme tout seul.
-      // « Autre » reste un simple ticket admin (l'admin décide).
-      let mission = null;
-      if (b.categorie !== 'autre' && r.city_id) {
-        try {
-          const { data: dejaLa } = await supabase.from('livraisons').select('id, transporteur_id')
-            .eq('reservation_id', r.id).eq('type', 'changement').in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']).limit(1);
-          if (dejaLa && dejaLa.length) {
-            mission = dejaLa[0];   // un remplacement est déjà prévu : pas de doublon
-          } else {
-            const jour = todayParis();
-            const tid = await pickTransporteurForMission(supabase, { cityId: r.city_id, dateISO: jour, creneau: null, adresse: r.adresse, usedInBatch: new Set(), type: 'changement', installation: null });
-            const { data: ra } = await supabase.from('reservation_appareils').select('appareils(numero)').eq('reservation_id', r.id).limit(1);
-            const { data: liv, error: livErr } = await supabase.from('livraisons').insert({
-              reservation_id: r.id, type: 'changement', date_prevue: jour, statut: 'a_faire',
-              transporteur_id: tid || null, incident_id: inc ? inc.id : null,
-              creneau: `Au point ${point.nom}, aux horaires d’ouverture · ${cat[1]}${message ? ' : ' + message : ''}`.slice(0, 100),
-              ancien_appareil_numero: (ra && ra[0] && ra[0].appareils && ra[0].appareils.numero) || null,
-            }).select('id, transporteur_id').single();
-            if (livErr) console.error('[cc-comptoir mission]', livErr.message);
-            mission = liv || null;
-            if (mission && mission.transporteur_id) {
-              await notifyTransporteur(supabase, mission.transporteur_id, { type: 'nouvelle_mission', message: `Remplacement urgent au point ${point.nom} (${cat[1].toLowerCase()}).`, livraisonId: mission.id, tag: 'nouvelle-mission' });
-            }
-          }
-        } catch (e) { console.error('[cc-comptoir mission]', e.message); }
-      }
-      await pushToAdmin(supabase, { title: `⚠️ Click & Collect — ${cat[1].toLowerCase()} signalé(e)`, body: `${r.ref} — ${r.prenom || ''} ${r.nom || ''} — ${point.nom} (${moment})${message ? ' : ' + message : ''}${photos.length ? ' · 📷 ' + photos.length + ' photo(s)' : ''}${mission ? (mission.transporteur_id ? ' · 🔁 remplacement attribué à un transporteur' : ' · 🔁 remplacement créé, À ATTRIBUER') : ''}`.trim(), tag: `cc-signal-${r.id}-${Date.now()}` }).catch(() => {});
-      return res.status(200).json({ ok: true });
+      const out = await declarerPanne(supabase, { r, point, categorie: b.categorie, moment, message: b.message, photos, canal: 'comptoir' });
+      return res.status(200).json({ ok: true, issue: out.issue, dossier: out.dossier });
     }
 
     if (action === 'voir') {

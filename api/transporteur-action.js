@@ -81,7 +81,7 @@ function checkMediaAllowed(liv, kind) {
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase
     .from('livraisons')
-    .select('*, reservation:reservations(installation, city_id, hors_zone, express, prenom, nom, tel, email, ref, adresse, creneau, lang, quantite, date_debut, date_fin, source_channel)')
+    .select('*, reservation:reservations(installation, city_id, hors_zone, express, prenom, nom, tel, email, ref, adresse, creneau, lang, quantite, date_debut, date_fin, source_channel, point_retrait_id)')
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
@@ -650,6 +650,17 @@ module.exports = async (req, res) => {
       if (changementUpdErr) throw changementUpdErr;
       if (!changementClaimed || !changementClaimed.length) return res.status(409).json({ error: 'Étape déjà validée (double envoi ?)' });
       await closeMissionIncident(supabase, liv);
+      // Click & Collect, remplacement URGENT (plus d'appareil au point, voir
+      // _lib/panne.js) : le client est prévenu qu'un appareil l'attend.
+      if (liv.reservation?.source_channel === 'click_collect' && String(liv.creneau || '').startsWith('URGENT') && liv.reservation?.tel) {
+        const pt = require('./_lib/pointsRetrait').getPointRetrait(liv.reservation.point_retrait_id || '');
+        const l = liv.reservation.lang;
+        const nom = pt ? pt.nom : '';
+        const content = l === 'en' ? `Loc'Air: a replacement air conditioner is waiting for you at ${nom}. Scan the QR code at the counter and enter your order number ${liv.reservation.ref || ''}.`
+          : l === 'es' ? `Loc'Air: un aire acondicionado de sustitución te espera en ${nom}. Escanea el código QR del mostrador y escribe tu número de pedido ${liv.reservation.ref || ''}.`
+          : `Loc'Air : un climatiseur de remplacement vous attend au point ${nom}. Scannez le QR code du comptoir et tapez votre numéro de commande ${liv.reservation.ref || ''}.`;
+        await sendBrevoSms({ to: liv.reservation.tel, content }).catch((e) => console.error('[changement_ok sms cc]', e.message));
+      }
       await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
         typeEvenement: 'changement', livraisonId: liv.id, utilisateur: 'transporteur',
       }).catch(e => console.error('[changement_ok appareilSync]', e.message));
