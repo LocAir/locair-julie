@@ -189,14 +189,23 @@ function imageQrRemise(reservationId, ref, taille = 240) {
 }
 
 // Code commerçant pour valider un RETOUR (décision du propriétaire,
-// 20/11/2026, rétablie le 20/11 au soir) : les 2 derniers chiffres du
-// téléphone de la boutique. Le client le demande au commerçant et le tape
-// sur /retrait. Téléphone : champ « tel » du point (pointsRetrait.js, jamais
-// envoyé au navigateur), sinon le téléphone du commerçant (partenaires).
+// 21/11/2026) : 4 caractères, lettres majuscules et chiffres (ex. « K7P3 »).
+// Fixe pour chaque point, imprimé sur le demi-flyer remis au commerçant.
+// Le client le demande au commerçant et le tape sur /retrait.
+// Alphabet sans caractères qui se confondent (pas de O/0, I/1/L).
 // La règle n'apparaît jamais dans le code du site public.
-function codeRetour(point, partenaire) {
-  const tel = String((point && point.tel) || (partenaire && partenaire.telephone) || '').replace(/\D/g, '');
-  return tel.length >= 2 ? tel.slice(-2) : null;
+const LETTRES_CODE = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+const CHIFFRES_CODE = '23456789';
+const ALPHABET_CODE = LETTRES_CODE + CHIFFRES_CODE;
+function codeRetour(point) {
+  const secret = process.env.TRANSPORTEUR_SECRET || '';
+  if (!secret || !point || !point.id) return null;
+  const h = crypto.createHmac('sha256', secret).update('code-retour:' + point.id).digest();
+  const c = [0, 1, 2, 3].map((i) => ALPHABET_CODE[h[i] % ALPHABET_CODE.length]);
+  // Toujours au moins une lettre et un chiffre.
+  if (!c.some((x) => CHIFFRES_CODE.includes(x))) c[3] = CHIFFRES_CODE[h[4] % CHIFFRES_CODE.length];
+  if (!c.some((x) => LETTRES_CODE.includes(x))) c[0] = LETTRES_CODE[h[5] % LETTRES_CODE.length];
+  return c.join('');
 }
 
 module.exports = { numeroComptoir, codeRetour, prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };

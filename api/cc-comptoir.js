@@ -178,10 +178,10 @@ module.exports = async (req, res) => {
       if (await isRateLimited(supabase, cleCode)) {
         return res.status(429).json({ error: T(lang, 'Trop de codes incorrects. Réessayez dans 15 minutes.', 'Too many wrong codes. Try again in 15 minutes.', 'Demasiados códigos incorrectos. Inténtalo en 15 minutos.') });
       }
-      // Le code commerçant (2 derniers chiffres du téléphone de la boutique).
+      // Le code commerçant (4 caractères, voir clickCollect.codeRetour).
       // Le code secret du commerçant marche aussi, s'il préfère le taper lui-même.
       const code = String(b.code_commercant || '').replace(/\s/g, '').slice(0, 12);
-      const bon = !!code && ((cr && safeEqual(code, cr))
+      const bon = !!code && ((cr && safeEqual(code.toUpperCase(), cr))
         || (partenaire && partenaire.pin && (partenaire.pin_hashed ? verifyPin(code, partenaire.pin) : safeEqual(code, String(partenaire.pin)))));
       if (!bon) {
         await recordFailedAttempt(supabase, cleCode);

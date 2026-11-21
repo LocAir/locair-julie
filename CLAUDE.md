@@ -247,8 +247,9 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    À garder derrière le comptoir, jamais affiché.
 5. Faire un essai complet (retrait puis retour) avec le point.
 
-Le code retour est fabriqué à partir du téléphone de la boutique (voir
-`codeRetour` dans `api/_lib/clickCollect.js`). Ne jamais écrire cette règle
+Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
+« K7P3 »), fixe pour chaque point (voir `codeRetour` dans
+`api/_lib/clickCollect.js`). Ne jamais écrire cette règle
 dans une page publique, un email client ou une réponse de Julie.
 
 ## Outils de prospection (« cerveau + bras »)

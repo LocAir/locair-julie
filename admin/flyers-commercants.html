@@ -37,8 +37,7 @@ body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;colo
 .cote{flex:1;text-align:center;align-self:stretch;display:flex;flex-direction:column;justify-content:center;border-left:.6mm solid #DDE6F5;padding-left:8mm} /* trait : à gauche le retrait, à droite le retour */
 .cote p{margin:0}
 .cote .s{font-size:4.4mm;color:var(--ink-2)}
-.code{font-size:26mm;font-weight:900;letter-spacing:.08em;line-height:1.05;color:var(--ink)}
-.code.long{font-size:10mm;letter-spacing:.04em}
+.code{font-size:17mm;font-weight:900;letter-spacing:.06em;white-space:nowrap;line-height:1.05;color:var(--ink)}
 .jamais{font-size:3.8mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#B42318}
 .bas{margin-top:0;display:flex;gap:5mm;align-items:center}
 .bas img{width:22mm;height:22mm;flex-shrink:0}
@@ -74,7 +73,7 @@ body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;colo
       var pts = (x.d.points || []).filter(function(p){ return !seul || p.id === seul; });
       if(!pts.length){ f.innerHTML = '<p class="msg">Aucun point de retrait.</p>'; return; }
       var manque = pts.filter(function(p){ return !p.code_retour; }).length;
-      f.innerHTML = (manque ? '<p class="msg">⚠️ ' + manque + ' point(s) sans téléphone enregistré : pas de code. Ajoutez le téléphone de la boutique (champ « tel » du point, ou téléphone du partenaire dans l’onglet Partenaires).</p>' : '') +
+      f.innerHTML = (manque ? '<p class="msg">⚠️ ' + manque + ' point(s) sans code : réglage serveur manquant (TRANSPORTEUR_SECRET sur Vercel).</p>' : '') +
         pts.map(function(p){
         return '<section class="flyer">' +
           '<div class="haut"><div class="logo">Loc<em>’Air</em></div></div>' +
@@ -82,7 +81,7 @@ body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;colo
           '<div class="unique">' +
             '<img src="/flyer-ecran-retrait.webp" alt="L’écran que le client vous montre : « Retrait validé », son nom et l’heure qui défile">' +
             '<div class="cote"><p class="s">Votre code retour</p>' +
-              (p.code_retour ? '<p class="code' + (String(p.code_retour).length > 3 ? ' long' : '') + '">' + esc(p.code_retour) + '</p>' : '<p class="code vide">Téléphone manquant</p>') +
+              (p.code_retour ? '<p class="code">' + esc(p.code_retour) + '</p>' : '<p class="code vide">Code indisponible</p>') +
               '<p class="jamais">Jamais avant</p></div>' +
           '</div>' +
           '<div class="bas"><img src="' + qr + '" alt="QR code espace partenaire"><p><b>Votre espace partenaire</b>Un souci&nbsp;? 06 63 79 87 56</p></div>' +
