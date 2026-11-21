@@ -371,15 +371,16 @@ module.exports = async (req, res) => {
             body: `Retour prévu le ${r.date_fin} au point ${point}. Dossier ${r.ref || '?'}${r.tel ? ' · ' + r.tel : ''}. Jour ${joursRetard}/7 : ${eur(montant)} à facturer (prélèvement automatique ${process.env.AUTO_LATE_CHARGE === 'true' ? 'impossible' : 'désactivé'}).`, tag: `cc-retour-retard-${r.id}` });
         }
         // SMS du jour au client
-        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
+        // Pas de lien « prolonger » : une location dont la date de fin est
+        // passée ne peut plus être prolongée (prolong-lookup.js la refuse).
         const dfin = r.date_fin.split('-').reverse().join('/');
         const sms = qte > 1
-          ? Tx(`Loc'Air : vos ${qte} climatiseurs devaient être rendus le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour pour les ${qte}. Rapportez-les au point ${point} ou prolongez : ${lien}`,
-            `Loc'Air: your ${qte} air conditioners were due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day for all ${qte}. Bring them back to ${point} or extend: ${lien}`,
-            `Loc'Air: tus ${qte} aparatos debían devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día por los ${qte}. Devuélvelos en ${point} o amplía: ${lien}`)
-          : Tx(`Loc'Air : votre climatiseur devait être rendu le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour. Rapportez-le au point ${point} ou prolongez : ${lien}`,
-            `Loc'Air: your air conditioner was due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day. Bring it back to ${point} or extend: ${lien}`,
-            `Loc'Air: tu aire acondicionado debía devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día. Devuélvelo en ${point} o amplía: ${lien}`);
+          ? Tx(`Loc'Air : vos ${qte} climatiseurs devaient être rendus le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour pour les ${qte}. Rapportez-les au point ${point} Une question ? 06 63 79 87 56`,
+            `Loc'Air: your ${qte} air conditioners were due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day for all ${qte}. Bring them back to ${point} Questions? +33 6 63 79 87 56`,
+            `Loc'Air: tus ${qte} aparatos debían devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día por los ${qte}. Devuélvelos en ${point} ¿Dudas? +33 6 63 79 87 56`)
+          : Tx(`Loc'Air : votre climatiseur devait être rendu le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour. Rapportez-le au point ${point} Une question ? 06 63 79 87 56`,
+            `Loc'Air: your air conditioner was due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day. Bring it back to ${point} Questions? +33 6 63 79 87 56`,
+            `Loc'Air: tu aire acondicionado debía devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día. Devuélvelo en ${point} ¿Dudas? +33 6 63 79 87 56`);
         if (r.tel) await sendBrevoSms({ to: r.tel, content: sms }).catch(() => {});
         await supabase.from('email_log').insert({ reservation_id: r.id, scenario: 'cc_retard', canal: 'sms', destinataire: r.tel || null, modele: 'cc_retard', statut: 'envoye', contenu: sms }).then(() => {}, () => {});
       }

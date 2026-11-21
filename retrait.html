@@ -82,6 +82,7 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .fini .m-a{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ok)}
 .fini .m-nom{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:8px 0 4px}
 .fini .m-ref{font-size:18px;font-weight:700;letter-spacing:.06em}
+.fini .m-valide{font-size:13px;font-weight:700;color:var(--ink-2,#4B5873);margin:0 0 6px}
 .fini .m-horloge{font-size:34px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ok);margin:10px 0 4px}
 .fini .m-qte{font-size:26px;font-weight:900;margin:2px 0 0}
 .fini .m-piece{font-size:14px;color:var(--ink-2)}
@@ -185,6 +186,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
         <p class="m-nom" id="f-nom"></p>
         <p class="m-qte" id="f-qte" hidden></p>
         <p class="m-horloge" id="f-horloge" aria-live="off"></p>
+        <p class="m-valide" id="f-valide" hidden></p>
         <p class="m-piece"><span lang="fr">Vérifiez la pièce d’identité : même nom.</span><span lang="en">Check the ID: same name.</span><span lang="es">Comprueba el documento de identidad: mismo nombre.</span></p>
       </div>
       <p id="f-texte"></p>
@@ -327,7 +329,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
      horloge qui tourne à la seconde (une capture d'écran ne bouge pas) */
   var minuterie = null;
   var COCHE = '<path d="M5 12.5l4.5 4.5L19 7.5"/>', FLECHES = '<path d="M4 9h13l-4-4M20 15H7l4 4"/>', RETOUR = '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/>';
-  function montrerAuCommercant(sorte){
+  function montrerAuCommercant(sorte, valideA){
     var ech = sorte === 'echange', rtr = sorte === 'retour', carte = document.querySelector('#e-fini .carte');
     carte.classList.toggle('ech', ech); carte.classList.toggle('rtr', rtr);
     document.querySelector('#e-fini .rond svg').innerHTML = ech ? FLECHES : rtr ? RETOUR : COCHE;
@@ -342,6 +344,9 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     var loc = langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR';
     function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }
     tic(); clearInterval(minuterie); minuterie = setInterval(tic, 1000);
+    /* heure de validation figée : un vieil écran gardé ouvert se repère tout de suite */
+    var va = $('f-valide');
+    if(va){ va.hidden = !valideA; if(valideA) va.textContent = L('Validé à ', 'Confirmed at ', 'Confirmado a las ') + valideA.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Paris'}); }
   }
   function faireEchange(b, lib, corps){
     return appel(corps).then(function(r){
@@ -366,9 +371,14 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     appel({action:'valider'}).then(function(r){
       b.disabled = false;
       if(!r.ok) return erreur($('m-cli'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      /* retrait déjà validé il y a plus de 10 min : jamais un nouvel écran vert (sinon il servirait à repartir avec un 2e appareil) */
+      var remis = r.j.reservation && r.j.reservation.remis_at ? new Date(r.j.reservation.remis_at) : null;
+      if(r.j.deja && remis && Date.now() - remis.getTime() > 10 * 60000){
+        return erreur($('m-cli'), L('Retrait déjà validé le ', 'Pick-up already confirmed on ', 'Recogida ya confirmada el ') + remis.toLocaleString(langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR', {day:'numeric', month:'long', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Paris'}) + '.');
+      }
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       $('f-titre').textContent = L('Retrait validé', 'Pick-up confirmed', 'Recogida confirmada');
-      montrerAuCommercant();
+      montrerAuCommercant('retrait', remis);
       $('f-texte').textContent = L('À rapporter ici le ', 'Bring it back here on ', 'Devuélvelo aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.';
     }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });

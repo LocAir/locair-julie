@@ -129,7 +129,7 @@ module.exports = async (req, res) => {
       // au comptoir PENDANT sa location avec un appareil en panne : il repart
       // avec un autre du stock du point (décision du propriétaire, 21/11/2026).
       const moment = action === 'echanger' ? 'echange' : (b.moment === 'retour' ? 'retour' : 'retrait');
-      if (action === 'echanger' && !r.remis_at && !(r.statut === 'confirmee' && r.date_debut <= new Date().toISOString().slice(0, 10))) {
+      if (action === 'echanger' && !r.remis_at && !(r.statut === 'confirmee' && r.date_debut <= new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' }))) {
         return res.status(409).json({ error: T(lang, 'Cette location n’a pas encore commencé.', 'This rental hasn’t started yet.', 'Este alquiler aún no ha empezado.') });
       }
       await recordFailedAttempt(supabase, cleClient); // limite les envois répétés (même compteur que les essais)
