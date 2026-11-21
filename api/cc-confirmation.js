@@ -79,8 +79,7 @@ module.exports = async (req, res) => {
     y += 22;
     const boxY = y;
     const points = [
-      T('Retrait : ouvrez votre écran de retrait (lien de votre email ou SMS) et montrez-le avec votre pièce d’identité.', 'Pick-up: open your pick-up screen (link in your email or text) and show it with your ID.', 'Recogida: abre tu pantalla de recogida (enlace de tu email o SMS) y enséñala con tu documento.'),
-      T('Retour : en arrivant, scannez le QR code du comptoir.', 'Return: when you arrive, scan the QR code at the counter.', 'Devolución: al llegar, escanea el código QR del mostrador.'),
+      T('Retrait et retour : en arrivant, scannez le QR code du comptoir.', 'Pick-up and return: when you arrive, scan the QR code at the counter.', 'Recogida y devolución: al llegar, escanea el código QR del mostrador.'),
     ];
     // hauteur du cadre calculée d'après le texte (il ne déborde jamais)
     doc.font('Helvetica').fontSize(11);
