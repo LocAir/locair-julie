@@ -372,9 +372,14 @@ module.exports = async (req, res) => {
         }
         // SMS du jour au client
         const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
-        const sms = Tx(`Loc'Air : votre climatiseur devait être rendu le ${r.date_fin.split('-').reverse().join('/')}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour. Rapportez-le au point ${point} ou prolongez : ${lien}`,
-          `Loc'Air: your air conditioner was due back on ${r.date_fin.split('-').reverse().join('/')}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day. Bring it back to ${point} or extend: ${lien}`,
-          `Loc'Air: tu aire acondicionado debía devolverse el ${r.date_fin.split('-').reverse().join('/')}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día. Devuélvelo en ${point} o amplía: ${lien}`);
+        const dfin = r.date_fin.split('-').reverse().join('/');
+        const sms = qte > 1
+          ? Tx(`Loc'Air : vos ${qte} climatiseurs devaient être rendus le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour pour les ${qte}. Rapportez-les au point ${point} ou prolongez : ${lien}`,
+            `Loc'Air: your ${qte} air conditioners were due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day for all ${qte}. Bring them back to ${point} or extend: ${lien}`,
+            `Loc'Air: tus ${qte} aparatos debían devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día por los ${qte}. Devuélvelos en ${point} o amplía: ${lien}`)
+          : Tx(`Loc'Air : votre climatiseur devait être rendu le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour. Rapportez-le au point ${point} ou prolongez : ${lien}`,
+            `Loc'Air: your air conditioner was due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day. Bring it back to ${point} or extend: ${lien}`,
+            `Loc'Air: tu aire acondicionado debía devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día. Devuélvelo en ${point} o amplía: ${lien}`);
         if (r.tel) await sendBrevoSms({ to: r.tel, content: sms }).catch(() => {});
         await supabase.from('email_log').insert({ reservation_id: r.id, scenario: 'cc_retard', canal: 'sms', destinataire: r.tel || null, modele: 'cc_retard', statut: 'envoye', contenu: sms }).then(() => {}, () => {});
       }
@@ -1330,7 +1335,7 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
   const { getPointRetrait } = require('./_lib/pointsRetrait');
   const demain = new Date(new Date(todayStr + 'T12:00:00Z').getTime() + 864e5).toISOString().slice(0, 10);
   let { data: rows, error } = await supabase.from('reservations')
-    .select('id, ref, prenom, email, tel, lang, statut, source, source_channel, date_debut, date_fin, point_retrait_id, adresse, remis_at, rendu_at')
+    .select('id, ref, prenom, email, tel, lang, statut, source, source_channel, date_debut, date_fin, point_retrait_id, adresse, quantite, remis_at, rendu_at')
     .eq('source_channel', 'click_collect').eq('statut', 'confirmee')
     .or(`date_debut.eq.${demain},date_fin.eq.${demain}`).limit(300);
   if (error && (error.code === '42703' || /does not exist/i.test(error.message || ''))) {
@@ -1357,6 +1362,8 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
       const heures = T(`de ${o[0]}h à ${o[1]}h`, `${o[0]}:00–${o[1]}:00`, `de ${o[0]}:00 a ${o[1]}:00`);
       const itin = pt ? `https://www.google.com/maps/dir/?api=1&destination=${pt.lat},${pt.lng}` : '';
       const retrait = scenario === 'cc_rappel_retrait';
+      const nb = Math.max(1, r.quantite || 1);
+      const combien = nb > 1 ? T(`<b>${nb} climatiseurs</b>, un seul numéro pour tous. `, `<b>${nb} air conditioners</b>, one number for all. `, `<b>${nb} aparatos</b>, un solo número para todos. `) : '';
       const subject = retrait
         ? T('Demain : retrait de votre climatiseur', 'Tomorrow: pick up your air conditioner', 'Mañana: recogida de tu aire acondicionado')
         : T('Demain : retour de votre climatiseur', 'Tomorrow: return your air conditioner', 'Mañana: devolución de tu aire acondicionado');
@@ -1369,7 +1376,7 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
             `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}. Al llegar, escanea el código QR del mostrador. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
       const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
-<p>${texte}</p>
+<p>${combien}${texte}</p>
 ${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
 <p style="font-size:15px">${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:20px;letter-spacing:.12em">${numComptoir(r.ref)}</b></p>
 <p style="color:#4B5873;font-size:13px">${T('Référence', 'Reference', 'Referencia')} : ${esc(r.ref || '')} · Loc’Air · locair.fr</p></div>`;

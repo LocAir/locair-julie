@@ -58,7 +58,10 @@ module.exports = async (req, res) => {
     let dehorsTotal = 0, aReconditionner = 0;
 
     const points = POINTS_RETRAIT.map((p) => {
-      const lesSiennes = resas.filter((r) => r.point_retrait_id === p.id);
+      // Les lignes « prolongation » ne sont pas des appareils en plus : la
+      // location d'origine porte déjà la nouvelle date de fin (webhook.js).
+      const lesSiennes = resas.filter((r) => r.point_retrait_id === p.id && r.source !== 'site_prolongation');
+      const sesProlongations = resas.filter((r) => r.point_retrait_id === p.id && r.source === 'site_prolongation');
       const actives = lesSiennes.filter((r) => r.statut === 'confirmee' && !r.rendu_at);
       // Occupé aujourd'hui = réservé sur aujourd'hui, ou retiré et pas encore rendu.
       const occupe = actives.filter((r) => (r.date_debut <= auj && r.date_fin > auj) || (r.remis_at && !r.rendu_at))
@@ -76,7 +79,7 @@ module.exports = async (req, res) => {
       });
 
       // Chiffre du mois : locations payées ce mois-ci (prolongations comprises).
-      const duMois = lesSiennes.filter((r) => String(r.created_at || '').slice(0, 10) >= debutMois);
+      const duMois = lesSiennes.concat(sesProlongations).filter((r) => String(r.created_at || '').slice(0, 10) >= debutMois);
       const caMois = duMois.reduce((s, r) => s + (r.prix_total_cents || 0), 0);
       const comMois = duMois.reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
 
@@ -89,7 +92,7 @@ module.exports = async (req, res) => {
         commercant: part ? { nom: part.nom || part.code, code: part.code, telephone: part.telephone || null, rib_ok: !!(part.iban && String(part.iban).trim()), actif: part.actif !== false } : null,
         partenaire_code: p.partenaire_code || null,
         code_retour: codeRetour(p, part),
-        mois: { locations: duMois.length, ca_cents: caMois, commission_cents: comMois },
+        mois: { locations: duMois.filter((r) => r.source !== 'site_prolongation').length, ca_cents: caMois, commission_cents: comMois },
       };
     });
 
