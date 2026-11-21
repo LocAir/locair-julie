@@ -13,6 +13,7 @@ const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { declarerPanne, appareilsLibresAuPoint } = require('./_lib/panne');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { todayParis, addDays } = require('./_lib/dates');
+const { numeroComptoir } = require('./_lib/clickCollect');
 
 const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
 const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif' };
@@ -35,8 +36,18 @@ module.exports = async (req, res) => {
     if (await isRateLimited(supabase, cle)) {
       return res.status(429).json({ error: T(lang, 'Trop d’essais. Réessayez dans 15 minutes, ou écrivez à Julie sur locair.fr.', 'Too many attempts. Try again in 15 minutes, or chat with Julie on locair.fr.', 'Demasiados intentos. Inténtalo en 15 minutos o escribe a Julie en locair.fr.') });
     }
-    const { data: lignes } = await supabase.from('reservations').select('*').eq('ref', ref).order('id', { ascending: true }).limit(1);
-    let r = lignes && lignes[0];
+    let r = null;
+    if (/^\d{4}$/.test(ref)) {
+      // numéro Click & Collect à 4 chiffres : parmi les locations ouvertes, + les 4 chiffres du téléphone
+      const depuis = addDays(todayParis(), -45);
+      const { data: ouvertes } = await supabase.from('reservations').select('*')
+        .eq('source_channel', 'click_collect').is('reservation_origine_id', null)
+        .in('statut', ['confirmee', 'terminee']).gte('date_fin', depuis).order('id', { ascending: false }).limit(3000);
+      r = (ouvertes || []).find((x) => numeroComptoir(x.ref) === ref && String(x.tel || '').replace(/\D/g, '').slice(-4) === tel4) || null;
+    } else {
+      const { data: lignes } = await supabase.from('reservations').select('*').eq('ref', ref).order('id', { ascending: true }).limit(1);
+      r = lignes && lignes[0];
+    }
     if (r && r.reservation_origine_id) {
       const { data: orig } = await supabase.from('reservations').select('*').eq('id', r.reservation_origine_id).maybeSingle();
       if (orig) r = orig;

@@ -1071,7 +1071,7 @@ html[data-ab="B"] .hero h1>.h1-b{display:inline}
 .adr-liste li{padding:11px 12px;border-radius:10px;cursor:pointer;font-size:15px;min-height:44px;box-sizing:border-box}
 .adr-liste li[aria-selected="true"],.adr-liste li:hover{background:var(--mist)}
 .m-code{margin:12px 0 0;padding:12px 14px;border-radius:14px;background:var(--mist);font-size:14.5px;line-height:1.6;text-align:center}
-.m-code b{font-size:20px}.m-pin{letter-spacing:.06em}.m-code small{color:var(--ink-2);font-size:13px}
+.m-code b{font-size:20px}.m-code b.m-pin{font-size:30px;letter-spacing:.18em}.m-code small{color:var(--ink-2);font-size:13px}
 .m-pdf{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0 0;min-height:48px;text-decoration:none}
 .m-pdf svg{width:18px;height:18px}
 .stock-bas{margin:10px 0 16px;padding:9px 12px;border-radius:12px;background:#FFF4E5;color:#8A4B00;font-size:14px;font-weight:700}
@@ -1685,7 +1685,7 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
         <li>
           <b><span lang="fr">En arrivant, scannez le QR code du comptoir.</span><span lang="en">When you arrive, scan the QR code at the counter.</span><span lang="es">Al llegar, escanea el código QR del mostrador.</span></b>
           <figure class="qr-remise" id="m-qr" hidden><img id="m-qr-img" width="200" height="200" alt="QR code"><figcaption><span lang="fr">Il est aussi dans votre email.</span><span lang="en">It’s also in your email.</span><span lang="es">También está en tu email.</span></figcaption></figure>
-          <p class="m-code" id="m-code" hidden><span lang="fr">Votre numéro :</span><span lang="en">Your number:</span><span lang="es">Tu número:</span><br><b id="m-code-ref" class="m-pin"></b></p>
+          <p class="m-code" id="m-code" hidden><span lang="fr">Votre numéro de commande :</span><span lang="en">Your order number:</span><span lang="es">Tu número de pedido:</span><br><b id="m-code-ref" class="m-pin"></b></p>
           <a class="btn-2 m-pdf" id="m-pdf" href="#" hidden><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span lang="fr">Télécharger ma confirmation (PDF)</span><span lang="en">Download my confirmation (PDF)</span><span lang="es">Descargar mi confirmación (PDF)</span></a>
         </li>
         <li>
@@ -1978,7 +1978,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{
       sessionStorage.setItem(CLE_ETAT, JSON.stringify({
         ecran:nom, ville:etat.ville, point:etat.point && etat.point.id, liste:etat.liste.map(function(p){ return p.id; }),
-        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, montant:etat.montant, remise:etat.remise, idtok:etat.idtok
+        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, numero:etat.numero, montant:etat.montant, remise:etat.remise, idtok:etat.idtok
       }));
     }catch(e){}
   }
@@ -2791,7 +2791,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     btn.disabled = true; btn.setAttribute('aria-busy', 'true'); btn.textContent = inl.ok ? L('Paiement en cours…', 'Processing payment…') : L('Préparation du paiement…', 'Preparing payment…');
     chargerStripe().catch(function(){});
     (inl.ok ? inl.el.submit().then(function(r){ if(r.error){ var x = new Error(r.error.message || ''); x.carte = true; throw x; } }) : Promise.resolve()).then(function(){
-      if(reprise) return {ok:true, j:{clientSecret:etat.secret, ref:etat.ref, amountCents:vuCents, remise:etat.remise, identite:etat.idtok}, reprise:true};
+      if(reprise) return {ok:true, j:{clientSecret:etat.secret, ref:etat.ref, numero:etat.numero, amountCents:vuCents, remise:etat.remise, identite:etat.idtok}, reprise:true};
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
         prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, adresse_client:c.adresse, raison_sociale:c.societe || '', siret:c.siret || '', point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
         cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, campagne:campagne
@@ -2800,7 +2800,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     .then(function(r){
       if(r.j.nouveauPrixCents){ etat.prix = {cle:clePrix(), totalCents:r.j.nouveauPrixCents, majore:r.j.majore, normalCents:prix(jours()) * 100, majorationPct:r.j.majorationPct || 0}; remplirRecap(); majResume('infos'); }
       if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
-      etat.secret = r.j.clientSecret; etat.secretCle = cleVue; etat.ref = r.j.ref; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
+      etat.secret = r.j.clientSecret; etat.secretCle = cleVue; etat.ref = r.j.ref; etat.numero = r.j.numero || null; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
       /* le serveur a un autre prix que celui affiché : on montre le nouveau prix et on laisse le client décider */
       if(inl.ok && r.j.amountCents !== vuCents){
         etat.prix = {cle:cleVue, totalCents:r.j.amountCents, majore:r.j.amountCents > prix(jours()) * 100, remise:r.j.amountCents < prix(jours()) * 100, normalCents:prix(jours()) * 100, majorationPct:0, raisons:[]};
@@ -2933,7 +2933,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('m-prenom').textContent = c.prenom || '';
     $('m-texte').textContent = L('Paiement reçu : votre climatiseur est réservé à votre nom. Confirmation envoyée' + (c.email ? ' à ' + c.email : '') + '.', 'Payment received: your air conditioner is reserved in your name. Confirmation sent' + (c.email ? ' to ' + c.email : '') + '.', 'Pago recibido: tu aire acondicionado está reservado a tu nombre. Confirmación enviada' + (c.email ? ' a ' + c.email : '') + '.');
     /* le QR code client n'est plus montré : c'est le client qui scanne celui du comptoir */
-    if(etat.ref){ $('m-code-ref').textContent = etat.ref; $('m-code').hidden = false; } else $('m-code').hidden = true;
+    if(etat.numero || etat.ref){ $('m-code-ref').textContent = etat.numero || etat.ref; $('m-code').hidden = false; } else $('m-code').hidden = true;
     /* confirmation à télécharger : même code secret que le QR code de retrait */
     var tk = etat.remise && etat.remise.lien ? (String(etat.remise.lien).split('remise=')[1] || '') : '';
     if(tk){ $('m-pdf').href = '/api/cc-confirmation?t=' + encodeURIComponent(tk); $('m-pdf').hidden = false; } else $('m-pdf').hidden = true;
@@ -2958,7 +2958,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{ sessionStorage.removeItem(CLE_ETAT); }catch(e){}
     /* gardé 24 h : si la page se recharge (souvent quand Android ouvre l'appareil photo
        pour la pièce d'identité), le client retrouve son QR code et l'envoi de la pièce */
-    try{ localStorage.setItem('locair_cc_merci', JSON.stringify({t:Date.now(), point:p.id, debut:etat.debut, fin:etat.fin, client:{prenom:c.prenom || '', email:c.email || ''}, ref:etat.ref, montant:etat.montant, remise:etat.remise, idtok:etat.idtok})); }catch(e){}
+    try{ localStorage.setItem('locair_cc_merci', JSON.stringify({t:Date.now(), point:p.id, debut:etat.debut, fin:etat.fin, client:{prenom:c.prenom || '', email:c.email || ''}, ref:etat.ref, numero:etat.numero, montant:etat.montant, remise:etat.remise, idtok:etat.idtok})); }catch(e){}
   }
 
   /* Pièce d'identité APRÈS le paiement (écran « C'est réservé ») */
@@ -3248,7 +3248,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var sv = relire(), q = new URLSearchParams(location.search);
     if(sv){
       etat.ville = sv.ville; etat.point = parId(sv.point); etat.liste = (sv.liste || []).map(parId).filter(Boolean);
-      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.montant = sv.montant; etat.remise = sv.remise || null; etat.idtok = sv.idtok || null;
+      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.numero = sv.numero || null; etat.montant = sv.montant; etat.remise = sv.remise || null; etat.idtok = sv.idtok || null;
     }
     /* retour d'une banque (3-D Secure) : Stripe ajoute redirect_status */
     if(q.get('retour') === 'paiement' && sv && etat.point && etat.debut && etat.fin){
@@ -3261,7 +3261,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(h === 'merci' && !sv){
       var mr = null; try{ mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); }catch(e){}
       if(mr && Date.now() - mr.t < 864e5 && parId(mr.point)){
-        etat.point = parId(mr.point); etat.ville = etat.point.ville; etat.debut = mr.debut; etat.fin = mr.fin; etat.client = mr.client; etat.ref = mr.ref; etat.montant = mr.montant; etat.remise = mr.remise; etat.idtok = mr.idtok; etat.paye = true;
+        etat.point = parId(mr.point); etat.ville = etat.point.ville; etat.debut = mr.debut; etat.fin = mr.fin; etat.client = mr.client; etat.ref = mr.ref; etat.numero = mr.numero || null; etat.montant = mr.montant; etat.remise = mr.remise; etat.idtok = mr.idtok; etat.paye = true;
         merci(); return;
       }
     }

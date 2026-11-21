@@ -174,6 +174,16 @@ function montantLangue(cents, lang) {
   const v = (Math.round(Number(cents) || 0) / 100).toFixed(2);
   return lang === 'en' ? '€' + v : v.replace('.', ',') + ' €';
 }
+// NUMÉRO DE COMMANDE À 4 CHIFFRES (décision du propriétaire, 21/11/2026) :
+// c'est ce que le client tape au comptoir après avoir scanné le QR code.
+// Tiré de la référence interne (CC-XXXXXXXX, qui reste pour les factures,
+// Stripe et /panne). Unique parmi les locations en cours du même point :
+// checkout-click-collect.js retire une nouvelle référence en cas de doublon.
+function numeroComptoir(ref) {
+  const secret = process.env.TRANSPORTEUR_SECRET || '';
+  const h = crypto.createHmac('sha256', secret).update(`comptoir:${String(ref || '').toUpperCase()}`).digest();
+  return String(h.readUInt32BE(0) % 10000).padStart(4, '0');
+}
 function imageQrRemise(reservationId, ref, taille = 240) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${taille}x${taille}&margin=8&data=${encodeURIComponent(lienRemise(reservationId, ref))}`;
 }
@@ -189,4 +199,4 @@ function codeRetour(point, partenaire) {
   return tel.length >= 2 ? tel.slice(-2) : null;
 }
 
-module.exports = { codeRetour, prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };
+module.exports = { numeroComptoir, codeRetour, prixClickCollect, occupationParPoint, tientDansLeStock, codeRemise, lienRemise, imageQrRemise, codeIdentite, codeReprise, nouvelleRefCC, montantLangue, SEUIL_PRIX_FORT, MAJORATION_PCT, ATTENTE_MAX_MIN, JOURS_MIN_CC, JOURS_MAX_CC, AVANCE_MAX_JOURS };

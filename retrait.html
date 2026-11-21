@@ -119,10 +119,10 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   <!-- 1. le client s'identifie -->
   <section id="e-id">
     <h1><span lang="fr">Retrait ou retour</span><span lang="en">Pick-up or return</span><span lang="es">Recogida o devolución</span></h1>
-    <p class="sous"><span lang="fr">Votre numéro est dans votre email et votre SMS.</span><span lang="en">Your number is in your email and text.</span><span lang="es">Tu número está en tu email y tu SMS.</span></p>
+    <p class="sous"><span lang="fr">4 chiffres, dans votre email et votre SMS.</span><span lang="en">4 digits, in your email and text.</span><span lang="es">4 cifras, en tu email y tu SMS.</span></p>
     <form class="carte" id="f-id" novalidate>
       <div class="champ"><label for="ref"><span lang="fr">Numéro de commande</span><span lang="en">Order number</span><span lang="es">Número de pedido</span></label>
-        <input id="ref" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CC-XXXXXXXX" maxlength="40"></div>
+        <input id="ref" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="numeric" placeholder="1234" maxlength="40" class="pin"></div>
       
       <button class="btn" id="b-id" type="submit"><span lang="fr">Continuer</span><span lang="en">Continue</span><span lang="es">Continuar</span></button>
       <p class="msg err" id="m-id" role="alert" hidden></p>
@@ -215,7 +215,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   function erreur(el, t){ el.textContent = t; el.hidden = !t; }
 
   /* réservation gardée sur ce téléphone après le paiement : pré-remplie */
-  try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && mr.ref) $('ref').value = mr.ref; }catch(e){}
+  try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && (mr.numero || mr.ref)) $('ref').value = mr.numero || mr.ref; }catch(e){}
 
   function appel(corps){
     corps.point = POINT; corps.ref = etat.ref; corps.lang = langue();
@@ -226,7 +226,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   $('f-id').addEventListener('submit', function(e){
     e.preventDefault();
     etat.ref = $('ref').value.trim().toUpperCase().replace(/\s+/g, '');
-    if(etat.ref.length < 6) return erreur($('m-id'), L('Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.'));
+    if(!/^\d{4}$/.test(etat.ref) && etat.ref.length < 6) return erreur($('m-id'), L('Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.'));
     if(!POINT) return erreur($('m-id'), L('Scannez le QR code affiché au comptoir.', 'Scan the QR code at the counter.', 'Escanea el código QR del mostrador.'));
     var b = $('b-id'); b.disabled = true; erreur($('m-id'), '');
     appel({action:'voir'}).then(function(r){
