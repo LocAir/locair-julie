@@ -13,7 +13,7 @@
 <!-- Page ouverte par le QR code collé chez le commerçant (Click & Collect).
      Le client s'identifie avec son numéro de commande. Retrait : il valide et
      montre l'écran vert. Retour : photo sous housse + code commerçant.
-     Panne : « Échanger mon appareil ici » (voir api/_lib/panne.js).
+     Panne : « Un problème ? » › « Il ne marche pas » = échange ici (voir api/_lib/panne.js).
      Serveur : api/cc-comptoir.js. -->
 <style>
 :root{--vif:#1A5EDB;--vif-d:#0D3FA0;--ink:#0E1726;--ink-2:#4B5873;--line:#E3E9F4;--mist:#F2F6FD;--ok:#0F7A3D;--err:#B42318;--paper:#fff}
@@ -48,10 +48,11 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .badge.ok{background:#E8F6EE;color:var(--ok)}
 .badge.att{background:#FFF4E5;color:#8A4B00}
 .tendre{margin:18px 0 0;text-align:center;font-weight:800;color:var(--vif-d)}
-.commercant{margin-top:20px;padding-top:20px;border-top:2px dashed var(--line)}
-.commercant h2{font-size:19px;margin:0 0 8px}
+.commercant{margin:0}
+.bloc-t{font-size:30px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px}
+.t-ret{color:var(--ok)}.t-rtr{color:var(--vif)}
 .commercant p{margin:0 0 14px;color:var(--ink-2);font-size:15px;line-height:1.45}
-.client-ret{margin-top:18px}
+.client-ret{margin:0}
 .client-ret p{margin:0 0 14px;color:var(--ink-2);font-size:15.5px;line-height:1.5}
 .signal{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .sig-lien{border:0;background:none;color:var(--ink-2);font:700 15px 'DM Sans',sans-serif;text-decoration:underline;cursor:pointer;padding:10px 0;min-height:44px;text-align:left}
@@ -113,14 +114,13 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
 <main>
   <!-- 1. le client s'identifie -->
   <section id="e-id">
-    <h1><span lang="fr">Retirer ou rendre votre climatiseur</span><span lang="en">Pick up or return your air conditioner</span><span lang="es">Recoge o devuelve tu aire acondicionado</span></h1>
-    <p class="sous"><span lang="fr">Tapez votre numéro de commande pour valider votre retrait. Il est dans votre email, votre SMS et votre confirmation PDF.</span><span lang="en">Enter your order number. It’s in your confirmation email and text, and stays the same until you return the unit.</span><span lang="es">Escribe tu número de pedido. Está en tu email y tu SMS de confirmación, y es el mismo hasta la devolución.</span></p>
-    <p class="point" id="point" hidden></p>
+    <h1><span lang="fr">Retrait ou retour</span><span lang="en">Pick-up or return</span><span lang="es">Recogida o devolución</span></h1>
+    <p class="sous"><span lang="fr">Votre numéro est dans votre email et votre SMS.</span><span lang="en">Your number is in your email and text.</span><span lang="es">Tu número está en tu email y tu SMS.</span></p>
     <form class="carte" id="f-id" novalidate>
       <div class="champ"><label for="ref"><span lang="fr">Numéro de commande</span><span lang="en">Order number</span><span lang="es">Número de pedido</span></label>
         <input id="ref" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CC-XXXXXXXX" maxlength="40"></div>
       
-      <button class="btn" id="b-id" type="submit"><span lang="fr">Voir ma réservation</span><span lang="en">See my booking</span><span lang="es">Ver mi reserva</span></button>
+      <button class="btn" id="b-id" type="submit"><span lang="fr">Continuer</span><span lang="en">Continue</span><span lang="es">Continuar</span></button>
       <p class="msg err" id="m-id" role="alert" hidden></p>
     </form>
   </section>
@@ -128,36 +128,26 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   <!-- 2. la réservation, à montrer au commerçant -->
   <section id="e-resa" hidden>
     <div class="carte">
-      <p style="margin:0;color:var(--ink-2);font-weight:700"><span lang="fr">Réservation</span><span lang="en">Booking</span><span lang="es">Reserva</span> <span id="r-ref"></span></p>
-      <p class="nom" id="r-nom"></p>
-      <div class="ligne"><span><span lang="fr">Location</span><span lang="en">Rental</span><span lang="es">Alquiler</span></span><b id="r-dates"></b></div>
-      <div class="ligne"><span><span lang="fr">Pièce d’identité</span><span lang="en">ID</span><span lang="es">Documento</span></span><span id="r-piece"></span></div>
-      <p class="tendre" id="r-tendre"><span lang="fr">Tendez votre téléphone au commerçant.</span><span lang="en">Hand your phone to the shopkeeper.</span><span lang="es">Dale tu teléfono al comerciante.</span></p>
       <p class="msg info" id="r-info" hidden></p>
 
       <div class="client-ret" id="f-cli" hidden>
+        <h2 class="bloc-t t-ret">✓ <span lang="fr">Retrait</span><span lang="en">Pick-up</span><span lang="es">Recogida</span></h2>
         <p id="c-consigne"></p>
         <button class="btn vert" id="b-cli" type="button"><span lang="fr">Valider mon retrait</span><span lang="en">Confirm my pick-up</span><span lang="es">Confirmar mi recogida</span></button>
         <p class="msg err" id="m-cli" role="alert" hidden></p>
       </div>
       <form class="commercant" id="f-com" novalidate hidden>
-        <h2><span lang="fr">Rendre le climatiseur</span><span lang="en">Return the air conditioner</span><span lang="es">Devolver el aire acondicionado</span></h2>
+        <h2 class="bloc-t t-rtr">↩ <span lang="fr">Retour</span><span lang="en">Return</span><span lang="es">Devolución</span></h2>
         <p id="r-consigne"></p>
         <label class="photo-retour" id="ph-ret"><input type="file" id="ph-file" accept="image/*" capture="environment" hidden><span id="ph-txt">📷 <span lang="fr">Photo du climatiseur dans sa housse</span><span lang="en">Photo of the air conditioner in its cover</span><span lang="es">Foto del aire acondicionado en su funda</span></span><img id="ph-img" alt="" hidden></label>
         <label class="code-l" for="code-com"><span lang="fr">Code commerçant</span><span lang="en">Shop code</span><span lang="es">Código de comercio</span></label>
         <input class="code-com" id="code-com" type="text" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="••" aria-describedby="code-aide">
-        <p class="code-aide" id="code-aide"><span lang="fr">Demandez-le au commerçant.</span><span lang="en">Ask the shopkeeper for it.</span><span lang="es">Pídeselo al comerciante.</span></p>
-        <button class="btn vert" id="b-com" type="submit"></button>
+        <p class="code-aide" id="code-aide"><span lang="fr">Le commerçant vous le donne.</span><span lang="en">The shopkeeper gives it to you.</span><span lang="es">El comerciante te lo da.</span></p>
+        <button class="btn" id="b-com" type="submit"></button>
         <p class="msg err" id="m-com" role="alert" hidden></p>
       </form>
-      <div class="echange" id="f-ech" hidden>
-        <p class="ech-t"><span lang="fr">Votre climatiseur est en panne&nbsp;?</span><span lang="en">Is your air conditioner broken?</span><span lang="es">¿Tu aire acondicionado no funciona?</span></p>
-        <button class="btn ech-btn" id="b-ech" type="button">🔁 <span lang="fr">Échanger mon appareil ici</span><span lang="en">Swap my unit here</span><span lang="es">Cambiar mi aparato aquí</span></button>
-        <p class="msg err" id="m-ech" role="alert" hidden></p>
-        <p class="msg info" id="i-ech" role="status" hidden></p>
-      </div>
       <div class="signal" id="sig" hidden>
-        <button type="button" class="sig-lien" id="sig-ouvrir" aria-expanded="false" aria-controls="sig-form">⚠️ <span lang="fr">Signaler un problème (casse, appareil abîmé…)</span><span lang="en">Report a problem (breakage, damage…)</span><span lang="es">Avisar de un problema (rotura, daño…)</span></button>
+        <button type="button" class="sig-lien" id="sig-ouvrir" aria-expanded="false" aria-controls="sig-form">⚠️ <span lang="fr">Un problème&nbsp;? Panne, casse…</span><span lang="en">A problem? Breakdown, damage…</span><span lang="es">¿Un problema? Avería, rotura…</span></button>
         <div class="sig-form" id="sig-form" hidden>
           <div class="sig-choix" role="radiogroup">
             <label><input type="radio" name="sig" value="casse" checked><span><span lang="fr">Casse (roulette, poignée…)</span><span lang="en">Broken (wheel, handle…)</span><span lang="es">Rotura (rueda, asa…)</span></span></label>
@@ -221,12 +211,6 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   function date(iso){ var p = String(iso || '').split('-'); return p.length === 3 ? new Date(+p[0], p[1] - 1, +p[2]).toLocaleDateString(langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR', {weekday:'short', day:'numeric', month:'short'}) : ''; }
   function erreur(el, t){ el.textContent = t; el.hidden = !t; }
 
-  /* nom du point (affiché pour rassurer : « vous êtes bien chez … ») */
-  fetch('/api/points-retrait' + (POINT === 'test-locair' ? '?test=1' : '')).then(function(r){ return r.json(); }).then(function(j){
-    var p = ((j && j.points) || []).filter(function(x){ return x.id === POINT; })[0];
-    if(p){ var el = $('point'); el.innerHTML = '📍 <span>' + L('Vous êtes chez ', 'You’re at ', 'Estás en ') + '<b></b></span>'; el.querySelector('b').textContent = p.nom; el.hidden = false; }
-  }).catch(function(){});
-
   /* réservation gardée sur ce téléphone après le paiement : pré-remplie */
   try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && mr.ref) $('ref').value = mr.ref; }catch(e){}
 
@@ -251,31 +235,26 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   });
 
   function afficher(r){
-    $('r-ref').textContent = r.ref || etat.ref;
-    $('r-nom').textContent = ((r.prenom || '') + ' ' + (r.nom || '')).trim();
-    $('r-dates').textContent = date(r.date_debut) + ' → ' + date(r.date_fin);
-    var pc = $('r-piece'); pc.className = 'badge ' + (r.piece_recue ? 'ok' : 'att');
-    pc.textContent = r.piece_recue ? L('Reçue en ligne', 'Received online', 'Recibido online') : L('À vérifier au comptoir', 'Check at the counter', 'Comprobar en el mostrador');
-    var info = $('r-info'), f = $('f-com'), btn = $('b-com'), nom = $('r-nom').textContent;
-    info.hidden = true; f.hidden = true; $('f-cli').hidden = true; $('f-ech').hidden = true; etat.action = null;
-    $('sig').hidden = !(r.peut_remettre || r.peut_rendre); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
-    if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; $('r-tendre').hidden = true; return; }
+    var nom = ((r.prenom || '') + ' ' + (r.nom || '')).trim();
+    var info = $('r-info'), f = $('f-com'), btn = $('b-com');
+    info.hidden = true; f.hidden = true; $('f-cli').hidden = true; etat.action = null;
+    /* panne pendant la location (ou client livré venu échanger) : « Il ne marche pas » = échange ici */
+    var auj = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
+    etat.peutEchanger = !!(r.peut_echanger || (r.peut_rendre && r.date_fin && r.date_fin > auj));
+    $('sig').hidden = !(r.peut_remettre || r.peut_rendre || r.peut_echanger); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
+    if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; return; }
     /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
-    $('r-tendre').hidden = true;
     if(r.peut_remettre){
-      $('c-consigne').textContent = L('Appuyez sur le bouton, puis montrez l’écran de confirmation et votre pièce d’identité originale (nom : ' + nom + ') au commerçant. Il vous remet le climatiseur sous sa housse, avec sa gaine d’évacuation. Enlevez la housse seulement chez vous.', 'Tap the button, then show the confirmation screen and your original ID (name: ' + nom + ') to the shopkeeper. They hand you the air conditioner under its cover, with its exhaust hose. Only take the cover off at home.', 'Pulsa el botón y enseña la pantalla de confirmación y tu documento de identidad original (nombre: ' + nom + ') al comerciante. Te entrega el aire acondicionado con su funda y su tubo de evacuación. Quita la funda solo en casa.');
+      $('c-consigne').textContent = L('Validez, puis montrez l’écran vert et votre pièce d’identité (' + nom + ') au commerçant.', 'Confirm, then show the green screen and your ID (' + nom + ') to the shopkeeper.', 'Confirma y enseña la pantalla verde y tu documento de identidad (' + nom + ') al comerciante.');
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
-      /* location en cours : on peut aussi échanger un appareil en panne (_lib/panne.js) */
-      var auj = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
-      $('f-ech').hidden = !(r.date_fin && r.date_fin > auj);
-      $('r-consigne').textContent = L('Déposez le climatiseur dans sa housse, avec sa gaine d’évacuation. Prenez-le en photo, demandez le code au commerçant, puis validez.', 'Leave the air conditioner in its cover, with its exhaust hose. Take a photo, ask the shopkeeper for the code, then confirm.', 'Deja el aire acondicionado en su funda, con su tubo de evacuación. Hazle una foto, pide el código al comerciante y confirma.');
+      $('r-consigne').textContent = L('Climatiseur dans sa housse, avec sa gaine. Une photo, puis le code du commerçant.', 'Air conditioner in its cover, with its hose. One photo, then the shopkeeper’s code.', 'Aire acondicionado en su funda, con su tubo. Una foto y luego el código del comerciante.');
       btn.textContent = L('Valider mon retour', 'Confirm my return', 'Confirmar mi devolución'); f.hidden = false;
     } else if(r.peut_echanger){
       /* client livré à domicile : il vient seulement échanger un appareil en panne */
-      $('f-ech').hidden = false;
+      info.textContent = L('Appareil en panne ? Touchez « Un problème ? » ci-dessous.', 'Unit broken? Tap “A problem?” below.', '¿Aparato averiado? Pulsa «¿Un problema?» abajo.'); info.hidden = false;
     } else {
       info.textContent = r.remise_message || L('Rien à faire aujourd’hui pour cette réservation.', 'Nothing to do today for this booking.', 'Nada que hacer hoy con esta reserva.'); info.hidden = false;
     }
@@ -322,8 +301,11 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     var b = this, c = document.querySelector('input[name="sig"]:checked'); var lib = b.innerHTML; b.disabled = true; b.textContent = L('Envoi…', 'Sending…', 'Enviando…'); erreur($('sig-err'), '');
     envoyerPhotos().catch(function(){ return null; }).then(function(chemins){
       if(chemins === null && photosSig.length){ throw new Error(L('La photo n’a pas pu partir. Réessayez, ou retirez-la pour envoyer sans photo.', 'The photo couldn’t be sent. Try again, or remove it to send without a photo.', 'No se pudo enviar la foto. Inténtalo de nuevo o quítala para enviar sin foto.')); }
-      return appel({action:'signaler', categorie:c ? c.value : 'autre', moment:etat.moment, message:$('sig-msg').value, photos:chemins || []});
+      var corps = {categorie:c ? c.value : 'autre', moment:etat.moment, message:$('sig-msg').value, photos:chemins || []};
+      if(corps.categorie === 'panne' && etat.peutEchanger){ corps.action = 'echanger'; return faireEchange(b, lib, corps).then(function(){ return null; }); }
+      corps.action = 'signaler'; return appel(corps);
     }).then(function(r){
+      if(r === null) return;
       b.disabled = false; b.innerHTML = lib;
       if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
@@ -353,25 +335,24 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }
     tic(); clearInterval(minuterie); minuterie = setInterval(tic, 1000);
   }
-  $('b-ech').addEventListener('click', function(){
-    var b = $('b-ech'); b.disabled = true; erreur($('m-ech'), ''); $('i-ech').hidden = true;
-    appel({action:'echanger', categorie:'panne'}).then(function(r){
-      b.disabled = false;
-      if(!r.ok) return erreur($('m-ech'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+  function faireEchange(b, lib, corps){
+    return appel(corps).then(function(r){
+      b.disabled = false; b.innerHTML = lib;
+      if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       if(r.j.issue === 'echange_comptoir'){
         $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
         $('f-titre').textContent = L('Échange validé ⇄', 'Swap confirmed ⇄', 'Cambio confirmado ⇄');
         montrerAuCommercant('echange');
-        $('f-texte').textContent = L('Le commerçant reprend votre appareil et vous en donne un autre, sous sa housse, avec sa gaine. Votre location continue jusqu’au ', 'The shopkeeper takes your unit and gives you another one, in its cover, with its hose. Your rental continues until ', 'El comerciante recoge tu aparato y te da otro, con su funda y su tubo. Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
+        $('f-texte').textContent = L('Votre location continue jusqu’au ', 'Your rental continues until ', 'Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
       } else {
-        $('f-ech').hidden = false; b.hidden = true;
-        var i = $('i-ech'); i.textContent = r.j.issue === 'reapprovisionnement'
-          ? L('Plus d’appareil de rechange ici aujourd’hui. Gardez le vôtre pour l’instant : on apporte un climatiseur à ce point le jour même ou le lendemain, et vous recevez un SMS. Revenez alors l’échanger ici.', 'No spare unit here today. Keep yours for now: we’re bringing one to this point the same day or the next, and you’ll get a text. Then come back and swap it here.', 'Hoy no queda aparato de repuesto aquí. Quédate el tuyo por ahora: llevamos uno a este punto el mismo día o al siguiente y recibirás un SMS. Vuelve entonces a cambiarlo aquí.')
+        $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
+        var i = $('sig-ok'); i.textContent = r.j.issue === 'reapprovisionnement'
+          ? L('Plus d’appareil ici aujourd’hui. Gardez le vôtre : on en apporte un, vous recevez un SMS.', 'No spare unit here today. Keep yours: we’ll bring one and text you.', 'Hoy no queda aparato aquí. Quédate el tuyo: llevamos uno y te avisamos por SMS.')
           : L('C’est noté, on vous recontacte rapidement.', 'Noted, we’ll get back to you quickly.', 'Anotado, te contactamos rápidamente.');
         i.hidden = false;
       }
-    }).catch(function(){ b.disabled = false; erreur($('m-ech'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
-  });
+    });
+  }
   $('b-cli').addEventListener('click', function(){
     var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
     appel({action:'valider'}).then(function(r){
@@ -380,7 +361,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       $('f-titre').textContent = L('Retrait validé ✓', 'Pick-up confirmed ✓', 'Recogida confirmada ✓');
       montrerAuCommercant();
-      $('f-texte').textContent = L('Le commerçant vous remet le climatiseur sous sa housse, avec sa gaine. Rapportez l’appareil ici le ', 'Pick-up confirmed. Bring the unit back here on ', 'Recogida confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + L('. Gardez votre numéro de commande.', '. Keep your order number.', '. Guarda tu número de pedido.');
+      $('f-texte').textContent = L('À rapporter ici le ', 'Bring it back here on ', 'Devuélvelo aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.';
     }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
   var photoRetour = null, photoChemin = null;
@@ -406,7 +387,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       if(!r.ok){ if(r.j.code === 'code_commercant'){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').select(); } return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.')); }
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       if(action === 'valider'){ $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!'); $('f-texte').textContent = L('Remise confirmée. Rapportez l’appareil ici le ', 'Handover confirmed. Bring the unit back here on ', 'Entrega confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.'; }
-      else { $('f-avis').hidden = false; $('f-titre').textContent = L('Retour confirmé, merci !', 'Return confirmed, thank you!', '¡Devolución confirmada, gracias!'); $('f-texte').textContent = L('Votre location est terminée. Votre confirmation et votre facture arrivent par email et SMS.', 'Your rental is over. Your confirmation and invoice are on their way by email and text.', 'Tu alquiler ha terminado. Tu confirmación y tu factura llegan por email y SMS.'); return; $('f-texte').textContent = L('Votre location est terminée. À bientôt chez Loc’Air.', 'Your rental is over. See you soon at Loc’Air.', 'Tu alquiler ha terminado. Hasta pronto en Loc’Air.'); }
+      else { $('f-avis').hidden = false; $('f-titre').textContent = L('Retour confirmé, merci !', 'Return confirmed, thank you!', '¡Devolución confirmada, gracias!'); $('f-texte').textContent = L('Votre facture arrive par email.', 'Your invoice is on its way by email.', 'Tu factura llega por email.'); return; }
     }).catch(function(x){ b.disabled = false; erreur($('m-com'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
 })();

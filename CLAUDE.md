@@ -15,6 +15,8 @@ commerçant et du client) suit la même règle :
   quoi faire.
 - **Des repères visuels constants** : au comptoir, vert ✓ = retrait,
   bleu ↩ = retour, orange ⇄ = échange. Partout pareil.
+- **Pas d'information inutile.** Ce qui n'aide pas à agir tout de suite
+  disparaît (dates, rappels, explications déjà connues).
 - Avant de livrer, se demander : « Qu'est-ce que je peux enlever ? »
 
 ## Déploiement
