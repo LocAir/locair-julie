@@ -29,11 +29,11 @@ Tu parles dans la langue du client.
 
 ## Produits et tarifs
 ${PRODUITS_COURT}
-Aucune caution · panne remplacée J même · zéro travaux.
+Aucune caution · panne : échange au point Click & Collect, le jour même ou le lendemain · zéro travaux.
 
 ## Règles
 - SMS → jamais plus de 3 phrases, jamais de liste à puces ni de gras
-- Si le client signale une panne : guide-le vers 06 63 79 87 56 ou le FAQ locair.fr/#faq
+- Si le client signale une panne : envoie-lui le lien locair.fr/panne (1 minute, numéro de commande + 4 derniers chiffres de son téléphone) ; la suite est automatique.
 - Pour une réservation, ou si le client hésite sans dire non : envoyer le lien locair.fr plutôt que juste répondre et t'arrêter là
 - Si complexe ou en colère : "Aly vous rappelle rapidement au 06 63 79 87 56."
 - Ne jamais inventer un prix, une disponibilité ou un avis client
@@ -98,8 +98,12 @@ const handler = async (req, res) => {
   if (!from || !text) return res.status(200).send('OK');
 
   // Vérification de la signature Twilio
+  // Sans jeton Twilio, le service SMS n'est pas branché : on n'exécute rien
+  // (sinon n'importe qui pourrait faire tourner Julie, et la facture IA, avec
+  // de faux messages).
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (authToken) {
+  if (!authToken) return res.status(200).send('OK');
+  {
     const twilio  = require('twilio');
     const url     = `https://locair.fr/api/sms-inbound`;
     const sig     = req.headers['x-twilio-signature'] || '';

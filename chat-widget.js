@@ -146,7 +146,7 @@
       <div id="jw-msgs"></div>
       <div id="jw-suggestions"></div>
       <div id="jw-footer">
-        <textarea id="jw-input" placeholder="Écrivez votre question…" rows="1" maxlength="1000"></textarea>
+        <textarea id="jw-input" aria-label="Votre message à Julie" placeholder="Écrivez votre question…" rows="1" maxlength="1000"></textarea>
         <button id="jw-send" aria-label="Envoyer">${ICON_SEND}</button>
       </div>
       <div id="jw-wa-link">ou <a href="https://wa.me/33663798756?text=Bonjour%2C+j%27ai+une+question." target="_blank" rel="noopener">écrire sur WhatsApp</a></div>
