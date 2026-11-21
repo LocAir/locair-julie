@@ -247,15 +247,16 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     var auj = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
     etat.peutEchanger = !!(r.peut_echanger || (r.peut_rendre && r.date_fin && r.date_fin > auj));
     $('sig').hidden = !(r.peut_remettre || r.peut_rendre || r.peut_echanger); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
+    var nq = Math.max(1, r.quantite || 1);
     if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; return; }
     /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
     if(r.peut_remettre){
-      $('c-consigne').textContent = L('Validez, puis montrez l’écran vert et votre pièce d’identité (' + nom + ') au commerçant.', 'Confirm, then show the green screen and your ID (' + nom + ') to the shopkeeper.', 'Confirma y enseña la pantalla verde y tu documento de identidad (' + nom + ') al comerciante.');
+      $('c-consigne').textContent = (nq > 1 ? L(nq + ' climatiseurs à votre nom. ', nq + ' air conditioners in your name. ', nq + ' aparatos a tu nombre. ') : '') + L('Validez, puis montrez l’écran vert et votre pièce d’identité (' + nom + ') au commerçant.', 'Confirm, then show the green screen and your ID (' + nom + ') to the shopkeeper.', 'Confirma y enseña la pantalla verde y tu documento de identidad (' + nom + ') al comerciante.');
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
-      $('r-consigne').textContent = L('Climatiseur dans sa housse, avec sa gaine. Une photo, puis le code du commerçant.', 'Air conditioner in its cover, with its hose. One photo, then the shopkeeper’s code.', 'Aire acondicionado en su funda, con su tubo. Una foto y luego el código del comerciante.');
+      $('r-consigne').textContent = nq > 1 ? L('Les ' + nq + ' climatiseurs, chacun dans sa housse, avec sa gaine. Une photo des ' + nq + ', puis le code du commerçant.', 'All ' + nq + ' air conditioners, each in its cover, with its hose. One photo of all ' + nq + ', then the shopkeeper’s code.', 'Los ' + nq + ' aparatos, cada uno en su funda, con su tubo. Una foto de los ' + nq + ' y luego el código del comerciante.') : L('Climatiseur dans sa housse, avec sa gaine. Une photo, puis le code du commerçant.', 'Air conditioner in its cover, with its hose. One photo, then the shopkeeper’s code.', 'Aire acondicionado en su funda, con su tubo. Una foto y luego el código del comerciante.');
       btn.textContent = L('Valider mon retour', 'Confirm my return', 'Confirmar mi devolución'); f.hidden = false;
     } else if(r.peut_echanger){
       /* client livré à domicile : il vient seulement échanger un appareil en panne */

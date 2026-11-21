@@ -23,7 +23,7 @@ const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
-const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite, numeroComptoir, JOURS_MIN_CC } = require('./_lib/clickCollect');
+const { prixClickCollect, tientDansLeStock, lienRemise, imageQrRemise, codeIdentite, numeroComptoir, JOURS_MIN_CC } = require('./_lib/clickCollect');
 const { lireDevis } = require('./_lib/tarifDynamique');
 
 const JOURS_MAX = 90;
@@ -101,6 +101,26 @@ module.exports = async (req, res) => {
 
   const qte = Math.min(QTE_MAX, Math.max(1, parseInt(data.quantite, 10) || 1));
   const supabase = getSupabase();
+  // Paiement préparé juste avant par ce client, jamais payé (il a changé la
+  // quantité ou les dates, ou sa carte a été refusée) : on l'annule d'abord.
+  // Sinon ses propres appareils « en cours de paiement » bloquaient le stock
+  // du point pendant 30 min (ex. 3 appareils puis 2 : « Il reste 1 appareil »).
+  const remplace = clip(data.remplace, 40).toUpperCase();
+  if (/^CC-[A-Z0-9]{6,}$/.test(remplace)) {
+    try {
+      const { data: vieille } = await supabase.from('reservations').select('id, email, statut, stripe_payment_intent_id')
+        .eq('ref', remplace).eq('source_channel', 'click_collect').eq('statut', 'en_attente').maybeSingle();
+      if (vieille && String(vieille.email || '').toLowerCase() === email) {
+        let annulable = true;
+        if (vieille.stripe_payment_intent_id) {
+          const pi = await stripe.paymentIntents.retrieve(vieille.stripe_payment_intent_id);
+          if (['succeeded', 'processing', 'requires_capture'].includes(pi.status)) annulable = false;
+          else if (pi.status !== 'canceled') await stripe.paymentIntents.cancel(pi.id);
+        }
+        if (annulable) await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', vieille.id).eq('statut', 'en_attente');
+      }
+    } catch (e) { console.error('[CC remplace]', e.message); }
+  }
   // Prix (tarification dynamique, _lib/tarifDynamique.js) et stock du point :
   // même calcul que celui affiché sur la page (api/click-collect-prix.js).
   let prix;
@@ -270,6 +290,15 @@ module.exports = async (req, res) => {
       console.error('[CC insert]', insertErr.message);
       await stripe.paymentIntents.cancel(intent.id).catch((e) => console.error('[CC cancel]', e.message));
       return res.status(500).json({ error: 'Erreur serveur réservation.' });
+    }
+
+    // Deux clients qui prennent les derniers appareils du point au même
+    // instant : on relit le stock après l'enregistrement. Le dernier arrivé
+    // est annulé avant de payer (jamais deux clients pour un appareil).
+    if (ligne.point_retrait_id && !(await tientDansLeStock(supabase, point, dateDebut, dateFin, resa.id).catch(() => true))) {
+      await stripe.paymentIntents.cancel(intent.id).catch((e) => console.error('[CC cancel stock]', e.message));
+      await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).then(() => {}, () => {});
+      return res.status(409).json({ error: 'Quelqu’un vient de réserver les derniers appareils de ce point à ces dates. Choisissez un autre point ou d’autres dates.' });
     }
 
     try {

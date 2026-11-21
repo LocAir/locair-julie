@@ -1582,7 +1582,7 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
         <div><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Point</dt><dd id="r-point"></dd><button type="button" class="modif" data-modif="point" aria-label="Modifier le point de retrait"><span lang="fr">Modifier</span><span lang="en">Change</span><span lang="es">Cambiar</span></button></div>
         <div><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Dates</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates"><span lang="fr">Modifier</span><span lang="en">Change</span><span lang="es">Cambiar</span></button></div>
         <div class="qte-l"><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 10h8"/></svg><span lang="fr">Climatiseurs</span><span lang="en">Air conditioners</span><span lang="es">Aparatos</span></dt><dd class="qte"><button type="button" id="qte-moins" aria-label="Un de moins">−</button><b id="qte-n" aria-live="polite">1</b><button type="button" id="qte-plus" aria-label="Un de plus">+</button></dd></div>
-        <div class="total"><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 7a7 7 0 100 10M4 10h9M4 14h9"/></svg>Total</dt><dd><span id="r-prix"></span> <small><span lang="fr">sans caution</span><span lang="en">no deposit</span><span lang="es">sin fianza</span></small></dd></div>
+        <div class="total"><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 7a7 7 0 100 10M4 10h9M4 14h9"/></svg>Total</dt><dd><span id="r-prix"></span> <small><span id="r-detail"></span><span lang="fr">sans caution</span><span lang="en">no deposit</span><span lang="es">sin fianza</span></small></dd></div>
       </dl>
       <p class="stock-bas" id="r-stock" role="status" hidden></p>
       <form class="form" id="form" novalidate>
@@ -2595,6 +2595,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(qte() > qteMax()) etat.qte = qteMax();
     $('qte-n').textContent = qte(); $('qte-moins').disabled = qte() <= 1; $('qte-plus').disabled = qte() >= qteMax();
     $('r-prix').textContent = euros(total());
+    /* plusieurs appareils : le détail du total, pour qu'on ne le prenne pas pour le prix d'un seul */
+    $('r-detail').textContent = qte() > 1 ? qte() + ' × ' + euros(totalUnit()) + ' · ' : '';
     /* stock réel du point sur ces dates, affiché seulement s'il est bas (vrai chiffre, jamais inventé) */
     var prS = (etat.prix && etat.prix.cle === clePrix()) ? etat.prix : null, rs = $('r-stock');
     if(prS && prS.libres && !p.exemple){ rs.textContent = prS.libres > 1 ? L('Plus que ' + prS.libres + ' appareils à ce point sur ces dates.', 'Only ' + prS.libres + ' units left at this point for these dates.', 'Solo quedan ' + prS.libres + ' aparatos en este punto para estas fechas.') : L('Plus qu’un appareil à ce point sur ces dates.', 'Only one unit left at this point for these dates.', 'Solo queda un aparato en este punto para estas fechas.'); rs.hidden = false; }
@@ -2809,6 +2811,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     etat.client = c; sauver('infos');
     var vuCents = montantCents(), cleVue = clePrix();
     /* même prix et mêmes dates qu'un paiement déjà préparé (ex. après « le prix a changé ») : on le reprend */
+    /* paiement préparé mais pas payé (quantité ou dates changées, carte refusée…) : le serveur l'annule pour libérer ses appareils */
+    var ancienne = (!etat.paye && etat.ref) ? etat.ref : null;
     if(etat.paye){ etat.paye = false; etat.secret = etat.ref = etat.idtok = etat.remise = null; }   /* nouvelle réservation après une réservation payée */
     var reprise = inl.ok && etat.secret && etat.secretCle === cleVue && Math.round((etat.montant || 0) * 100) === vuCents;
     if(!reprise){ etat.secret = null; etat.ref = null; }
@@ -2817,7 +2821,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     (inl.ok ? inl.el.submit().then(function(r){ if(r.error){ var x = new Error(r.error.message || ''); x.carte = true; throw x; } }) : Promise.resolve()).then(function(){
       if(reprise) return {ok:true, j:{clientSecret:etat.secret, ref:etat.ref, numero:etat.numero, amountCents:vuCents, remise:etat.remise, identite:etat.idtok}, reprise:true};
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, adresse_client:c.adresse, raison_sociale:c.societe || '', siret:c.siret || '', point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(totalUnit() * 100), quantite:qte(), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
+        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, adresse_client:c.adresse, raison_sociale:c.societe || '', siret:c.siret || '', point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(totalUnit() * 100), quantite:qte(), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(), remplace:ancienne || '',
         cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, campagne:campagne
       })}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
     })
@@ -2828,7 +2832,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       etat.secret = r.j.clientSecret; etat.secretCle = cleVue; etat.ref = r.j.ref; etat.numero = r.j.numero || null; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
       /* le serveur a un autre prix que celui affiché : on montre le nouveau prix et on laisse le client décider */
       if(inl.ok && r.j.amountCents !== vuCents){
-        etat.prix = {cle:cleVue, totalCents:r.j.amountCents, majore:r.j.amountCents > prix(jours()) * 100, remise:r.j.amountCents < prix(jours()) * 100, normalCents:prix(jours()) * 100, majorationPct:0, raisons:[]};
+        /* amountCents = total de la commande : le prix gardé ici est celui d'UN appareil */
+        var unitSrv = Math.round(r.j.amountCents / qte());
+        etat.prix = {cle:cleVue, totalCents:unitSrv, majore:unitSrv > prix(jours()) * 100, remise:unitSrv < prix(jours()) * 100, normalCents:prix(jours()) * 100, majorationPct:0, raisons:[]};
         remplirRecap(); majResume('infos'); monterInline();
         var y = new Error(L('Le prix vient d’être mis à jour : ', 'The price has just been updated: ', 'El precio se acaba de actualizar: ') + euros(r.j.amountCents / 100) + L('. Vérifiez puis appuyez de nouveau sur Payer.', '. Check it, then tap Pay again.', '. Revísalo y vuelve a pulsar Pagar.')); y.carte = true; throw y;
       }

@@ -622,6 +622,12 @@ const handler = async (req, res) => {
           const { data: origResa } = await lookup.maybeSingle();
           if (origResa?.id) {
             await getSupabase().from('reservations').update({ date_fin: confirmedResa.date_fin }).eq('id', origResa.id);
+            // Click & Collect : le rappel « demain, retour » a pu partir pour
+            // l'ancienne date. On retire son verrou pour qu'il reparte la
+            // veille de la NOUVELLE date de retour.
+            if (origResa.source_channel === 'click_collect') {
+              await getSupabase().from('email_sent').delete().eq('reservation_id', origResa.id).eq('scenario', 'cc_rappel_retour').then(() => {}, () => {});
+            }
             // Contrat mis à jour (nouvelle date de fin) + facture de l'extension —
             // sans ça, le contrat déjà en possession du client restait figé sur
             // la durée/le montant de sa réservation initiale (audit du 2026-07-27).
@@ -778,6 +784,19 @@ const handler = async (req, res) => {
     // l'avance comme l'ancien envoi programmé via scheduledAt) — voir
     // _lib/emailSchedule.js et _lib/emailEngine.js.
     if (confirmedResa && meta.mode === 'click_collect') {
+      // Paiement resté ouvert plus de 30 min : entre-temps, un autre client a
+      // pu prendre les mêmes appareils. On ne refuse jamais un client qui a
+      // payé : on prévient l'admin pour trouver un appareil à temps.
+      try {
+        const { getPointRetrait } = require('./_lib/pointsRetrait');
+        const { tientDansLeStock } = require('./_lib/clickCollect');
+        const pt = getPointRetrait(confirmedResa.point_retrait_id || '');
+        if (pt && !(await tientDansLeStock(getSupabase(), pt, confirmedResa.date_debut, confirmedResa.date_fin, confirmedResa.id))) {
+          await pushToAdmin(getSupabase(), { title: `⚠️ Click & Collect — stock dépassé — ${pt.nom}`,
+            body: `${confirmedResa.ref} (${confirmedResa.prenom || ''} ${confirmedResa.nom || ''}, × ${confirmedResa.quantite || 1}) a payé mais le point n'a plus assez d'appareils du ${confirmedResa.date_debut} au ${confirmedResa.date_fin}. Apporter un appareil au point ou appeler le client.`,
+            tag: `cc-stock-${confirmedResa.id}` });
+        }
+      } catch (e) { console.error('[CC stock après paiement]', e.message); }
       await sendConfirmationClickCollect(getSupabase(), confirmedResa, meta, amount);
     } else if (confirmedResa) {
       try {

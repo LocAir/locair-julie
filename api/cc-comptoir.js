@@ -218,18 +218,22 @@ async function apresRetour(supabase, r, point, photo, lang) {
   const quand = new Date().toLocaleString(l === 'en' ? 'en-GB' : l === 'es' ? 'es-ES' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
   const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
+  const n = Math.max(1, r.quantite || 1), num = numeroComptoir(r.ref);
+  const vos = n > 1
+    ? Tx(`Vos ${n} climatiseurs ont bien été rendus`, `Your ${n} air conditioners were returned`, `Tus ${n} aparatos se devolvieron`)
+    : Tx('Votre climatiseur a bien été rendu', 'Your air conditioner was returned', 'Tu aire acondicionado se devolvió');
   if (r.email) {
     await sendBrevoEmail({
       to: r.email, senderName: "Loc'Air",
-      subject: Tx(`Retour confirmé — ${r.ref}`, `Return confirmed — ${r.ref}`, `Devolución confirmada — ${r.ref}`),
+      subject: Tx(`Retour confirmé — n° ${num}`, `Return confirmed — no. ${num}`, `Devolución confirmada — n.º ${num}`),
       html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${Tx('Merci', 'Thank you', 'Gracias')} ${esc(r.prenom || '')} !</h2>
-<p>${Tx(`Votre climatiseur a bien été rendu au point <b>${esc(point.nom)}</b>, ${esc(quand)}. Votre location est terminée.`, `Your air conditioner was returned to <b>${esc(point.nom)}</b>, ${esc(quand)}. Your rental is over.`, `Tu aire acondicionado se devolvió en <b>${esc(point.nom)}</b>, ${esc(quand)}. Tu alquiler ha terminado.`)}</p>
+<p>${Tx(`${vos} au point <b>${esc(point.nom)}</b>, ${esc(quand)}. Votre location est terminée.`, `${vos} to <b>${esc(point.nom)}</b>, ${esc(quand)}. Your rental is over.`, `${vos} en <b>${esc(point.nom)}</b>, ${esc(quand)}. Tu alquiler ha terminado.`)}</p>
 <p style="margin:16px 0"><a href="${esc(lienFacture)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${Tx('Voir ma facture', 'View my invoice', 'Ver mi factura')}</a></p>
-<p style="color:#4B5873;font-size:13px">${Tx('Référence', 'Reference', 'Referencia')} : ${esc(r.ref || '')} · Loc’Air · locair.fr</p></div>`,
+<p style="color:#4B5873;font-size:13px">${Tx('Numéro de commande', 'Order number', 'Número de pedido')} : ${esc(num)} · Loc’Air · locair.fr</p></div>`,
     }).catch(() => {});
   }
   if (r.tel) {
-    await sendBrevoSms({ to: r.tel, content: Tx(`Loc'Air : retour confirmé (${r.ref}). Merci ! Votre facture : ${lienFacture}`, `Loc'Air: return confirmed (${r.ref}). Thank you! Your invoice: ${lienFacture}`, `Loc'Air: devolución confirmada (${r.ref}). ¡Gracias! Tu factura: ${lienFacture}`) }).catch(() => {});
+    await sendBrevoSms({ to: r.tel, content: Tx(`Loc'Air : retour confirmé${n > 1 ? ` (${n} climatiseurs)` : ''}, commande n° ${num}. Merci ! Votre facture : ${lienFacture}`, `Loc'Air: return confirmed${n > 1 ? ` (${n} units)` : ''}, order no. ${num}. Thank you! Your invoice: ${lienFacture}`, `Loc'Air: devolución confirmada${n > 1 ? ` (${n} aparatos)` : ''}, pedido n.º ${num}. ¡Gracias! Tu factura: ${lienFacture}`) }).catch(() => {});
   }
 }
