@@ -19,6 +19,25 @@ commerçant et du client) suit la même règle :
   disparaît (dates, rappels, explications déjà connues).
 - Avant de livrer, se demander : « Qu'est-ce que je peux enlever ? »
 
+## Style commun (typographie, couleurs) — celui de la page Click & Collect
+
+Décidé le 21/11/2026 : tout le système Loc'Air a le style de
+`click-and-collect.html`. Une seule police : **DM Sans** (titres en 900,
+jamais de police à empattements : ni Playfair, ni Cormorant, ni Georgia).
+Bleu d'action `#1A5EDB` (foncé `#0D3FA0`, clair `#EFF4FD`), encre
+`#0E1726`, gris `#4B5873`, fond `#F4F7FC`, boutons en pilule. Logo :
+« Loc<em>’Air</em> » en DM Sans 900, « ’Air » en italique, bleu sur fond
+clair, blanc sur photo. Pas d'orange, pas d'or.
+
+- **Où ça vit :** `cc-theme.css` (à charger EN DERNIER : il redéfinit les
+  couleurs et la police des pages qui ont leurs propres noms de variables),
+  `atelier.css` / `locair-design.css` / `menu.css` (pages villes, blog,
+  légales), `api/_lib/emailTemplates.js` (emails clients).
+- **Ne jamais réécrire un fichier `.css` existant sans l'avoir lu** :
+  `locair.css` est la grosse feuille de style de l'accueil et des pages
+  villes, pas un fichier de jetons.
+- Tout nouvel écran (client, commerçant, partenaire, email) suit ce style.
+
 ## Présentation commerçants (book vendeur) — toujours synchronisée
 
 La présentation pour signer les commerçants points de retrait :
