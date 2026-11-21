@@ -19,6 +19,19 @@ commerçant et du client) suit la même règle :
   disparaît (dates, rappels, explications déjà connues).
 - Avant de livrer, se demander : « Qu'est-ce que je peux enlever ? »
 
+## Présentation commerçants (book vendeur) — toujours synchronisée
+
+La présentation pour signer les commerçants points de retrait :
+https://claude.ai/artifact/SznzrctwqcdPXHqjGns7fj (diaporama).
+
+**À chaque changement du parcours Click & Collect** (écrans de `retrait.html`,
+flyer `admin/flyers-commercants.html`, affiche `affiche-retrait.html`,
+espace partenaire, prix, commission, virement, règles de retrait/retour),
+mettre à jour la présentation dans la même session : refaire les captures
+concernées (vrais écrans, client d'exemple) et corriger le texte des diapos.
+Le propriétaire l'a demandé le 21/11/2026 : le site et la présentation
+disent toujours la même chose.
+
 ## Déploiement
 
 Quand une pull request de correctifs/améliorations est prête sur la branche de
