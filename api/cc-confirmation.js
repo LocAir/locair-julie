@@ -79,12 +79,9 @@ module.exports = async (req, res) => {
     y += 22;
     const boxY = y;
     const points = [
-      T('Retrait : scannez le QR code du commerçant, tapez votre numéro de commande et validez. Montrez l’écran vert au commerçant.', 'Pick-up: scan the shop’s QR code, enter your order number and confirm. Show the green screen to the shopkeeper.', 'Recogida: escanea el código QR del comercio, escribe tu número de pedido y confirma. Enseña la pantalla verde al comerciante.'),
-      T('Retour : même QR code, une photo de l’appareil sous sa housse, puis le code que vous donne le commerçant.', 'Return: same QR code, a photo of the unit in its cover, then the code the shopkeeper gives you.', 'Devolución: el mismo código QR, una foto del aparato en su funda y el código que te da el comerciante.'),
-      T('Apportez votre pièce d’identité originale (carte d’identité ou passeport).', 'Bring your original ID (ID card or passport).', 'Trae tu documento de identidad original (DNI o pasaporte).'),
-      T('Vous recevez l’appareil sous sa housse, avec sa gaine d’évacuation. Pas de kit fenêtre : la gaine passe par une fenêtre entrouverte.', 'You get the unit under its cover, with its exhaust hose. No window kit: the hose goes through a half-open window.', 'Recibes el aparato con su funda y su tubo de evacuación. Sin kit de ventana: el tubo sale por una ventana entreabierta.'),
-      T('Venez en voiture pour repartir avec l’appareil. Il reste sous sa housse : enlevez-la seulement chez vous.', 'Come by car to take the unit home. It stays under its cover: only take it off at home.', 'Ven en coche para llevarte el aparato. Va siempre en su funda: quítala solo en casa.'),
-      T('Une fois par semaine, rincez le filtre (2 min). Avant le retour : remettez la housse chez vous, filtre propre.', 'Once a week, rinse the filter (2 min). Before returning it: put the cover back on at home, clean filter.', 'Una vez por semana, enjuaga el filtro (2 min). Antes de devolverlo: vuelve a ponerle la funda en casa, filtro limpio.'),
+      T('Retrait : scannez le QR code du comptoir, tapez votre numéro, montrez l’écran vert et votre pièce d’identité.', 'Pick-up: scan the QR code at the counter, enter your number, show the green screen and your ID.', 'Recogida: escanea el código QR del mostrador, escribe tu número, enseña la pantalla verde y tu documento.'),
+      T('Retour : appareil dans sa housse, avec sa gaine. Scannez le QR code, une photo, puis le code du commerçant : écran bleu, c’est fini.', 'Return: unit in its cover, with its hose. Scan the QR code, take a photo, then the shopkeeper’s code: blue screen, you’re done.', 'Devolución: aparato en su funda, con su tubo. Escanea el código QR, una foto y luego el código del comerciante: pantalla azul, listo.'),
+      T('Venez en voiture.', 'Come by car.', 'Ven en coche.'),
     ];
     // hauteur du cadre calculée d'après le texte (il ne déborde jamais)
     doc.font('Helvetica').fontSize(11);

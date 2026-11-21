@@ -733,7 +733,7 @@ const handler = async (req, res) => {
             ? `Loc'Air - Reserva Click & Collect confirmada.${d ? ' Recogida el ' + d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' en ' + meta.point_nom : ''}. Ve a la tienda en su horario de apertura: escanea el código QR del mostrador, escribe tu número de pedido y enseña tu documento de identidad.`
             : meta.lang === 'en'
             ? `Loc'Air - Click & Collect booking confirmed.${d ? ' Pick-up on ' + d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' at ' + meta.point_nom : ''}. Go to the shop during opening hours: scan the QR code at the counter, enter your order number and show your ID.`
-            : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. Au point, aux horaires d'ouverture : scannez le QR code du comptoir, tapez votre numéro de commande et montrez votre pièce d'identité.`;
+            : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. Au point : scannez le QR code du comptoir, tapez votre numéro et montrez l'écran vert avec votre pièce d'identité.`;
           // Numéro de commande : le seul numéro du séjour (retrait, prolongation, retour).
           smsConfirmationContent += meta.lang === 'es' ? ` Tu número de pedido: ${confirmedResa.ref} (guárdalo hasta la devolución).`
             : meta.lang === 'en' ? ` Your order number: ${confirmedResa.ref} (keep it until you return the unit).`
@@ -831,13 +831,18 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
 ${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${esc(pt.nom)}" style="width:100%;max-width:520px;border-radius:12px"></p>` : ''}
 <p style="margin:14px 0"><a href="${esc(itineraire)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
-<p style="margin:18px 0 6px"><b>${T('Au comptoir, en 3 gestes', 'At the counter, 3 steps', 'En el mostrador, 3 pasos')}</b></p>
+<p style="margin:18px 0 6px"><b>${T('Retrait', 'Pick-up', 'Recogida')}</b></p>
 <ol style="margin:0 0 12px;padding-left:20px;font-size:15px;line-height:1.5">
-<li>${T('Scannez le QR code affiché chez le commerçant et tapez votre numéro de commande.', 'Scan the QR code at the shop and enter your order number.', 'Escanea el código QR del comercio y escribe tu número de pedido.')}</li>
-<li>${T('Validez : un écran vert s’affiche. Montrez-le au commerçant avec votre pièce d’identité originale.', 'Confirm: a green screen appears. Show it to the shopkeeper with your original ID.', 'Confirma: aparece una pantalla verde. Enséñala al comerciante con tu documento de identidad original.')}</li>
-<li>${T('Au retour : même QR code, une photo de l’appareil sous sa housse, et le code que vous donne le commerçant.', 'On return: same QR code, a photo of the unit in its cover, and the code the shopkeeper gives you.', 'En la devolución: el mismo código QR, una foto del aparato en su funda y el código que te da el comerciante.')}</li>
+<li>${T('Allez au point de retrait.', 'Go to the pick-up point.', 'Ve al punto de recogida.')}</li>
+<li>${T('Scannez le QR code du comptoir et tapez votre numéro', 'Scan the QR code at the counter and enter your number', 'Escanea el código QR del mostrador y escribe tu número')} : <b>${esc(resa.ref || '')}</b></li>
+<li>${T('Montrez l’écran vert et votre pièce d’identité : on vous donne le climatiseur.', 'Show the green screen and your ID: you get the air conditioner.', 'Enseña la pantalla verde y tu documento: te dan el aire acondicionado.')}</li>
 </ol>
-<p style="margin:0 0 14px;padding:12px 14px;background:#EFF4FD;border-radius:12px;font-size:15px">${T('Votre numéro de commande, à garder jusqu’au retour', 'Your order number, keep it until you return the unit', 'Tu número de pedido, guárdalo hasta la devolución')} : <b style="font-size:18px">${esc(resa.ref || '')}</b><br>${T('Au comptoir, scannez le QR code du commerçant et tapez ce numéro.', 'At the counter, scan the shop’s QR code and enter this number.', 'En el mostrador, escanea el código QR del comercio y escribe este número.')}</p>
+<p style="margin:14px 0 6px"><b>${T('Retour', 'Return', 'Devolución')}</b></p>
+<ol style="margin:0 0 14px;padding-left:20px;font-size:15px;line-height:1.5">
+<li>${T('Remettez-le dans sa housse, avec sa gaine.', 'Put it back in its cover, with its hose.', 'Vuelve a ponerle la funda, con su tubo.')}</li>
+<li>${T('Au même point, scannez le QR code et prenez une photo.', 'At the same point, scan the QR code and take a photo.', 'En el mismo punto, escanea el código QR y haz una foto.')}</li>
+<li>${T('Tapez le code du commerçant : écran bleu, c’est fini.', 'Enter the shopkeeper’s code: blue screen, you’re done.', 'Escribe el código del comerciante: pantalla azul, listo.')}</li>
+</ol>
 <p>${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.')}</p>
 <p>${T('Un souci avec l’appareil pendant la location ? Déclarez-le en 1 minute :', 'A problem with the unit during the rental? Report it in 1 minute:', '¿Un problema con el aparato durante el alquiler? Decláralo en 1 minuto:')} <a href="https://www.locair.fr/panne?ref=${encodeURIComponent(resa.ref || '')}">locair.fr/panne</a>.</p>
 <p>${T('Une question ? Écrivez à Julie, notre assistante, sur', 'Any question? Chat with Julie, our assistant, on', '¿Alguna pregunta? Escribe a Julie, nuestra asistente, en')} <a href="https://www.locair.fr/click-and-collect">locair.fr/click-and-collect</a>.</p>
