@@ -305,6 +305,12 @@ body.a-cook .barre-dates{bottom:64px}
 .recap>div:last-child{border-bottom:0}
 .recap dt{color:var(--ink-2);width:82px;flex-shrink:0}
 .recap dd{font-weight:700;flex:1;min-width:0}
+.recap .qte-l dt{width:auto;flex:1}
+.recap .qte-l dd{flex:none}
+.qte{display:flex;align-items:center;gap:14px}
+.qte button{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line);background:#fff;font:800 22px 'DM Sans',sans-serif;color:var(--ink);cursor:pointer;line-height:1}
+.qte button:disabled{opacity:.35;cursor:default}
+.qte b{min-width:20px;text-align:center;font-size:18px}
 .recap .modif{background:none;border:0;color:var(--vif);font-size:13.5px;font-weight:700;padding:6px 0 6px 8px;text-decoration:underline;text-underline-offset:3px;flex-shrink:0}
 .recap .total dd{font-family:var(--font-titre);font-size:26px;color:var(--vif)}
 .recap .barre-prix{color:var(--ink-3);font-weight:500;text-decoration:line-through;margin-right:6px}
@@ -1575,6 +1581,7 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
       <dl class="recap recap-mini" id="recap">
         <div><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>Point</dt><dd id="r-point"></dd><button type="button" class="modif" data-modif="point" aria-label="Modifier le point de retrait"><span lang="fr">Modifier</span><span lang="en">Change</span><span lang="es">Cambiar</span></button></div>
         <div><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Dates</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates"><span lang="fr">Modifier</span><span lang="en">Change</span><span lang="es">Cambiar</span></button></div>
+        <div class="qte-l"><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 10h8"/></svg><span lang="fr">Climatiseurs</span><span lang="en">Air conditioners</span><span lang="es">Aparatos</span></dt><dd class="qte"><button type="button" id="qte-moins" aria-label="Un de moins">−</button><b id="qte-n" aria-live="polite">1</b><button type="button" id="qte-plus" aria-label="Un de plus">+</button></dd></div>
         <div class="total"><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 7a7 7 0 100 10M4 10h9M4 14h9"/></svg>Total</dt><dd><span id="r-prix"></span> <small><span lang="fr">sans caution</span><span lang="en">no deposit</span><span lang="es">sin fianza</span></small></dd></div>
       </dl>
       <p class="stock-bas" id="r-stock" role="status" hidden></p>
@@ -1978,7 +1985,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{
       sessionStorage.setItem(CLE_ETAT, JSON.stringify({
         ecran:nom, ville:etat.ville, point:etat.point && etat.point.id, liste:etat.liste.map(function(p){ return p.id; }),
-        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, ref:etat.ref, numero:etat.numero, montant:etat.montant, remise:etat.remise, idtok:etat.idtok
+        pos:etat.pos, debut:etat.debut, fin:etat.fin, client:etat.client, qte:etat.qte, ref:etat.ref, numero:etat.numero, montant:etat.montant, remise:etat.remise, idtok:etat.idtok
       }));
     }catch(e){}
   }
@@ -2462,7 +2469,12 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
      qu'on paie. En attendant sa réponse, on montre le prix normal. */
   etat.prix = null;
   function clePrix(){ return etat.point && etat.debut && etat.fin ? etat.point.id + '|' + etat.debut + '|' + ecart(etat.debut, etat.fin) : ''; }
-  function total(){ var k = clePrix(); return (etat.prix && etat.prix.cle === k) ? etat.prix.totalCents / 100 : prix(jours()); }
+  /* plusieurs climatiseurs dans une seule commande (un seul numéro, même point) */
+  var QTE_MAX = 3;
+  function qte(){ return Math.max(1, Math.min(QTE_MAX, etat.qte || 1)); }
+  function qteMax(){ var pr = (etat.prix && etat.prix.cle === clePrix()) ? etat.prix : null; return Math.max(1, Math.min(QTE_MAX, pr && pr.libres ? pr.libres : QTE_MAX)); }
+  function totalUnit(){ var k = clePrix(); return (etat.prix && etat.prix.cle === k) ? etat.prix.totalCents / 100 : prix(jours()); }
+  function total(){ return Math.round(totalUnit() * qte() * 100) / 100; }
   function demanderPrix(){
     var k = clePrix(); if(!k || (etat.prix && etat.prix.cle === k)) return;
     var cle = k;
@@ -2573,6 +2585,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var p = etat.point, n = jours();
     $('r-point').textContent = p.nom + (p.exemple ? L(' (exemple)', ' (example)') : '');
     $('r-date').textContent = court(etat.debut) + ' → ' + court(etat.fin) + ' · ' + n + L(' j', ' d');
+    if(qte() > qteMax()) etat.qte = qteMax();
+    $('qte-n').textContent = qte(); $('qte-moins').disabled = qte() <= 1; $('qte-plus').disabled = qte() >= qteMax();
     $('r-prix').textContent = euros(total());
     /* stock réel du point sur ces dates, affiché seulement s'il est bas (vrai chiffre, jamais inventé) */
     var prS = (etat.prix && etat.prix.cle === clePrix()) ? etat.prix : null, rs = $('r-stock');
@@ -2735,6 +2749,9 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
      « Paiement » en secours. */
   var inl = {ok:false, el:null, montant:0, essai:false};
   function montantCents(){ return Math.round(total() * 100); }
+  function changerQte(d){ etat.qte = Math.max(1, Math.min(qteMax(), qte() + d)); etat.secret = null; vibre && vibre(); remplirRecap(); majResume('infos'); sauver('infos'); }
+  $('qte-moins').onclick = function(){ changerQte(-1); };
+  $('qte-plus').onclick = function(){ changerQte(1); };
   function monterInline(){
     var boite = $('paie-inline');
     if(!etat.point){ boite.hidden = true; return; }
@@ -2793,11 +2810,12 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     (inl.ok ? inl.el.submit().then(function(r){ if(r.error){ var x = new Error(r.error.message || ''); x.carte = true; throw x; } }) : Promise.resolve()).then(function(){
       if(reprise) return {ok:true, j:{clientSecret:etat.secret, ref:etat.ref, numero:etat.numero, amountCents:vuCents, remise:etat.remise, identite:etat.idtok}, reprise:true};
       return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, adresse_client:c.adresse, raison_sociale:c.societe || '', siret:c.siret || '', point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(total() * 100), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
+        prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, adresse_client:c.adresse, raison_sociale:c.societe || '', siret:c.siret || '', point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(totalUnit() * 100), quantite:qte(), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(),
         cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, campagne:campagne
       })}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
     })
     .then(function(r){
+      if(r.j.libres){ etat.qte = r.j.libres; remplirRecap(); majResume('infos'); }
       if(r.j.nouveauPrixCents){ etat.prix = {cle:clePrix(), totalCents:r.j.nouveauPrixCents, majore:r.j.majore, normalCents:prix(jours()) * 100, majorationPct:r.j.majorationPct || 0}; remplirRecap(); majResume('infos'); }
       if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
       etat.secret = r.j.clientSecret; etat.secretCle = cleVue; etat.ref = r.j.ref; etat.numero = r.j.numero || null; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null; sauver('infos');
@@ -2950,7 +2968,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('m-photos').innerHTML = ph.map(function(src, i){ return '<img src="' + esc(src) + '" alt="' + esc(p.nom + (i ? L(' — intérieur', ' — inside') : L(' — devanture', ' — shopfront'))) + '" loading="lazy" decoding="async">'; }).join('');
     $('m-photos').hidden = !ph.length;
     $('m-retour').textContent = L('Le retour : le ' + lisible(etat.fin) + ' (' + n + ' jours).', 'Return: ' + lisible(etat.fin) + ' (' + n + ' days).', 'Devolución: el ' + lisible(etat.fin) + ' (' + n + ' días).');
-    $('m-paye').textContent = L('Payé : ', 'Paid: ') + euros(etat.montant || total()) + (etat.ref ? ' · ' + L('réf. ', 'ref. ') + etat.ref : '');
+    $('m-paye').textContent = (qte() > 1 ? qte() + L(' climatiseurs · ', ' air conditioners · ', ' aparatos · ') : '') + L('Payé : ', 'Paid: ') + euros(etat.montant || total()) + (etat.ref ? ' · ' + L('réf. ', 'ref. ') + etat.ref : '');
     $('m-itin').href = 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng;
     try{ $('m-agenda').href = ics(); }catch(e){ $('m-agenda').hidden = true; }
     if(sansNav) return;
@@ -2958,7 +2976,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     try{ sessionStorage.removeItem(CLE_ETAT); }catch(e){}
     /* gardé 24 h : si la page se recharge (souvent quand Android ouvre l'appareil photo
        pour la pièce d'identité), le client retrouve son QR code et l'envoi de la pièce */
-    try{ localStorage.setItem('locair_cc_merci', JSON.stringify({t:Date.now(), point:p.id, debut:etat.debut, fin:etat.fin, client:{prenom:c.prenom || '', email:c.email || ''}, ref:etat.ref, numero:etat.numero, montant:etat.montant, remise:etat.remise, idtok:etat.idtok})); }catch(e){}
+    try{ localStorage.setItem('locair_cc_merci', JSON.stringify({t:Date.now(), point:p.id, debut:etat.debut, fin:etat.fin, client:{prenom:c.prenom || '', email:c.email || ''}, qte:etat.qte, ref:etat.ref, numero:etat.numero, montant:etat.montant, remise:etat.remise, idtok:etat.idtok})); }catch(e){}
   }
 
   /* Pièce d'identité APRÈS le paiement (écran « C'est réservé ») */
@@ -3248,7 +3266,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var sv = relire(), q = new URLSearchParams(location.search);
     if(sv){
       etat.ville = sv.ville; etat.point = parId(sv.point); etat.liste = (sv.liste || []).map(parId).filter(Boolean);
-      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.ref = sv.ref; etat.numero = sv.numero || null; etat.montant = sv.montant; etat.remise = sv.remise || null; etat.idtok = sv.idtok || null;
+      etat.pos = sv.pos || null; etat.debut = sv.debut; etat.fin = sv.fin; etat.client = sv.client; etat.qte = sv.qte || 1; etat.ref = sv.ref; etat.numero = sv.numero || null; etat.montant = sv.montant; etat.remise = sv.remise || null; etat.idtok = sv.idtok || null;
     }
     /* retour d'une banque (3-D Secure) : Stripe ajoute redirect_status */
     if(q.get('retour') === 'paiement' && sv && etat.point && etat.debut && etat.fin){
@@ -3261,7 +3279,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(h === 'merci' && !sv){
       var mr = null; try{ mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); }catch(e){}
       if(mr && Date.now() - mr.t < 864e5 && parId(mr.point)){
-        etat.point = parId(mr.point); etat.ville = etat.point.ville; etat.debut = mr.debut; etat.fin = mr.fin; etat.client = mr.client; etat.ref = mr.ref; etat.numero = mr.numero || null; etat.montant = mr.montant; etat.remise = mr.remise; etat.idtok = mr.idtok; etat.paye = true;
+        etat.point = parId(mr.point); etat.ville = etat.point.ville; etat.debut = mr.debut; etat.fin = mr.fin; etat.client = mr.client; etat.qte = mr.qte || 1; etat.ref = mr.ref; etat.numero = mr.numero || null; etat.montant = mr.montant; etat.remise = mr.remise; etat.idtok = mr.idtok; etat.paye = true;
         merci(); return;
       }
     }

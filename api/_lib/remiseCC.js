@@ -64,7 +64,7 @@ async function agir(supabase, r, partenaireId, action) {
     const aujourdhui = todayParis();
     const e = etat(r, aujourdhui);
     const fiche = {
-      ref: r.ref, prenom: r.prenom, nom: r.nom,
+      ref: r.ref, prenom: r.prenom, nom: r.nom, quantite: Math.max(1, r.quantite || 1),
       date_debut: r.date_debut, date_fin: r.date_fin,
       point: String(r.adresse || '').replace(/^CLICK & COLLECT — /, ''),
       remis_at: r.remis_at || null,

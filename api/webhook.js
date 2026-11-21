@@ -739,6 +739,7 @@ const handler = async (req, res) => {
           smsConfirmationContent += meta.lang === 'es' ? ` Tu número de pedido: ${numComptoir(confirmedResa.ref)}.`
             : meta.lang === 'en' ? ` Your order number: ${numComptoir(confirmedResa.ref)}.`
             : ` Votre numéro de commande : ${numComptoir(confirmedResa.ref)}.`;
+          if ((confirmedResa.quantite || 1) > 1) smsConfirmationContent += meta.lang === 'en' ? ` (${confirmedResa.quantite} units)` : meta.lang === 'es' ? ` (${confirmedResa.quantite} aparatos)` : ` (${confirmedResa.quantite} climatiseurs)`;
         } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
@@ -828,7 +829,7 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
     ].map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#4B5873;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0"><b>${esc(v)}</b></td></tr>`).join('');
     const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('C’est réservé', 'You’re booked', 'Ya está reservado')}, ${esc(resa.prenom)} !</h2>
-<p>${T('Votre climatiseur mobile est réservé à votre nom. <b>Le ' + esc(fmt(resa.date_debut)) + ', rendez-vous directement au point de retrait</b>, aux horaires d’ouverture.', 'Your portable air conditioner is reserved in your name. <b>On ' + esc(fmt(resa.date_debut)) + ', go straight to the pick-up point</b> during opening hours.', 'Tu aire acondicionado portátil está reservado a tu nombre. <b>El ' + esc(fmt(resa.date_debut)) + ', ve directamente al punto de recogida</b>, en su horario de apertura.')}</p>
+<p>${(resa.quantite || 1) > 1 ? T(`<b>${resa.quantite} climatiseurs</b>, un seul numéro pour tous. `, `<b>${resa.quantite} air conditioners</b>, one number for all. `, `<b>${resa.quantite} aparatos</b>, un solo número para todos. `) : ''}${T('Votre climatiseur mobile est réservé à votre nom. <b>Le ' + esc(fmt(resa.date_debut)) + ', rendez-vous directement au point de retrait</b>, aux horaires d’ouverture.', 'Your portable air conditioner is reserved in your name. <b>On ' + esc(fmt(resa.date_debut)) + ', go straight to the pick-up point</b> during opening hours.', 'Tu aire acondicionado portátil está reservado a tu nombre. <b>El ' + esc(fmt(resa.date_debut)) + ', ve directamente al punto de recogida</b>, en su horario de apertura.')}</p>
 ${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${esc(pt.nom)}" style="width:100%;max-width:520px;border-radius:12px"></p>` : ''}
 <p style="margin:14px 0"><a href="${esc(itineraire)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
