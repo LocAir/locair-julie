@@ -77,25 +77,23 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .fini svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .fini h2{font-size:28px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px}
 .fini p{color:var(--ink-2);margin:0;font-size:16px;line-height:1.5}
-.montrer{border:2px solid var(--ok);border-radius:18px;padding:18px 14px;margin:6px 0 18px;background:#EAF6EF}
+.montrer{border:2px solid var(--ok);border-radius:18px;padding:18px 14px;margin:6px 0 0;background:#EAF6EF}
+.montrer + #f-texte,.montrer ~ .avis-retour{margin-top:18px}
 .fini .montrer p{color:var(--ink)}
-.fini .m-a{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ok)}
 .fini .m-nom{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:8px 0 4px}
 .fini .m-ref{font-size:18px;font-weight:700;letter-spacing:.06em}
-.fini .m-valide{font-size:13px;font-weight:700;color:var(--ink-2,#4B5873);margin:0 0 6px}
 .fini .m-horloge{font-size:34px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ok);margin:10px 0 4px}
 .fini .m-qte{font-size:26px;font-weight:900;margin:2px 0 0}
 .fini .m-piece{font-size:14px;color:var(--ink-2)}
 /* échange : couleur orange et flèches, pour que le commerçant ne le confonde
    jamais avec un retrait (vert) */
-.fini .montrer .m-a,.fini .montrer .m-horloge{color:var(--ok)}
+.fini .montrer .m-horloge{color:var(--ok)}
 .fini.ech .rond{background:#C2410C}
 .fini.rtr .rond{background:var(--vif)}
-.fini.rtr .montrer .m-a{display:none}
 .fini.rtr .montrer{border-color:var(--vif);background:#E8F0FD}
-.fini.rtr .montrer .m-a,.fini.rtr .montrer .m-horloge{color:var(--vif)}
+.fini.rtr .montrer .m-horloge{color:var(--vif)}
 .fini.ech .montrer{border-color:#C2410C;background:#FFF1E6}
-.fini.ech .montrer .m-a,.fini.ech .montrer .m-horloge{color:#C2410C}
+.fini.ech .montrer .m-horloge{color:#C2410C}
 .code-l{display:block;font-weight:800;margin:16px 0 6px}
 .code-com{text-transform:uppercase;width:100%;min-height:58px;border:1.5px solid var(--line);border-radius:14px;font:900 28px 'DM Sans',sans-serif;letter-spacing:.3em;text-align:center;color:var(--ink);background:#fff}
 .code-com:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94,219,.18)}
@@ -182,11 +180,9 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       <div class="rond"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
       <h2 id="f-titre"></h2>
       <div class="montrer" id="f-montrer" hidden>
-        <p class="m-a"><span lang="fr">À montrer au commerçant</span><span lang="en">Show this to the shopkeeper</span><span lang="es">Enséñaselo al comerciante</span></p>
         <p class="m-nom" id="f-nom"></p>
         <p class="m-qte" id="f-qte" hidden></p>
         <p class="m-horloge" id="f-horloge" aria-live="off"></p>
-        <p class="m-valide" id="f-valide" hidden></p>
         <p class="m-piece"><span lang="fr">Vérifiez la pièce d’identité : même nom.</span><span lang="en">Check the ID: same name.</span><span lang="es">Comprueba el documento de identidad: mismo nombre.</span></p>
       </div>
       <p id="f-texte"></p>
@@ -329,7 +325,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
      horloge qui tourne à la seconde (une capture d'écran ne bouge pas) */
   var minuterie = null;
   var COCHE = '<path d="M5 12.5l4.5 4.5L19 7.5"/>', FLECHES = '<path d="M4 9h13l-4-4M20 15H7l4 4"/>', RETOUR = '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/>';
-  function montrerAuCommercant(sorte, valideA){
+  function montrerAuCommercant(sorte){
     var ech = sorte === 'echange', rtr = sorte === 'retour', carte = document.querySelector('#e-fini .carte');
     carte.classList.toggle('ech', ech); carte.classList.toggle('rtr', rtr);
     document.querySelector('#e-fini .rond svg').innerHTML = ech ? FLECHES : rtr ? RETOUR : COCHE;
@@ -344,9 +340,6 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     var loc = langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR';
     function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }
     tic(); clearInterval(minuterie); minuterie = setInterval(tic, 1000);
-    /* heure de validation figée : un vieil écran gardé ouvert se repère tout de suite */
-    var va = $('f-valide');
-    if(va){ va.hidden = !valideA; if(valideA) va.textContent = L('Validé à ', 'Confirmed at ', 'Confirmado a las ') + valideA.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', timeZone:'Europe/Paris'}); }
   }
   function faireEchange(b, lib, corps){
     return appel(corps).then(function(r){
@@ -356,7 +349,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
         $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
         $('f-titre').textContent = L('Échange validé', 'Swap confirmed', 'Cambio confirmado');
         montrerAuCommercant('echange');
-        $('f-texte').textContent = L('Votre location continue jusqu’au ', 'Your rental continues until ', 'Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
+        $('f-texte').hidden = false; $('f-texte').textContent = L('Votre location continue jusqu’au ', 'Your rental continues until ', 'Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
       } else {
         $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
         var i = $('sig-ok'); i.textContent = r.j.issue === 'reapprovisionnement'
@@ -378,8 +371,8 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       }
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       $('f-titre').textContent = L('Retrait validé', 'Pick-up confirmed', 'Recogida confirmada');
-      montrerAuCommercant('retrait', remis);
-      $('f-texte').textContent = L('À rapporter ici le ', 'Bring it back here on ', 'Devuélvelo aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.';
+      montrerAuCommercant('retrait');
+      $('f-texte').hidden = true;   /* la date de retour est dans l'email et le SMS : rien de plus à l'écran */
     }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
   var photoRetour = null, photoChemin = null;
