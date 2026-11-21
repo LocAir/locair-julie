@@ -145,7 +145,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
         <button type="button" class="sig-lien" id="sig-ouvrir" aria-expanded="false" aria-controls="sig-form">⚠️ <span lang="fr">Signaler un problème (casse, appareil abîmé…)</span><span lang="en">Report a problem (breakage, damage…)</span><span lang="es">Avisar de un problema (rotura, daño…)</span></button>
         <div class="sig-form" id="sig-form" hidden>
           <div class="sig-choix" role="radiogroup">
-            <label><input type="radio" name="sig" value="casse" checked><span><span lang="fr">Casse</span><span lang="en">Broken</span><span lang="es">Rotura</span></span></label>
+            <label><input type="radio" name="sig" value="casse" checked><span><span lang="fr">Casse (roulette, poignée…)</span><span lang="en">Broken (wheel, handle…)</span><span lang="es">Rotura (rueda, asa…)</span></span></label>
             <label><input type="radio" name="sig" value="abime"><span><span lang="fr">Appareil abîmé</span><span lang="en">Damaged</span><span lang="es">Aparato dañado</span></span></label>
             <label><input type="radio" name="sig" value="manque"><span><span lang="fr">Il manque quelque chose</span><span lang="en">Something missing</span><span lang="es">Falta algo</span></span></label>
             <label><input type="radio" name="sig" value="panne"><span><span lang="fr">Il ne marche pas</span><span lang="en">Doesn’t work</span><span lang="es">No funciona</span></span></label>
@@ -306,7 +306,10 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       b.disabled = false; b.innerHTML = lib;
       if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
-      var ok = $('sig-ok'); ok.textContent = L('Merci, c’est noté. Loc’Air vous recontacte si besoin. Vous pouvez valider normalement.', 'Thanks, noted. Loc’Air will contact you if needed. You can confirm as usual.', 'Gracias, anotado. Loc’Air te contactará si hace falta. Puedes confirmar normalmente.'); ok.hidden = false;
+      var autreSig = (document.querySelector('input[name="sig"]:checked') || {}).value === 'autre';
+      var ok = $('sig-ok'); ok.textContent = autreSig
+        ? L('Merci, c’est noté. Loc’Air vous recontacte si besoin. Vous pouvez valider normalement.', 'Thanks, noted. Loc’Air will contact you if needed. You can confirm as usual.', 'Gracias, anotado. Loc’Air te contactará si hace falta. Puedes confirmar con normalidad.')
+        : L('Merci, c’est noté. Loc’Air est prévenu et organise le remplacement de l’appareil au point. Vous pouvez valider normalement.', 'Thanks, noted. Loc’Air has been told and is arranging a replacement unit at the point. You can confirm as usual.', 'Gracias, anotado. Loc’Air está avisado y organiza el cambio del aparato en el punto. Puedes confirmar con normalidad.'); ok.hidden = false;
     }).catch(function(x){ b.disabled = false; b.innerHTML = lib; erreur($('sig-err'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
   /* écran de confirmation à montrer au commerçant : nom, numéro, et une
