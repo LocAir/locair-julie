@@ -91,6 +91,9 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .fini .av-q{color:var(--ink);font-size:20px;font-weight:900;letter-spacing:-.02em;margin:0 0 4px}
 .fini .av-s{font-size:15px;margin:0 0 14px}
 .av-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.echange{margin-top:20px;padding-top:18px;border-top:2px dashed var(--line)}
+.ech-t{margin:0 0 10px;font-weight:800;font-size:16px}
+.ech-btn{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
 .code-aide{font-size:13.5px;color:var(--ink-2);margin:6px 0 14px}
 [hidden]{display:none!important}
 html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):not([data-l="es"]) [lang="es"],html[data-l="en"] [lang="fr"],html[data-l="en"] [lang="es"],html[data-l="es"] [lang="fr"],html[data-l="es"] [lang="en"]{display:none}
@@ -141,6 +144,12 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
         <button class="btn vert" id="b-com" type="submit"></button>
         <p class="msg err" id="m-com" role="alert" hidden></p>
       </form>
+      <div class="echange" id="f-ech" hidden>
+        <p class="ech-t"><span lang="fr">Votre climatiseur est en panne&nbsp;?</span><span lang="en">Is your air conditioner broken?</span><span lang="es">¿Tu aire acondicionado no funciona?</span></p>
+        <button class="btn ech-btn" id="b-ech" type="button">🔁 <span lang="fr">Échanger mon appareil ici</span><span lang="en">Swap my unit here</span><span lang="es">Cambiar mi aparato aquí</span></button>
+        <p class="msg err" id="m-ech" role="alert" hidden></p>
+        <p class="msg info" id="i-ech" role="status" hidden></p>
+      </div>
       <div class="signal" id="sig" hidden>
         <button type="button" class="sig-lien" id="sig-ouvrir" aria-expanded="false" aria-controls="sig-form">⚠️ <span lang="fr">Signaler un problème (casse, appareil abîmé…)</span><span lang="en">Report a problem (breakage, damage…)</span><span lang="es">Avisar de un problema (rotura, daño…)</span></button>
         <div class="sig-form" id="sig-form" hidden>
@@ -242,7 +251,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     var pc = $('r-piece'); pc.className = 'badge ' + (r.piece_recue ? 'ok' : 'att');
     pc.textContent = r.piece_recue ? L('Reçue en ligne', 'Received online', 'Recibido online') : L('À vérifier au comptoir', 'Check at the counter', 'Comprobar en el mostrador');
     var info = $('r-info'), f = $('f-com'), btn = $('b-com'), nom = $('r-nom').textContent;
-    info.hidden = true; f.hidden = true; $('f-cli').hidden = true; etat.action = null;
+    info.hidden = true; f.hidden = true; $('f-cli').hidden = true; $('f-ech').hidden = true; etat.action = null;
     $('sig').hidden = !(r.peut_remettre || r.peut_rendre); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
     if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; $('r-tendre').hidden = true; return; }
     /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
@@ -253,6 +262,9 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
+      /* location en cours : on peut aussi échanger un appareil en panne (_lib/panne.js) */
+      var auj = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
+      $('f-ech').hidden = !(r.date_fin && r.date_fin > auj);
       $('r-consigne').textContent = L('Déposez le climatiseur dans sa housse, avec sa gaine d’évacuation. Prenez-le en photo, demandez le code au commerçant, puis validez.', 'Leave the air conditioner in its cover, with its exhaust hose. Take a photo, ask the shopkeeper for the code, then confirm.', 'Deja el aire acondicionado en su funda, con su tubo de evacuación. Hazle una foto, pide el código al comerciante y confirma.');
       btn.textContent = L('Valider mon retour', 'Confirm my return', 'Confirmar mi devolución'); f.hidden = false;
     } else {
@@ -306,10 +318,12 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       b.disabled = false; b.innerHTML = lib;
       if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
-      var autreSig = (document.querySelector('input[name="sig"]:checked') || {}).value === 'autre';
-      var ok = $('sig-ok'); ok.textContent = autreSig
-        ? L('Merci, c’est noté. Loc’Air vous recontacte si besoin. Vous pouvez valider normalement.', 'Thanks, noted. Loc’Air will contact you if needed. You can confirm as usual.', 'Gracias, anotado. Loc’Air te contactará si hace falta. Puedes confirmar con normalidad.')
-        : L('Merci, c’est noté. Loc’Air est prévenu et organise le remplacement de l’appareil au point. Vous pouvez valider normalement.', 'Thanks, noted. Loc’Air has been told and is arranging a replacement unit at the point. You can confirm as usual.', 'Gracias, anotado. Loc’Air está avisado y organiza el cambio del aparato en el punto. Puedes confirmar con normalidad.'); ok.hidden = false;
+      var issue = r.j.issue;
+      var ok = $('sig-ok'); ok.textContent = issue === 'echange_comptoir'
+        ? L('C’est noté. Le commerçant vous donne un autre climatiseur. Validez ensuite normalement.', 'Noted. The shopkeeper gives you another air conditioner. Then confirm as usual.', 'Anotado. El comerciante te da otro aire acondicionado. Después confirma con normalidad.')
+        : issue === 'reapprovisionnement'
+        ? L('C’est noté. Plus d’appareil ici aujourd’hui : ne validez pas le retrait. On apporte un climatiseur le jour même ou le lendemain, et vous recevez un SMS.', 'Noted. No unit left here today: don’t confirm the pick-up. We’re bringing one the same day or the next, and you’ll get a text.', 'Anotado. Hoy no queda aparato aquí: no confirmes la recogida. Llevamos uno el mismo día o al siguiente y recibirás un SMS.')
+        : L('Merci, c’est noté. Vous pouvez valider normalement.', 'Thanks, noted. You can confirm as usual.', 'Gracias, anotado. Puedes confirmar con normalidad.'); ok.hidden = false;
     }).catch(function(x){ b.disabled = false; b.innerHTML = lib; erreur($('sig-err'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
   /* écran de confirmation à montrer au commerçant : nom, numéro, et une
@@ -323,6 +337,25 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }
     tic(); clearInterval(minuterie); minuterie = setInterval(tic, 1000);
   }
+  $('b-ech').addEventListener('click', function(){
+    var b = $('b-ech'); b.disabled = true; erreur($('m-ech'), ''); $('i-ech').hidden = true;
+    appel({action:'echanger', categorie:'panne'}).then(function(r){
+      b.disabled = false;
+      if(!r.ok) return erreur($('m-ech'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      if(r.j.issue === 'echange_comptoir'){
+        $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
+        $('f-titre').textContent = L('Échange validé ✓', 'Swap confirmed ✓', 'Cambio confirmado ✓');
+        montrerAuCommercant();
+        $('f-texte').textContent = L('Le commerçant reprend votre appareil et vous en donne un autre, sous sa housse, avec sa gaine. Votre location continue jusqu’au ', 'The shopkeeper takes your unit and gives you another one, in its cover, with its hose. Your rental continues until ', 'El comerciante recoge tu aparato y te da otro, con su funda y su tubo. Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
+      } else {
+        $('f-ech').hidden = false; b.hidden = true;
+        var i = $('i-ech'); i.textContent = r.j.issue === 'reapprovisionnement'
+          ? L('Plus d’appareil de rechange ici aujourd’hui. Gardez le vôtre pour l’instant : on apporte un climatiseur à ce point le jour même ou le lendemain, et vous recevez un SMS. Revenez alors l’échanger ici.', 'No spare unit here today. Keep yours for now: we’re bringing one to this point the same day or the next, and you’ll get a text. Then come back and swap it here.', 'Hoy no queda aparato de repuesto aquí. Quédate el tuyo por ahora: llevamos uno a este punto el mismo día o al siguiente y recibirás un SMS. Vuelve entonces a cambiarlo aquí.')
+          : L('C’est noté, on vous recontacte rapidement.', 'Noted, we’ll get back to you quickly.', 'Anotado, te contactamos rápidamente.');
+        i.hidden = false;
+      }
+    }).catch(function(){ b.disabled = false; erreur($('m-ech'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
   $('b-cli').addEventListener('click', function(){
     var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
     appel({action:'valider'}).then(function(r){
