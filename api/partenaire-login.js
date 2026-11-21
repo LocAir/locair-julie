@@ -1,4 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
+const { tauxAffiche } = require('./_lib/pointsRetrait');
 const { safeEqual, signPartenaireToken } = require('./_lib/auth');
 const { hashPin, verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
@@ -64,7 +65,7 @@ module.exports = async (req, res) => {
       partenaire_id: match.id,
       nom: match.nom,
       code: match.code,
-      taux_commission_pct: match.taux_commission_pct,
+      taux_commission_pct: tauxAffiche(match),
     });
   } catch (err) {
     console.error('[Partenaire login]', err.message);
