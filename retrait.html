@@ -216,10 +216,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
 
   /* réservation gardée sur ce téléphone après le paiement : pré-remplie */
   try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && mr.ref) $('ref').value = mr.ref; }catch(e){}
-  /* lien « Mon écran de retrait » (email, SMS) : pas besoin de scanner au retrait */
-  var refLien = (q.get('ref') || '').slice(0, 40); if(refLien) $('ref').value = refLien;
 
-  if(refLien && POINT) setTimeout(function(){ $('f-id').requestSubmit ? $('f-id').requestSubmit() : $('b-id').click(); }, 0);
   function appel(corps){
     corps.point = POINT; corps.ref = etat.ref; corps.lang = langue();
     return fetch('/api/cc-comptoir', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corps)})
@@ -235,15 +232,11 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     appel({action:'voir'}).then(function(r){
       b.disabled = false;
       if(!r.ok || !r.j.reservation) return erreur($('m-id'), r.j.error || L('Réservation introuvable.', 'Booking not found.', 'Reserva no encontrada.'));
-      etat.resa = r.j.reservation;
-      if(dejaRetireAujourdhui(etat.resa)){ $('e-id').hidden = true; ecranRetrait(); return; }
-      afficher(etat.resa);
+      etat.resa = r.j.reservation; afficher(etat.resa);
       $('e-id').hidden = true; $('e-resa').hidden = false; window.scrollTo(0, 0);
     }).catch(function(){ b.disabled = false; erreur($('m-id'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
 
-  /* déjà retiré aujourd'hui (page rouverte au comptoir) : on remontre l'écran vert */
-  function dejaRetireAujourdhui(r){ return !r.rendu && r.remis_at && new Date(r.remis_at).toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'}) === new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'}); }
   function afficher(r){
     var nom = ((r.prenom || '') + ' ' + (r.nom || '')).trim();
     var info = $('r-info'), f = $('f-com'), btn = $('b-com');
@@ -256,7 +249,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
     if(r.peut_remettre){
-      $('c-consigne').textContent = L('Devant le commerçant : validez, puis montrez l’écran vert et votre pièce d’identité (' + nom + ').', 'In front of the shopkeeper: confirm, then show the green screen and your ID (' + nom + ').', 'Delante del comerciante: confirma y enseña la pantalla verde y tu documento (' + nom + ').');
+      $('c-consigne').textContent = L('Validez, puis montrez l’écran vert et votre pièce d’identité (' + nom + ') au commerçant.', 'Confirm, then show the green screen and your ID (' + nom + ') to the shopkeeper.', 'Confirma y enseña la pantalla verde y tu documento de identidad (' + nom + ') al comerciante.');
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
@@ -363,18 +356,15 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       }
     });
   }
-  function ecranRetrait(){
-    $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
-    $('f-titre').textContent = L('Retrait validé', 'Pick-up confirmed', 'Recogida confirmada');
-    montrerAuCommercant();
-    $('f-texte').textContent = L('À rapporter le ', 'Bring it back on ', 'Devuélvelo el ') + date(etat.resa.date_fin).replace(/\.$/, '') + L(' : en arrivant, scannez le QR code du comptoir.', ': when you arrive, scan the QR code at the counter.', ': al llegar, escanea el código QR del mostrador.');
-  }
   $('b-cli').addEventListener('click', function(){
     var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
     appel({action:'valider'}).then(function(r){
       b.disabled = false;
       if(!r.ok) return erreur($('m-cli'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
-      ecranRetrait();
+      $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
+      $('f-titre').textContent = L('Retrait validé', 'Pick-up confirmed', 'Recogida confirmada');
+      montrerAuCommercant();
+      $('f-texte').textContent = L('À rapporter ici le ', 'Bring it back here on ', 'Devuélvelo aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.';
     }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
   var photoRetour = null, photoChemin = null;
