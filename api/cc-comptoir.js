@@ -17,7 +17,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 const { agir } = require('./_lib/remiseCC');
-const { codeRetour } = require('./_lib/clickCollect');
+const { codeRetour, numeroComptoir } = require('./_lib/clickCollect');
 const { safeEqual } = require('./_lib/auth');
 const { verifyPin } = require('./_lib/pinHash');
 const { pushToAdmin } = require('./_lib/push');
@@ -36,7 +36,8 @@ module.exports = async (req, res) => {
   const ref = String(b.ref || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 40);
   const action = ['voir', 'valider', 'rendre', 'signaler', 'echanger', 'photo'].includes(b.action) ? b.action : 'voir';
   if (!point) return res.status(404).json({ error: T(lang, 'Ce QR code ne correspond à aucun point de retrait.', 'This QR code doesn’t match any pick-up point.', 'Este código QR no corresponde a ningún punto de recogida.') });
-  if (ref.length < 6) return res.status(400).json({ error: T(lang, 'Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.') });
+  const numero4 = /^\d{4}$/.test(ref);
+  if (!numero4 && ref.length < 6) return res.status(400).json({ error: T(lang, 'Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.') });
 
   const supabase = getSupabase();
   const ip = getClientIp(req);
@@ -48,9 +49,22 @@ module.exports = async (req, res) => {
     // Click & Collect, ou client LIVRÉ qui vient échanger un appareil en panne
     // (décision du propriétaire, 21/11/2026 : jamais de transporteur chez le
     // client pour une panne, il rapporte l'appareil au point le plus proche).
-    const { data: lignes } = await supabase.from('reservations').select('*')
-      .eq('ref', ref).order('id', { ascending: true }).limit(1);
-    let r = lignes && lignes[0];
+    let r = null;
+    if (numero4) {
+      // Numéro à 4 chiffres (le cas normal au comptoir) : cherché parmi les
+      // locations Click & Collect encore ouvertes de CE point.
+      const depuis = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
+      const { data: ouvertes } = await supabase.from('reservations').select('*')
+        .eq('point_retrait_id', point.id).eq('source_channel', 'click_collect').is('reservation_origine_id', null)
+        .in('statut', ['en_attente', 'confirmee', 'terminee']).gte('date_fin', depuis)
+        .order('id', { ascending: false }).limit(2000);
+      const memes = (ouvertes || []).filter((x) => numeroComptoir(x.ref) === ref);
+      r = memes.find((x) => x.statut !== 'terminee') || memes[0] || null;
+    } else {
+      const { data: lignes } = await supabase.from('reservations').select('*')
+        .eq('ref', ref).order('id', { ascending: true }).limit(1);
+      r = lignes && lignes[0];
+    }
     // Numéro d'une prolongation tapé par erreur : on revient à la location d'origine.
     if (r && r.reservation_origine_id) {
       const { data: orig } = await supabase.from('reservations').select('*').eq('id', r.reservation_origine_id).maybeSingle();

@@ -7,7 +7,7 @@
 const PDFDocument = require('pdfkit');
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual } = require('./_lib/auth');
-const { codeRemise } = require('./_lib/clickCollect');
+const { codeRemise, numeroComptoir } = require('./_lib/clickCollect');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 
 const BLEU = '#1A5EDB', ENCRE = '#0E1726', GRIS = '#4B5873', BRUME = '#F2F6FD';
@@ -54,8 +54,8 @@ module.exports = async (req, res) => {
     // numéro de commande
     let y = 122;
     doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('VOTRE NUMÉRO DE COMMANDE', 'YOUR ORDER NUMBER', 'TU NÚMERO DE PEDIDO'), M, y, { characterSpacing: 1 });
-    doc.fillColor(ENCRE).font('Helvetica-Bold').fontSize(34).text(r.ref || '', M, y + 18);
-    doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('Gardez-le jusqu’au retour de l’appareil, même si vous prolongez.', 'Keep it until you return the unit, even if you extend.', 'Guárdalo hasta devolver el aparato, aunque amplíes.'), M, y + 60, { width: W - 2 * M });
+    doc.fillColor(ENCRE).font('Helvetica-Bold').fontSize(40).text(numeroComptoir(r.ref), M, y + 14, { characterSpacing: 6 });
+    doc.fillColor(GRIS).font('Helvetica').fontSize(11).text(T('À taper au comptoir, au retrait et au retour.', 'To enter at the counter, at pick-up and return.', 'Para escribir en el mostrador, en la recogida y la devolución.'), M, y + 60, { width: W - 2 * M });
 
 
     // détails

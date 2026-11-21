@@ -10,6 +10,7 @@ const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, gen
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { todayParis } = require('./_lib/dates');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { numeroComptoir: numComptoir } = require('./_lib/clickCollect');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
@@ -735,9 +736,9 @@ const handler = async (req, res) => {
             ? `Loc'Air - Click & Collect booking confirmed.${d ? ' Pick-up on ' + d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' at ' + meta.point_nom : ''}. Go to the shop during opening hours: scan the QR code at the counter, enter your order number and show your ID.`
             : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. En arrivant, scannez le QR code du comptoir (retrait et retour).`;
           // Numéro de commande : le seul numéro du séjour (retrait, prolongation, retour).
-          smsConfirmationContent += meta.lang === 'es' ? ` Tu número de pedido: ${confirmedResa.ref} (guárdalo hasta la devolución).`
-            : meta.lang === 'en' ? ` Your order number: ${confirmedResa.ref} (keep it until you return the unit).`
-            : ` Votre numéro de commande : ${confirmedResa.ref} (gardez-le jusqu'au retour).`;
+          smsConfirmationContent += meta.lang === 'es' ? ` Tu número de pedido: ${numComptoir(confirmedResa.ref)}.`
+            : meta.lang === 'en' ? ` Your order number: ${numComptoir(confirmedResa.ref)}.`
+            : ` Votre numéro de commande : ${numComptoir(confirmedResa.ref)}.`;
         } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
@@ -831,7 +832,7 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
 ${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${esc(pt.nom)}" style="width:100%;max-width:520px;border-radius:12px"></p>` : ''}
 <p style="margin:14px 0"><a href="${esc(itineraire)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
-<p style="margin:18px 0 14px;padding:14px 16px;background:#EFF4FD;border-radius:12px;font-size:16px"><b>${T('Retrait et retour : en arrivant, scannez le QR code du comptoir.', 'Pick-up and return: when you arrive, scan the QR code at the counter.', 'Recogida y devolución: al llegar, escanea el código QR del mostrador.')}</b><br>${T('Votre numéro', 'Your number', 'Tu número')} : <b>${esc(resa.ref || '')}</b></p>
+<p style="margin:18px 0 14px;padding:14px 16px;background:#EFF4FD;border-radius:12px;font-size:16px"><b>${T('Retrait et retour : en arrivant, scannez le QR code du comptoir.', 'Pick-up and return: when you arrive, scan the QR code at the counter.', 'Recogida y devolución: al llegar, escanea el código QR del mostrador.')}</b><br>${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:22px;letter-spacing:.12em">${numComptoir(resa.ref)}</b></p>
 <p>${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.')}</p>
 <p>${T('Un souci avec l’appareil pendant la location ? Déclarez-le en 1 minute :', 'A problem with the unit during the rental? Report it in 1 minute:', '¿Un problema con el aparato durante el alquiler? Decláralo en 1 minuto:')} <a href="https://www.locair.fr/panne?ref=${encodeURIComponent(resa.ref || '')}">locair.fr/panne</a>.</p>
 <p>${T('Une question ? Écrivez à Julie, notre assistante, sur', 'Any question? Chat with Julie, our assistant, on', '¿Alguna pregunta? Escribe a Julie, nuestra asistente, en')} <a href="https://www.locair.fr/click-and-collect">locair.fr/click-and-collect</a>.</p>

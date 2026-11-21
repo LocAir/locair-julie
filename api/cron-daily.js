@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { numeroComptoir: numComptoir } = require('./_lib/clickCollect');
 const Stripe = require('stripe');
 const { getSupabase }          = require('./_lib/supabase');
 const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
@@ -1370,7 +1371,7 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
 <p>${texte}</p>
 ${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
-<p style="font-size:15px">${T('Votre numéro', 'Your number', 'Tu número')} : <b>${esc(r.ref || '')}</b></p>
+<p style="font-size:15px">${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:20px;letter-spacing:.12em">${numComptoir(r.ref)}</b></p>
 <p style="color:#4B5873;font-size:13px">${T('Référence', 'Reference', 'Referencia')} : ${esc(r.ref || '')} · Loc’Air · locair.fr</p></div>`;
       const res = await sendBrevoEmail({ to: r.email, subject, html, senderName: "Loc'Air" });
       if (!res.ok) {

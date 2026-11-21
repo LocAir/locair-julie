@@ -23,7 +23,7 @@ const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
-const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite } = require('./_lib/clickCollect');
+const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite, numeroComptoir } = require('./_lib/clickCollect');
 const { lireDevis } = require('./_lib/tarifDynamique');
 
 const JOURS_MAX = 90;
@@ -148,7 +148,17 @@ module.exports = async (req, res) => {
 
   // Référence toujours créée ici, jamais reprise du navigateur : réutiliser
   // celle d'un essai précédent (carte refusée) bloquait tout nouveau paiement.
-  const ref = 'CC-' + Array.from(require('crypto').randomBytes(8), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
+  // Le numéro à 4 chiffres tapé au comptoir doit être unique parmi les
+  // locations encore ouvertes de ce point : sinon, on tire une autre référence.
+  const nouvelle = () => 'CC-' + Array.from(require('crypto').randomBytes(8), (b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
+  let ref = nouvelle();
+  try {
+    const depuis = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
+    const { data: ouvertes } = await supabase.from('reservations').select('ref')
+      .eq('point_retrait_id', point.id).in('statut', ['en_attente', 'confirmee']).gte('date_fin', depuis).limit(2000);
+    const pris = new Set((ouvertes || []).map((x) => numeroComptoir(x.ref)));
+    for (let i = 0; i < 50 && pris.has(numeroComptoir(ref)); i++) ref = nouvelle();
+  } catch (e) { console.error('[CC numéro comptoir]', e.message); }
   const adresseResa = `CLICK & COLLECT — ${point.nom} — ${point.adresse}`;
 
   try {
@@ -250,7 +260,7 @@ module.exports = async (req, res) => {
     } catch (e) { console.error('[CC CGV]', e.message); }
 
     return res.status(200).json({
-      clientSecret: intent.client_secret, amountCents, ref, majore: prix.majore,
+      clientSecret: intent.client_secret, amountCents, ref, numero: numeroComptoir(ref), majore: prix.majore,
       // QR de remise : montré au client, scanné par le commerçant au retrait.
       remise: { lien: lienRemise(resa.id, ref), qr: imageQrRemise(resa.id, ref) },
       // Pour ajouter la pièce d'identité juste après le paiement.
