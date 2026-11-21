@@ -14,8 +14,8 @@
 //   4. la commission du commerçant suit le taux du point (commission_pct).
 const { calcTieredPrice } = require('./pricing');
 const { getPointRetrait, pointFermeLe } = require('./pointsRetrait');
-const { occupationParPoint } = require('./clickCollect');
-const { facteurCC } = require('./tarifDynamique');
+const { occupationParPoint, numeroComptoir } = require('./clickCollect');
+const { facteurCC, baseCents } = require('./tarifDynamique');
 
 function estClickCollect(resa) {
   return !!resa && resa.source_channel === 'click_collect';
@@ -25,6 +25,29 @@ function estClickCollect(resa) {
 // Collect, arrondi à l'euro (comme le prix de base).
 function montantProlongationCC(montantDomicileCents, pricing) {
   return Math.round(montantDomicileCents * facteurCC(calcTieredPrice, pricing) / 100) * 100;
+}
+
+// Prix de prolongation (décision du propriétaire, 21/11/2026) : on garde
+// le barème dégressif, et un client qui avait payé MOINS que le prix normal
+// (tarif dynamique « période calme ») garde sa réduction. Jamais plus cher
+// que le prix normal : un prix monté au départ ne majore pas la prolongation.
+// → coefficient entre 0 et 1 appliqué au prix Click & Collect de la prolongation.
+function jours(a, b) { return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000); }
+async function coefPrixPaye(supabase, orig, pricing) {
+  try {
+    const qty = Math.max(1, orig.quantite || 1);
+    // durée de la réservation de départ = durée actuelle − jours déjà prolongés
+    let prolonges = 0;
+    const { data: lignes } = await supabase.from('reservations').select('date_debut, date_fin')
+      .eq('reservation_origine_id', orig.id).eq('statut', 'confirmee');
+    (lignes || []).forEach((l) => { prolonges += Math.max(0, jours(l.date_debut, l.date_fin)); });
+    const joursInit = jours(orig.date_debut, orig.date_fin) - prolonges;
+    if (joursInit < 1) return 1;
+    const normal = baseCents(joursInit, calcTieredPrice, pricing);
+    const paye = (orig.prix_total_cents || 0) / qty;
+    if (!normal || !paye) return 1;
+    return Math.min(1, paye / normal);
+  } catch (e) { return 1; }
 }
 
 // Vérifie qu'on peut prolonger et calcule prix + commission.
@@ -39,7 +62,8 @@ async function preparerProlongationCC(supabase, { orig, debut, fin, qty, montant
   if (orig.rendu_at) {
     return { ok: false, status: 422, error: 'L’appareil a déjà été rendu au point de retrait : la location est terminée.' };
   }
-  const amountCents = montantProlongationCC(montantDomicileCents, pricing);
+  const coef = await coefPrixPaye(supabase, orig, pricing);
+  const amountCents = Math.round(montantProlongationCC(montantDomicileCents, pricing) * coef / 100) * 100;
   const point = getPointRetrait(orig.point_retrait_id || '');
   if (point) {
     if (pointFermeLe(point, fin)) {
@@ -64,4 +88,16 @@ function champsLigneCC(orig) {
   return { source_channel: 'click_collect', point_retrait_id: orig.point_retrait_id || null };
 }
 
-module.exports = { estClickCollect, montantProlongationCC, preparerProlongationCC, champsLigneCC };
+// Numéro Click & Collect à 4 chiffres tapé par le client (au lieu de la
+// référence CC-…) → vraie référence, retrouvée avec son email.
+async function refDepuisNumero(supabase, email, saisie) {
+  const s = String(saisie || '').trim();
+  if (!/^\d{4}$/.test(s) || !email) return saisie;
+  const { data } = await supabase.from('reservations').select('ref')
+    .ilike('email', String(email).trim().toLowerCase()).eq('source_channel', 'click_collect')
+    .is('reservation_origine_id', null).eq('statut', 'confirmee').order('id', { ascending: false }).limit(50);
+  const r = (data || []).find((x) => numeroComptoir(x.ref) === s);
+  return r ? r.ref : saisie;
+}
+
+module.exports = { refDepuisNumero, estClickCollect, montantProlongationCC, preparerProlongationCC, champsLigneCC, coefPrixPaye };

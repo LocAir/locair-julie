@@ -200,7 +200,7 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
         <input type="text" id="f-ref" name="ref" placeholder="LOC-260710-8129"
           required autocomplete="off" inputmode="text" style="text-transform:uppercase"/>
         <p style="font-size:12px;color:var(--grey);margin-top:6px;line-height:1.5">
-          Disponible dans l’email de confirmation de votre commande initiale.
+          Dans l’email de confirmation. Click &amp; Collect : vos 4 chiffres.
         </p>
       </div>
       <div id="lookup-error" class="alert-error" role="alert" style="display:none"></div>
@@ -442,12 +442,14 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
     if(newDate<=resa.date_fin){hide('price-box');err('extend-error','La nouvelle date doit être après le '+fmtLong(resa.date_fin)+' (date de fin actuelle).');priceValid=false;updateBtnPayState();return;}
     noerr('extend-error');
     const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
-    const price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
+    let price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
+    /* Click & Collect : même calcul que le serveur (barème × facteur C&C × réduction du départ) */
+    if(resa.cc&&resa.cc.facteur){price=Math.round(Math.round(price*resa.cc.facteur)*(resa.cc.coef||1));}
     cents=price*100;
     document.getElementById('price-days').textContent='+ '+ext+' jour'+(ext>1?'s':'');
     document.getElementById('price-amount').textContent=price+' €';
-    const note=breakdown(resa.orig_days,ext);
-    document.getElementById('price-note').textContent=note+' · grille depuis le j1 de votre location';
+    const note=resa.cc?(ext+' jour'+(ext>1?'s':'')+' au tarif Click & Collect, dégressif'+((resa.quantite||1)>1?' · '+resa.quantite+' appareils':'')):breakdown(resa.orig_days,ext);
+    document.getElementById('price-note').textContent=resa.cc?note:note+' · grille depuis le j1 de votre location';
     show('price-box');
     document.getElementById('btn-pay-label').textContent=price+' €';
     priceValid=true;

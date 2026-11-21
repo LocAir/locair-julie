@@ -7,7 +7,7 @@ const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
 const { verifyClientToken } = require('./_lib/auth');
 const { getPointRetrait } = require('./_lib/pointsRetrait');
-const { estClickCollect, preparerProlongationCC, champsLigneCC } = require('./_lib/prolongCC');
+const { estClickCollect, preparerProlongationCC, champsLigneCC, refDepuisNumero } = require('./_lib/prolongCC');
 
 // Colonnes lues sur la réservation d'origine. '*' plutôt qu'une liste :
 // une location Click & Collect a besoin de source_channel, point_retrait_id
@@ -35,7 +35,8 @@ module.exports = async (req, res) => {
     console.error('[ratelimit] prolong-pay:', e.message);
   }
 
-  const { email, ref, new_date_fin, cgv_accepted, client_token } = req.body || {};
+  const { email, new_date_fin, cgv_accepted, client_token } = req.body || {};
+  let { ref } = req.body || {};
 
   if (!email || !new_date_fin) {
     return res.status(400).json({ error: 'Email et nouvelle date de fin requis' });
@@ -102,6 +103,7 @@ module.exports = async (req, res) => {
     .limit(1);
 
   if (ref && ref.trim()) {
+    ref = await refDepuisNumero(supabase, normalizedEmail, ref);
     q = supabase
       .from('reservations')
       .select(COLONNES_ORIG)

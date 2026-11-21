@@ -191,6 +191,9 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
   donnée personnelle) ; un signal en panne compte pour rien (prix plus bas,
   jamais plus haut) ; prix affiché garanti 30 min (devis signé) ;
   prolongations jamais majorées.
+- **Prolongations (décidé le 21/11/2026)** : barème dégressif gardé. Un client
+  qui avait payé moins que le prix normal garde sa réduction ; jamais plus
+  cher que le prix normal (`coefPrixPaye`, `api/_lib/prolongCC.js`).
 - **Interrupteur** : variable Vercel `TARIF_DYNAMIQUE=off` → barème seul.
 - Toujours dire au client pourquoi le prix monte (« chaleur annoncée »,
   « peu d'appareils restants »), et ne jamais changer les seuils sans
