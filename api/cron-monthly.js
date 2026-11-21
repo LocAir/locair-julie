@@ -96,18 +96,18 @@ async function runMonthlyRecap(supabase) {
       to:      adminEmail,
       subject: `Virements à effectuer — ${nomMois} ${annee}`,
       html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;background:#F4F7FC;margin:0;padding:0}
 .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
-.head{background:#0f766e;padding:28px 32px;text-align:center}
+.head{background:#1A5EDB;padding:28px 32px;text-align:center}
 .head h1{color:#fff;font-size:20px;margin:0 0 4px}
 .head p{color:rgba(255,255,255,.75);font-size:13px;margin:0}
 .body{padding:24px 32px}
-.total-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center;margin-bottom:20px}
-.total-val{font-size:28px;font-weight:700;color:#0f766e}
-.row{padding:10px 0;border-bottom:1px solid #f0ede8;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.total-box{background:#EFF4FD;border:1px solid #DDE6F5;border-radius:10px;padding:16px;text-align:center;margin-bottom:20px}
+.total-val{font-size:28px;font-weight:700;color:#1A5EDB}
+.row{padding:10px 0;border-bottom:1px solid #DDE6F5;font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .row:last-child{border-bottom:none}
-.footer{background:#f4f0ea;padding:16px 32px;text-align:center;font-size:12px;color:#888}
-.btn{display:inline-block;background:#0f766e;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px;margin-top:16px}
+.footer{background:#F4F7FC;padding:16px 32px;text-align:center;font-size:12px;color:#888}
+.btn{display:inline-block;background:#1A5EDB;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px;margin-top:16px}
 </style></head><body>
 <div class="wrap">
 <div class="head">
@@ -116,7 +116,7 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 </div>
 <div class="body">
 <div class="total-box">
-<div style="font-size:12px;color:#0f766e;margin-bottom:4px">TOTAL À VIRER</div>
+<div style="font-size:12px;color:#1A5EDB;margin-bottom:4px">TOTAL À VIRER</div>
 <div class="total-val">${(grandTotal / 100).toFixed(2)} €</div>
 </div>
 ${rows}
@@ -289,7 +289,7 @@ async function runRecapPartenaires(supabase) {
   await sendBrevoEmail({
     to: adminEmail,
     subject: `Commissions partenaires à virer — fin ${moisPrec}`,
-    html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;background:#f4f0ea;margin:0;padding:16px">
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;background:#F4F7FC;margin:0;padding:16px">
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:24px 28px">
 <h1 style="font-size:20px;margin:0 0 6px">Virement mensuel des partenaires</h1>
 <p style="color:#555;font-size:14px;margin:0 0 16px">${entries.length} partenaire${entries.length > 1 ? 's' : ''} à payer · total <strong>${(grandTotal / 100).toFixed(2).replace('.', ',')} €</strong>${sansRib ? ` · <span style="color:#B42318">${sansRib} sans RIB</span>` : ''}</p>
