@@ -2,8 +2,8 @@ const { getSupabase } = require('./_lib/supabase');
 
 function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-const NAV = '#1b3a5f';
-const GOLD = '#c5a96c';
+const NAV = '#1A5EDB'; // style commun Loc'Air
+const GOLD = '#1A5EDB';
 
 function renderPage(errorMsg, { ref, buttons } = {}) {
   return `<!DOCTYPE html>
@@ -14,20 +14,20 @@ function renderPage(errorMsg, { ref, buttons } = {}) {
   <title>Vos documents Loc'Air</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#eee8dd;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F4F7FC;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
     .card{background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(13,29,51,.12);width:100%;max-width:460px;overflow:hidden}
     .head{background:${NAV};padding:36px 32px 28px;text-align:center}
     .brand{font-size:11px;font-weight:700;letter-spacing:.14em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:18px}
-    .head-ico{width:50px;height:50px;background:rgba(197,169,108,.18);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px}
+    .head-ico{width:50px;height:50px;background:rgba(255,255,255,.18);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px}
     .head h1{color:#fff;font-size:20px;font-weight:700;line-height:1.3;margin-bottom:${ref ? '8px' : '0'}}
     .head-ref{color:rgba(255,255,255,.5);font-size:13px;font-weight:500;letter-spacing:.01em}
     .body{padding:28px 28px 32px}
     .thanks{font-size:14px;color:#4a5568;line-height:1.65;margin-bottom:22px;padding-bottom:20px;border-bottom:1.5px solid #f0ece4}
     .thanks strong{color:${NAV}}
     .section-lbl{font-size:10.5px;font-weight:700;letter-spacing:.1em;color:#9aa0ab;text-transform:uppercase;margin-bottom:11px}
-    .doc-btn{display:flex;align-items:center;gap:14px;border:1.5px solid #e8e0d0;border-radius:12px;padding:15px 16px;text-decoration:none;color:${NAV};margin-bottom:9px;transition:border-color .2s,background .2s,transform .15s}
+    .doc-btn{display:flex;align-items:center;gap:14px;border:1.5px solid #DDE6F5;border-radius:12px;padding:15px 16px;text-decoration:none;color:${NAV};margin-bottom:9px;transition:border-color .2s,background .2s,transform .15s}
     .doc-btn:last-of-type{margin-bottom:0}
-    .doc-btn:hover{background:#f7f5f0;border-color:${GOLD};transform:translateY(-1px)}
+    .doc-btn:hover{background:#EFF4FD;border-color:${GOLD};transform:translateY(-1px)}
     .doc-ico{width:42px;height:42px;background:${NAV};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
     .doc-info{flex:1}
     .doc-name{font-weight:700;font-size:14.5px;color:${NAV};display:block;margin-bottom:2px}
