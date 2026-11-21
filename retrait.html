@@ -83,6 +83,7 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .fini .m-nom{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:8px 0 4px}
 .fini .m-ref{font-size:18px;font-weight:700;letter-spacing:.06em}
 .fini .m-horloge{font-size:34px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ok);margin:10px 0 4px}
+.fini .m-qte{font-size:26px;font-weight:900;margin:2px 0 0}
 .fini .m-piece{font-size:14px;color:var(--ink-2)}
 /* échange : couleur orange et flèches, pour que le commerçant ne le confonde
    jamais avec un retrait (vert) */
@@ -181,6 +182,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       <div class="montrer" id="f-montrer" hidden>
         <p class="m-a"><span lang="fr">À montrer au commerçant</span><span lang="en">Show this to the shopkeeper</span><span lang="es">Enséñaselo al comerciante</span></p>
         <p class="m-nom" id="f-nom"></p>
+        <p class="m-qte" id="f-qte" hidden></p>
         <p class="m-horloge" id="f-horloge" aria-live="off"></p>
         <p class="m-piece"><span lang="fr">Vérifiez la pièce d’identité : même nom.</span><span lang="en">Check the ID: same name.</span><span lang="es">Comprueba el documento de identidad: mismo nombre.</span></p>
       </div>
@@ -333,6 +335,8 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       : rtr ? L('Reprenez l’appareil.', 'Take back the unit.', 'Recoge el aparato.')
       : L('Même nom que la pièce d’identité.', 'Same name as the ID.', 'Mismo nombre que el documento.');
     $('f-nom').textContent = ((etat.resa.prenom || '') + ' ' + (etat.resa.nom || '')).trim();
+    var nq = Math.max(1, etat.resa.quantite || 1);
+    $('f-qte').textContent = nq > 1 ? '× ' + nq + ' ' + L('climatiseurs', 'air conditioners', 'aparatos') : ''; $('f-qte').hidden = nq < 2;
     $('f-montrer').hidden = false;
     var loc = langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR';
     function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }

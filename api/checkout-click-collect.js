@@ -1,7 +1,7 @@
 // Paiement Click & Collect (page /click-and-collect).
 // Même mécanique que api/checkout.js (PaymentIntent Stripe + réservation
 // « en_attente », confirmée par le webhook), en plus simple : pas de
-// livraison, pas d'installation, un seul appareil.
+// livraison, pas d'installation, 1 à 3 appareils au même point (un seul numéro).
 //
 // Ce que le serveur ne croit JAMAIS du navigateur :
 //   - le point : relu dans _lib/pointsRetrait.js (inconnu ou EXEMPLE = refusé) ;
@@ -27,6 +27,9 @@ const { prixClickCollect, lienRemise, imageQrRemise, codeIdentite, numeroComptoi
 const { lireDevis } = require('./_lib/tarifDynamique');
 
 const JOURS_MAX = 90;
+// Plusieurs climatiseurs dans UNE commande (un seul numéro, même point) :
+// 3 au plus en ligne ; au-delà, devis par téléphone.
+const QTE_MAX = 3;
 const clip = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
 
 module.exports = async (req, res) => {
@@ -96,6 +99,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Le point de retrait est fermé ce jour-là. Choisissez une autre date.' });
   }
 
+  const qte = Math.min(QTE_MAX, Math.max(1, parseInt(data.quantite, 10) || 1));
   const supabase = getSupabase();
   // Prix (tarification dynamique, _lib/tarifDynamique.js) et stock du point :
   // même calcul que celui affiché sur la page (api/click-collect-prix.js).
@@ -103,17 +107,20 @@ module.exports = async (req, res) => {
   try { prix = await prixClickCollect(supabase, point, dateDebut, duree, pricing); }
   catch (e) { console.error('[CC prix]', e.message); return res.status(503).json({ error: 'Impossible de calculer le prix. Réessayez dans un instant.' }); }
   if (prix.libresAuPoint < 1) return res.status(409).json({ error: 'Ce point de retrait est complet à ces dates. Choisissez un autre point ou d’autres dates.' });
+  if (prix.libresAuPoint < qte) return res.status(409).json({ error: `Il reste ${prix.libresAuPoint} appareil${prix.libresAuPoint > 1 ? 's' : ''} à ce point sur ces dates.`, libres: prix.libresAuPoint });
   // Prix garanti 30 min : si le client a un devis signé (prix affiché sur la
   // page), il ne paie jamais plus que ce devis ; si le prix a baissé depuis,
   // il paie le prix plus bas. Toujours entre le barème et le plafond.
   const garanti = lireDevis(data.devis, { point: point.id, debut: dateDebut, jours: duree });
-  let amountCents = prix.totalCents;
-  if (garanti) amountCents = Math.max(prix.plancherCents || prix.normalCents, Math.min(prix.totalCents, garanti));
-  if (!amountCents || amountCents < 5000) return res.status(400).json({ error: 'Montant invalide.' });
+  // prix d'UN appareil (devis et prix vu sont par appareil), puis × quantité
+  let unitCents = prix.totalCents;
+  if (garanti) unitCents = Math.max(prix.plancherCents || prix.normalCents, Math.min(prix.totalCents, garanti));
+  if (!unitCents || unitCents < 5000) return res.status(400).json({ error: 'Montant invalide.' });
+  const amountCents = unitCents * qte;
   // Sans devis valable : le prix vu par le client ne doit jamais changer sans qu'il le sache.
   const vu = parseInt(data.prix_vu_cents, 10);
-  if (!garanti && Number.isFinite(vu) && vu !== amountCents) {
-    return res.status(409).json({ error: 'Le prix vient de changer pour ces dates (forte demande). Vérifiez le nouveau prix avant de payer.', nouveauPrixCents: amountCents, majore: prix.majore });
+  if (!garanti && Number.isFinite(vu) && vu !== unitCents) {
+    return res.status(409).json({ error: 'Le prix vient de changer pour ces dates (forte demande). Vérifiez le nouveau prix avant de payer.', nouveauPrixCents: unitCents, majore: prix.majore });
   }
 
   // Commerçant du point : la réservation lui est rattachée et sa commission
@@ -140,7 +147,7 @@ module.exports = async (req, res) => {
   // réellement enregistrés pour la ville dans l'admin.
   try {
     const dispo = await getAvailability(supabase, city.id, dateDebut, dateFin);
-    if (dispo < 1) return res.status(409).json({ error: 'Plus d’appareil disponible à ces dates. Essayez d’autres dates ou appelez-nous.' });
+    if (dispo < qte) return res.status(409).json({ error: 'Plus d’appareil disponible à ces dates. Essayez d’autres dates ou appelez-nous.' });
   } catch (e) {
     console.error('[CC dispo]', e.message);
     return res.status(503).json({ error: 'Impossible de vérifier la disponibilité. Réessayez dans un instant.' });
@@ -176,13 +183,13 @@ module.exports = async (req, res) => {
       setup_future_usage: 'off_session',
       customer: customerId,
       receipt_email: email,
-      description: `Loc'Air — Click & Collect — ${duree} jours — retrait ${dateDebut} — ${point.nom}`.slice(0, 1000),
+      description: `Loc'Air — Click & Collect — ${qte > 1 ? qte + ' climatiseurs — ' : ''}${duree} jours — retrait ${dateDebut} — ${point.nom}`.slice(0, 1000),
       metadata: {
         mode: 'click_collect',
         ref, prenom, nom, tel, email,
         adresse: adresseResa.slice(0, 500),
         point_id: point.id, point_nom: point.nom,
-        duree: String(duree), quantite: '1',
+        duree: String(duree), quantite: String(qte),
         date: dateDebut, date_fin: dateFin,
         creneau: 'Retrait au point, aux horaires d’ouverture',
         installation: 'Click & Collect (retrait par le client)',
@@ -191,7 +198,7 @@ module.exports = async (req, res) => {
         campagne: clip(data.campagne, 400),
         piece_identite: pi.type || 'apres_paiement',
         lang: data.lang === 'en' || data.lang === 'es' ? data.lang : 'fr',
-        prix_fort: amountCents !== prix.normalCents ? `${amountCents > prix.normalCents ? '+' : ''}${Math.round((amountCents / prix.normalCents - 1) * 100)} % (base ${prix.normalCents / 100} €)` : 'non',
+        prix_fort: unitCents !== prix.normalCents ? `${unitCents > prix.normalCents ? '+' : ''}${Math.round((unitCents / prix.normalCents - 1) * 100)} % (base ${prix.normalCents / 100} €)` : 'non',
         tarif_dynamique: JSON.stringify({ s: prix.signaux, m: prix.multiplicateur, r: prix.raisons, devis: !!garanti }).slice(0, 480),
       },
     }, { idempotencyKey: `cc-${ref}` });
@@ -210,7 +217,7 @@ module.exports = async (req, res) => {
       creneau: 'Retrait au point, aux horaires d’ouverture',
       date_debut: dateDebut,
       date_fin: dateFin,
-      quantite: 1,
+      quantite: qte,
       prix_total_cents: amountCents,
       statut: 'en_attente',
       source: 'site',
@@ -260,7 +267,7 @@ module.exports = async (req, res) => {
     } catch (e) { console.error('[CC CGV]', e.message); }
 
     return res.status(200).json({
-      clientSecret: intent.client_secret, amountCents, ref, numero: numeroComptoir(ref), majore: prix.majore,
+      clientSecret: intent.client_secret, amountCents, quantite: qte, ref, numero: numeroComptoir(ref), majore: prix.majore,
       // QR de remise : montré au client, scanné par le commerçant au retrait.
       remise: { lien: lienRemise(resa.id, ref), qr: imageQrRemise(resa.id, ref) },
       // Pour ajouter la pièce d'identité juste après le paiement.
