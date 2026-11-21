@@ -791,7 +791,7 @@ const handler = async (req, res) => {
         const { getPointRetrait } = require('./_lib/pointsRetrait');
         const { tientDansLeStock } = require('./_lib/clickCollect');
         const pt = getPointRetrait(confirmedResa.point_retrait_id || '');
-        if (pt && !(await tientDansLeStock(getSupabase(), pt, confirmedResa.date_debut, confirmedResa.date_fin, confirmedResa.id))) {
+        if (pt && !(await tientDansLeStock(getSupabase(), pt, confirmedResa.date_debut, confirmedResa.date_fin, confirmedResa.id, false))) {
           await pushToAdmin(getSupabase(), { title: `⚠️ Click & Collect — stock dépassé — ${pt.nom}`,
             body: `${confirmedResa.ref} (${confirmedResa.prenom || ''} ${confirmedResa.nom || ''}, × ${confirmedResa.quantite || 1}) a payé mais le point n'a plus assez d'appareils du ${confirmedResa.date_debut} au ${confirmedResa.date_fin}. Apporter un appareil au point ou appeler le client.`,
             tag: `cc-stock-${confirmedResa.id}` });

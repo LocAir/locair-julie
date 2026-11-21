@@ -51,62 +51,74 @@ function compte(r, limiteAttente, avecAttente) {
   return false;
 }
 
-// Nombre d'appareils déjà pris à ces dates, point par point.
-// Repère les réservations par point_retrait_id (après migration) ; avant
-// la migration, par l'adresse « CLICK & COLLECT — <nom du point> — … ».
+// Le jour le plus chargé de la période [debut, fin) : nombre d'appareils
+// pris ce jour-là. Deux locations qui ne se chevauchent pas (du 1er au 3,
+// puis du 5 au 8) peuvent utiliser le même appareil : on ne les additionne
+// pas, contrairement à un simple total sur la période.
+function picDeJours(lignes, debut, fin) {
+  let pic = 0;
+  for (let d = debut; d < fin; d = addDaysISO(d, 1)) {
+    let n = 0;
+    for (const r of lignes) if (r.date_debut <= d && d < r.date_fin) n += r.quantite || 1;
+    if (n > pic) pic = n;
+  }
+  return pic;
+}
+
+// Nombre d'appareils déjà pris à ces dates (le jour le plus chargé), point
+// par point. Repère les réservations par point_retrait_id (après migration) ;
+// avant la migration, par l'adresse « CLICK & COLLECT — <nom du point> — … ».
 // options.avecAttente (true par défaut) : compter aussi les paiements en
 // cours (moins de 30 min). false = seulement le confirmé (signal de prix).
+const CHAMPS_OCC = 'id, point_retrait_id, quantite, statut, source, created_at, date_debut, date_fin';
 async function occupationParPoint(supabase, points, debut, fin, options = {}) {
   const avecAttente = options.avecAttente !== false;
   const limiteAttente = new Date(Date.now() - ATTENTE_MAX_MIN * 60000).toISOString();
   const res = {};
   points.forEach((p) => { res[p.id] = 0; });
-  const ajoute = (id, r) => { if (compte(r, limiteAttente, avecAttente)) res[id] = (res[id] || 0) + (r.quantite || 1); };
+  const garder = (r) => compte(r, limiteAttente, avecAttente);
 
-  const q = supabase.from('reservations').select('id, point_retrait_id, quantite, statut, source, created_at')
+  const q = supabase.from('reservations').select(CHAMPS_OCC)
     .in('point_retrait_id', points.map((p) => p.id)).in('statut', ['confirmee', 'en_attente']);
   const { data, error } = await chevauche(q, debut, fin);
   if (!error) {
-    (data || []).forEach((r) => ajoute(r.point_retrait_id, r));
+    points.forEach((p) => { res[p.id] = picDeJours((data || []).filter((r) => r.point_retrait_id === p.id && garder(r)), debut, fin); });
     return res;
   }
   if (!colonnePointAbsente(error)) throw new Error(error.message || 'lecture des réservations impossible');
   // Colonne pas encore créée : repli sur l'adresse.
   for (const p of points) {
-    const q2 = supabase.from('reservations').select('id, quantite, statut, source, created_at').eq('source_channel', 'click_collect')
+    const q2 = supabase.from('reservations').select('id, quantite, statut, source, created_at, date_debut, date_fin').eq('source_channel', 'click_collect')
       .ilike('adresse', `CLICK & COLLECT — ${p.nom} —%`).in('statut', ['confirmee', 'en_attente']);
     const { data: d2, error: e2 } = await chevauche(q2, debut, fin);
     if (e2) throw new Error(e2.message || 'lecture des réservations impossible');
-    res[p.id] = 0;
-    (d2 || []).forEach((r) => ajoute(p.id, r));
+    res[p.id] = picDeJours((d2 || []).filter(garder), debut, fin);
   }
   return res;
 }
 
 // Contrôle APRÈS l'enregistrement (course au dernier appareil) : on relit
-// toutes les réservations du point qui comptent sur ces dates, dans l'ordre
-// d'arrivée (id croissant). Si la nôtre arrive après la dernière place
-// libre, elle est de trop. → true si la réservation `id` tient dans le stock.
+// les réservations du point qui comptent sur ces dates. Avant paiement
+// (avecAttente = true), seules celles arrivées AVANT la nôtre (id plus
+// petit) passent devant : premier arrivé, premier servi. Après paiement
+// (avecAttente = false), toutes les réservations payées comptent.
+// → true si la réservation `id` tient dans le stock, chaque jour.
 // En cas de doute (lecture impossible), on la garde : le webhook revérifie.
-async function tientDansLeStock(supabase, point, debut, fin, id) {
+async function tientDansLeStock(supabase, point, debut, fin, id, avecAttente = true) {
   const limiteAttente = new Date(Date.now() - ATTENTE_MAX_MIN * 60000).toISOString();
-  let q = supabase.from('reservations').select('id, quantite, statut, source, created_at')
+  let q = supabase.from('reservations').select('id, quantite, statut, source, created_at, date_debut, date_fin')
     .eq('point_retrait_id', point.id).in('statut', ['confirmee', 'en_attente']);
-  let { data, error } = await chevauche(q, debut, fin).order('id', { ascending: true });
+  let { data, error } = await chevauche(q, debut, fin);
   if (error && colonnePointAbsente(error)) {
-    q = supabase.from('reservations').select('id, quantite, statut, source, created_at').eq('source_channel', 'click_collect')
+    q = supabase.from('reservations').select('id, quantite, statut, source, created_at, date_debut, date_fin').eq('source_channel', 'click_collect')
       .ilike('adresse', `CLICK & COLLECT — ${point.nom} —%`).in('statut', ['confirmee', 'en_attente']);
-    ({ data, error } = await chevauche(q, debut, fin).order('id', { ascending: true }));
+    ({ data, error } = await chevauche(q, debut, fin));
   }
   if (error || !Array.isArray(data)) return true;
-  let pris = 0;
-  for (const r of data) {
-    // la nôtre compte toujours (même si elle vient d'être créée)
-    if (r.id !== id && !compte(r, limiteAttente, true)) continue;
-    pris += r.quantite || 1;
-    if (r.id === id) return pris <= (point.stock || 0);
-  }
-  return true;
+  // la nôtre compte toujours (même si elle vient d'être créée)
+  const lignes = data.filter((r) => r.id === id || (compte(r, limiteAttente, avecAttente) && (!avecAttente || r.id < id)));
+  if (!lignes.some((r) => r.id === id)) return true;
+  return picDeJours(lignes, debut, fin) <= (point.stock || 0);
 }
 
 // Prix d'une location Click & Collect, avec la règle du prix fort.
