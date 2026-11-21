@@ -84,11 +84,12 @@ module.exports = async (req, res) => {
     const out = await declarerPanne(supabase, { r, point, categorie: b.categorie, moment: 'location', message: b.message, photos, canal: 'page /panne', appareil });
 
     // SMS de confirmation au client : son numéro de dossier et la suite
-    const pt = out.point || point;   // client livré : le point le plus proche
+    const pt = out.point || point;   // client livré : le point le plus proche ; Click & Collect : SON point, toujours
+    const ici = cc ? T(r.lang || lang, ', là où vous l’avez retiré', ', where you picked it up', ', donde lo recogiste') : '';
     const l = r.lang || lang;
     const dossier = out.dossier ? ` (dossier ${out.dossier})` : '';
     const sms = {
-      rapporter_au_point: T(l, `Loc'Air : panne bien reçue${dossier}. Rapportez l'appareil au point ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''}, aux horaires d'ouverture : vous repartez avec un autre. Au comptoir, scannez le QR code et touchez « Échanger mon appareil ».`, `Loc'Air: fault received${dossier}. Bring the unit back to ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''} during opening hours and leave with another one. At the counter, scan the QR code and tap "Swap my unit".`, `Loc'Air: avería recibida${dossier}. Devuelve el aparato en ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''} en horario de apertura y llévate otro. En el mostrador, escanea el código QR y pulsa «Cambiar mi aparato».`),
+      rapporter_au_point: T(l, `Loc'Air : panne bien reçue${dossier}. Rapportez l'appareil au point ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''}${ici}, aux horaires d'ouverture : vous repartez avec un autre. Au comptoir, scannez le QR code et touchez « Échanger mon appareil ».`, `Loc'Air: fault received${dossier}. Bring the unit back to ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''}${ici} during opening hours and leave with another one. At the counter, scan the QR code and tap "Swap my unit".`, `Loc'Air: avería recibida${dossier}. Devuelve el aparato en ${pt ? pt.nom + ' (' + pt.adresse + ')' : ''}${ici} en horario de apertura y llévate otro. En el mostrador, escanea el código QR y pulsa «Cambiar mi aparato».`),
       reapprovisionnement: T(l, `Loc'Air : panne bien reçue${dossier}. On apporte un climatiseur au point ${pt ? pt.nom : ''} le jour même ou le lendemain. Vous recevez un SMS dès qu'il vous attend.`, `Loc'Air: fault received${dossier}. We're bringing a unit to ${pt ? pt.nom : ''} the same day or the next. You'll get a text as soon as it's waiting for you.`, `Loc'Air: avería recibida${dossier}. Llevamos un aparato a ${pt ? pt.nom : ''} el mismo día o al siguiente. Recibirás un SMS en cuanto te espere.`),
       ticket: T(l, `Loc'Air : votre message est bien reçu${dossier}. On vous rappelle rapidement pour organiser la suite.`, `Loc'Air: message received${dossier}. We'll get back to you quickly.`, `Loc'Air: mensaje recibido${dossier}. Te contactamos rápidamente.`),
     }[out.issue] || null;
