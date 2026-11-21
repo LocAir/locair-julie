@@ -1,7 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyPartenaireToken } = require('./_lib/auth');
 const { pushToAdmin } = require('./_lib/push');
-const { POINTS_RETRAIT } = require('./_lib/pointsRetrait');
+const { pointDuPartenaire, tauxAffiche } = require('./_lib/pointsRetrait');
 const { codeRetour } = require('./_lib/clickCollect');
 
 function startOfDayISO() {
@@ -102,15 +102,13 @@ module.exports = async (req, res) => {
       // corrects, seul ce texte explicatif était faux).
       const { data: partenaireRow } = await supabase
         .from('partenaires').select('taux_commission_pct, code, telephone, iban').eq('id', partenaireId).maybeSingle();
-      // Commerçant point de retrait Click & Collect : son code retour (2 derniers
-      // chiffres du téléphone de la boutique), à donner au client qui rapporte
-      // un climatiseur. Montré seulement à lui, une fois connecté.
-      const pointCC = partenaireRow && partenaireRow.code
-        ? POINTS_RETRAIT.find((p) => !p.test && p.partenaire_code && String(p.partenaire_code).toLowerCase() === String(partenaireRow.code).toLowerCase())
-        : null;
+      // Commerçant point de retrait Click & Collect : son code retour (voir
+      // clickCollect.codeRetour), à donner au client qui rapporte un
+      // climatiseur. Montré seulement à lui, une fois connecté.
+      const pointCC = partenaireRow ? pointDuPartenaire(partenaireRow.code) : null;
 
       return res.status(200).json({
-        taux_commission_pct: partenaireRow?.taux_commission_pct ?? null,
+        taux_commission_pct: tauxAffiche(partenaireRow),
         // Virement mensuel : le partenaire voit s'il manque son RIB (jamais le RIB lui-même).
         rib_ok: !!(partenaireRow && partenaireRow.iban && String(partenaireRow.iban).trim()),
         point_retrait: pointCC ? { nom: pointCC.nom, code_retour: codeRetour(pointCC, partenaireRow) } : null,

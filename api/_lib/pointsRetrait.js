@@ -94,4 +94,17 @@ function pointFermeLe(point, iso) {
   return (point.fermes || []).includes(jourSemaine(iso));
 }
 
-module.exports = { POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };
+// Point de retrait d'un commerçant (par son code partenaire), ou null.
+function pointDuPartenaire(code) {
+  if (!code) return null;
+  const c = String(code).toLowerCase();
+  return POINTS_RETRAIT.find((p) => !p.test && p.partenaire_code && String(p.partenaire_code).toLowerCase() === c) || null;
+}
+// Taux affiché au partenaire : celui du point s'il est commerçant point de
+// retrait (20 %), sinon celui de sa fiche dans l'admin (apporteur d'affaires).
+function tauxAffiche(partenaire) {
+  const pt = partenaire && pointDuPartenaire(partenaire.code);
+  return pt ? pt.commission_pct : (partenaire ? partenaire.taux_commission_pct ?? null : null);
+}
+
+module.exports = { pointDuPartenaire, tauxAffiche, POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };
