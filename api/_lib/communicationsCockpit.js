@@ -32,6 +32,7 @@ const AD_HOC_LABEL = {
   offre_privilege:              'Email Offre Privilège',
   relance_dormant:              'Email relance client inactif',
   recap_mensuel_virements:      'Récap mensuel/trimestriel virements (admin)',
+  recap_mensuel_partenaires:    'Virement mensuel des commissions partenaires (admin)',
   rapport_hebdo:                'Rapport hebdomadaire (admin)',
   prime_transporteur:           'Email prime de fin de saison (transporteur)',
   email_facture_transporteur_admin: 'Email facture transporteur (admin)',

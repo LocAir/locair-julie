@@ -158,6 +158,7 @@ input[readonly]{background:rgba(255,255,255,.03);color:var(--fg);font-size:13.5p
 .ch-amount{font-family:var(--disp);font-size:44px;font-weight:600;font-style:italic;color:var(--accent);line-height:1;font-variant-numeric:tabular-nums}
 .ch-caption{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5}
 .ch-actions{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+.ch-next{display:inline-block;align-self:flex-start;background:#E8F0FD;color:#0D3FA0;font-weight:700;font-size:14px;padding:10px 16px;border-radius:100px}
 
 /* Stat grid */
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
@@ -710,18 +711,13 @@ function renderDashboard(d){
   const zone = document.getElementById('dashboard-content');
   const link = location.origin + '/?p=' + encodeURIComponent(STATE.code);
   const virementEnCours = (d.virements||[]).find(v=>v.statut==='demande');
-  const enCours = !!virementEnCours;
-  const canAsk  = (d.non_verse_euros||0) > 0 && !enCours;
+  // Virement mensuel : plus de demande à faire, Loc'Air vire chaque début
+  // de mois tout ce qui est disponible (voir runRecapPartenaires, cron-monthly.js).
+  const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const prochainMois = MOIS[(new Date().getMonth() + 1) % 12];
   const annee   = new Date().getFullYear();
   const qrUrl   = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(link)}&size=176x176&color=1a2b4a&bgcolor=ffffff&qzone=1&format=png`;
   const prevision = d.prevision_attente_euros || 0;
-  // Le bouton affiche le montant demandé pour que la personne sache
-  // exactement ce qu'elle valide avant de cliquer (comme Stripe Connect
-  // affiche toujours le montant sur les actions de paiement).
-  const askLabel = enCours
-    ? '⏳ Demande en cours'
-    : canAsk ? `Demander le virement de ${euros(d.non_verse_euros)} →` : 'Aucun solde à verser';
-
   zone.innerHTML = `
     <div class="topnote">Tableau de bord ambassadeur</div>
 
@@ -729,12 +725,11 @@ function renderDashboard(d){
     <div class="commission-hero">
       <div class="ch-label">Commission disponible</div>
       <div class="ch-amount">${euros(d.non_verse_euros)}</div>
-      <div class="ch-caption">${STATE.taux}% de chaque réservation confirmée · versement sur demande</div>
+      <div class="ch-caption">${STATE.taux}% de chaque réservation confirmée · virée chaque mois, rien à demander</div>
       <div class="ch-actions">
-        <button class="btn btn-gold" id="demander-virement-btn"
-          ${canAsk?'':'disabled'} onclick="demanderVirement()">
-          ${askLabel}
-        </button>
+        <div class="ch-next">${(d.non_verse_euros||0) > 0
+          ? `Prochain virement : début ${prochainMois}`
+          : 'Rien à virer pour le moment'}</div>
       </div>
     </div>
     <div class="err-msg" id="dash-err"></div>
@@ -751,13 +746,23 @@ function renderDashboard(d){
       </div>
     </div>` : ''}
 
+    ${(d.non_verse_euros||0) > 0 && d.rib_ok === false ? `
+    <!-- RIB manquant : sans lui, pas de virement mensuel -->
+    <div class="payout-status">
+      <div class="ps-icon">🏦</div>
+      <div>
+        <div class="ps-title">Il nous manque votre RIB</div>
+        <div class="ps-sub">Envoyez-le à contact@locair.fr ou par WhatsApp au 06 63 79 87 56 pour recevoir votre virement du mois.</div>
+      </div>
+    </div>` : ''}
+
     ${virementEnCours ? `
     <!-- Statut de la demande de virement en cours -->
     <div class="payout-status">
       <div class="ps-icon">⏳</div>
       <div>
         <div class="ps-title">Demande de ${euros(virementEnCours.montant_cents/100)} envoyée le ${virementEnCours.created_at?new Date(virementEnCours.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long'}):''}</div>
-        <div class="ps-sub">Loc'Air traite votre demande sous quelques jours ouvrés. Vous recevrez un e-mail dès que le virement sera effectué.</div>
+        <div class="ps-sub">Il partira avec le virement de début de mois. Vous recevrez un e-mail dès qu’il sera effectué.</div>
       </div>
     </div>` : ''}
 
@@ -942,22 +947,6 @@ async function copyLink(){
   const ok = document.getElementById('copy-ok');
   ok.style.display = 'block';
   setTimeout(() => { ok.style.display = 'none'; }, 2200);
-}
-
-async function demanderVirement(){
-  const errEl = document.getElementById('dash-err');
-  const btn   = document.getElementById('demander-virement-btn');
-  if(errEl) errEl.style.display = 'none';
-  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
-  try{
-    const r = await fetch(API('partenaire-earnings'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'demander_virement'})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error || 'Erreur');
-    await loadDashboard();
-  }catch(e){
-    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
-    if(btn){ btn.disabled = false; btn.textContent = 'Demander le virement →'; }
-  }
 }
 
 // ── QR code download ──────────────────────────────────────────────────────────
