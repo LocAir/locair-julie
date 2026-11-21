@@ -6,7 +6,7 @@ const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
-const { estClickCollect, preparerProlongationCC, champsLigneCC } = require('./_lib/prolongCC');
+const { estClickCollect, preparerProlongationCC, champsLigneCC, refDepuisNumero } = require('./_lib/prolongCC');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -109,7 +109,7 @@ module.exports = async (req, res) => {
       .ilike('email', String(data.email).trim())
       .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee');
-    if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim().toUpperCase());
+    if (data.ref) origQuery = origQuery.eq('ref', String(await refDepuisNumero(supabase, data.email, data.ref)).trim().toUpperCase());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
     if (!city) {

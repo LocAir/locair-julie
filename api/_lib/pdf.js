@@ -497,7 +497,7 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
       ] : [
         `Période : du ${fmtDate(reservation.date_debut)} au ${fmtDate(reservation.date_fin)} (${jours} jours)`,
         reservation.source_channel === 'click_collect'
-          ? `Quantité : 1 climatiseur — Click & Collect, tarif dynamique (soit ${eur(Math.round((reservation.prix_total_cents || 0) / jours))}/jour)`
+          ? `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — Click & Collect, tarif dynamique (soit ${eur(Math.round((reservation.prix_total_cents || 0) / jours / qty))}/jour${qty > 1 ? ' par appareil' : ''})`
           : `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — tarif moyen ${eur(Math.round(tarifMoy * 100))}/jour (tarif dégressif)`,
       ],
       amount: eur(locCents),

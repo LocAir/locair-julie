@@ -94,7 +94,7 @@ async function agir(supabase, r, partenaireId, action) {
       }
       pushToAdmin(supabase, {
         title: 'Click & Collect — appareil remis',
-        body: `${r.ref} — ${r.prenom || ''} ${r.nom || ''} — ${fiche.point}`.trim(),
+        body: `${r.ref} — ${r.prenom || ''} ${r.nom || ''}${(r.quantite || 1) > 1 ? ` — × ${r.quantite} appareils` : ''} — ${fiche.point}`.trim(),
         type: 'info', tag: `remise-${r.id}`,
       }).catch(() => {});
       return R(200, { ok: true, reservation: { ...fiche, remis_at: maintenant, peut_remettre: false, peut_rendre: fiche.retour_disponible } });
@@ -123,7 +123,7 @@ async function agir(supabase, r, partenaireId, action) {
       const retard = aujourdhui > r.date_fin;
       pushToAdmin(supabase, {
         title: retard ? 'Click & Collect — appareil rendu en retard' : 'Click & Collect — appareil rendu',
-        body: `${r.ref} — ${r.prenom || ''} ${r.nom || ''} — ${fiche.point}${retard ? ` (retour prévu le ${dateFrCourte(r.date_fin)})` : ''}`.trim(),
+        body: `${r.ref} — ${r.prenom || ''} ${r.nom || ''}${(r.quantite || 1) > 1 ? ` — × ${r.quantite} appareils` : ''} — ${fiche.point}${retard ? ` (retour prévu le ${dateFrCourte(r.date_fin)})` : ''}`.trim(),
         type: 'info', tag: `rendu-${r.id}`,
       }).catch(() => {});
       return R(200, { ok: true, reservation: { ...fiche, rendu_at: maintenant, rendu: true, peut_rendre: false, peut_remettre: false, en_retard: false } });
