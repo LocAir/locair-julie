@@ -1360,12 +1360,12 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
         ? T('Demain : retrait de votre climatiseur', 'Tomorrow: pick up your air conditioner', 'Mañana: recogida de tu aire acondicionado')
         : T('Demain : retour de votre climatiseur', 'Tomorrow: return your air conditioner', 'Mañana: devolución de tu aire acondicionado');
       const texte = retrait
-        ? T(`Votre climatiseur vous attend demain au point <b>${esc(lieu)}</b>, ouvert ${heures}. Au comptoir : scannez le QR code, tapez votre numéro, montrez l’écran vert et votre pièce d’identité.`,
-            `Your air conditioner is waiting for you tomorrow at <b>${esc(lieu)}</b>, open ${heures}. At the counter: scan the QR code, enter your number, show the green screen and your ID.`,
-            `Tu aire acondicionado te espera mañana en <b>${esc(lieu)}</b>, abierto ${heures}. En el mostrador: escanea el código QR, escribe tu número y enseña la pantalla verde y tu documento.`)
-        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}. Housse et gaine remises chez vous ; au comptoir : QR code, une photo, le code du commerçant. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
-            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}. Cover and hose on at home; at the counter: QR code, a photo, the shopkeeper’s code. Want to keep it? Extend at <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
-            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}. Funda y tubo puestos en casa; en el mostrador: código QR, una foto y el código del comerciante. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
+        ? T(`Votre climatiseur vous attend demain au point <b>${esc(lieu)}</b>, ouvert ${heures}. En arrivant, scannez le QR code du comptoir.`,
+            `Your air conditioner is waiting for you tomorrow at <b>${esc(lieu)}</b>, open ${heures}. When you arrive, scan the QR code at the counter.`,
+            `Tu aire acondicionado te espera mañana en <b>${esc(lieu)}</b>, abierto ${heures}. Al llegar, escanea el código QR del mostrador.`)
+        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}. En arrivant, scannez le QR code du comptoir. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}. When you arrive, scan the QR code at the counter. Want to keep it? Extend at <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}. Al llegar, escanea el código QR del mostrador. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client">locair.fr/client</a>.`);
       const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
 <p>${texte}</p>
