@@ -843,8 +843,7 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
       [T('Point de retrait', 'Pick-up point', 'Punto de recogida'), adressePoint],
       [T('Retrait', 'Pick-up', 'Recogida'), fmt(resa.date_debut) + ' — ' + horaires],
       [T('Retour au même point', 'Return to the same point', 'Devolución en el mismo punto'), fmt(resa.date_fin)],
-      [T('Payé', 'Paid', 'Pagado'), amount + T(' (sans caution)', ' (no deposit)', ' (sin fianza)')],
-      [T('Référence', 'Reference', 'Referencia'), resa.ref || ''],
+      [T('Payé', 'Paid', 'Pagado'), amount],
     ].map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#4B5873;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0"><b>${esc(v)}</b></td></tr>`).join('');
     const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('C’est réservé', 'You’re booked', 'Ya está reservado')}, ${esc(resa.prenom)} !</h2>
