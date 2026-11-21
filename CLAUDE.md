@@ -243,7 +243,8 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
 20/11/2026) :
 
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
-   `tel` de la boutique, `partenaire_code`, `exemple: false`).
+   `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
+   du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
 2. Créer le commerçant dans l'admin (onglet Partenaires) avec son téléphone.
 3. Imprimer l'**affiche du comptoir** (QR code client) :
    `locair.fr/affiche-retrait?p=<id>`.

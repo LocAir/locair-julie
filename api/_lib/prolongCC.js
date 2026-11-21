@@ -85,7 +85,7 @@ async function preparerProlongationCC(supabase, { orig, debut, fin, qty, montant
     }
   }
   // Commission : seulement si la réservation est rattachée au commerçant
-  // du point, au taux du point (15 % par défaut, _lib/pointsRetrait.js).
+  // du point, au taux du point (20 % par défaut, _lib/pointsRetrait.js).
   const commissionCents = (orig.partenaire_id && point)
     ? Math.round(amountCents * (point.commission_pct || 0) / 100)
     : 0;
