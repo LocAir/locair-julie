@@ -86,9 +86,13 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .fini .m-piece{font-size:14px;color:var(--ink-2)}
 /* échange : couleur orange et flèches, pour que le commerçant ne le confonde
    jamais avec un retrait (vert) */
+.fini .montrer .m-a,.fini .montrer .m-horloge{color:var(--ok)}
 .fini.ech .rond{background:#C2410C}
+.fini.rtr .rond{background:var(--vif)}
+.fini.rtr .montrer{border-color:var(--vif);background:#E8F0FD}
+.fini.rtr .montrer .m-a,.fini.rtr .montrer .m-horloge{color:var(--vif)}
 .fini.ech .montrer{border-color:#C2410C;background:#FFF1E6}
-.fini.ech .m-a,.fini.ech .m-horloge{color:#C2410C}
+.fini.ech .montrer .m-a,.fini.ech .montrer .m-horloge{color:#C2410C}
 .code-l{display:block;font-weight:800;margin:16px 0 6px}
 .code-com{width:100%;min-height:58px;border:1.5px solid var(--line);border-radius:14px;font:900 28px 'DM Sans',sans-serif;letter-spacing:.3em;text-align:center;color:var(--ink);background:#fff}
 .code-com:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94,219,.18)}
@@ -177,7 +181,6 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       <div class="montrer" id="f-montrer" hidden>
         <p class="m-a"><span lang="fr">À montrer au commerçant</span><span lang="en">Show this to the shopkeeper</span><span lang="es">Enséñaselo al comerciante</span></p>
         <p class="m-nom" id="f-nom"></p>
-        <p class="m-ref" id="f-ref"></p>
         <p class="m-horloge" id="f-horloge" aria-live="off"></p>
         <p class="m-piece"><span lang="fr">Vérifiez la pièce d’identité : même nom.</span><span lang="en">Check the ID: same name.</span><span lang="es">Comprueba el documento de identidad: mismo nombre.</span></p>
       </div>
@@ -185,7 +188,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       <div class="avis-retour" id="f-avis" hidden>
         <p class="av-etoiles" aria-hidden="true">★★★★★</p>
         <p class="av-q"><span lang="fr">Comment s’est passée votre location&nbsp;?</span><span lang="en">How was your rental?</span><span lang="es">¿Qué tal tu alquiler?</span></p>
-        <p class="av-s"><span lang="fr">Votre avis aide vos voisins à nous trouver. 30 secondes, sur Google.</span><span lang="en">Your review helps your neighbours find us. 30 seconds, on Google.</span><span lang="es">Tu opinión ayuda a tus vecinos a encontrarnos. 30 segundos, en Google.</span></p>
+        
         <a class="btn av-btn" href="https://g.page/r/CeJQrt2gLNNrEAE/review" target="_blank" rel="noopener noreferrer"><span lang="fr">Laisser un avis</span><span lang="en">Leave a review</span><span lang="es">Dejar una opinión</span></a>
       </div>
     </div>
@@ -320,16 +323,16 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   /* écran de confirmation à montrer au commerçant : nom, numéro, et une
      horloge qui tourne à la seconde (une capture d'écran ne bouge pas) */
   var minuterie = null;
-  var COCHE = '<path d="M5 12.5l4.5 4.5L19 7.5"/>', FLECHES = '<path d="M4 9h13l-4-4M20 15H7l4 4"/>';
+  var COCHE = '<path d="M5 12.5l4.5 4.5L19 7.5"/>', FLECHES = '<path d="M4 9h13l-4-4M20 15H7l4 4"/>', RETOUR = '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/>';
   function montrerAuCommercant(sorte){
-    var ech = sorte === 'echange';
-    document.querySelector('#e-fini .carte').classList.toggle('ech', ech);
-    document.querySelector('#e-fini .rond svg').innerHTML = ech ? FLECHES : COCHE;
+    var ech = sorte === 'echange', rtr = sorte === 'retour', carte = document.querySelector('#e-fini .carte');
+    carte.classList.toggle('ech', ech); carte.classList.toggle('rtr', rtr);
+    document.querySelector('#e-fini .rond svg').innerHTML = ech ? FLECHES : rtr ? RETOUR : COCHE;
     document.querySelector('#e-fini .m-piece').textContent = ech
       ? L('Reprenez son appareil et donnez-en un autre.', 'Take back the unit and hand over another one.', 'Recoge su aparato y entrégale otro.')
-      : L('Vérifiez la pièce d’identité : même nom.', 'Check the ID: same name.', 'Comprueba el documento de identidad: mismo nombre.');
+      : rtr ? L('Reprenez l’appareil.', 'Take back the unit.', 'Recoge el aparato.')
+      : L('Même nom que la pièce d’identité.', 'Same name as the ID.', 'Mismo nombre que el documento.');
     $('f-nom').textContent = ((etat.resa.prenom || '') + ' ' + (etat.resa.nom || '')).trim();
-    $('f-ref').textContent = etat.resa.ref || etat.ref;
     $('f-montrer').hidden = false;
     var loc = langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR';
     function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }
@@ -341,7 +344,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       if(r.j.issue === 'echange_comptoir'){
         $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
-        $('f-titre').textContent = L('Échange validé ⇄', 'Swap confirmed ⇄', 'Cambio confirmado ⇄');
+        $('f-titre').textContent = L('Échange validé', 'Swap confirmed', 'Cambio confirmado');
         montrerAuCommercant('echange');
         $('f-texte').textContent = L('Votre location continue jusqu’au ', 'Your rental continues until ', 'Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
       } else {
@@ -359,7 +362,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       b.disabled = false;
       if(!r.ok) return erreur($('m-cli'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
-      $('f-titre').textContent = L('Retrait validé ✓', 'Pick-up confirmed ✓', 'Recogida confirmada ✓');
+      $('f-titre').textContent = L('Retrait validé', 'Pick-up confirmed', 'Recogida confirmada');
       montrerAuCommercant();
       $('f-texte').textContent = L('À rapporter ici le ', 'Bring it back here on ', 'Devuélvelo aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.';
     }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
@@ -387,7 +390,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       if(!r.ok){ if(r.j.code === 'code_commercant'){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').select(); } return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.')); }
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       if(action === 'valider'){ $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!'); $('f-texte').textContent = L('Remise confirmée. Rapportez l’appareil ici le ', 'Handover confirmed. Bring the unit back here on ', 'Entrega confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.'; }
-      else { $('f-avis').hidden = false; $('f-titre').textContent = L('Retour confirmé, merci !', 'Return confirmed, thank you!', '¡Devolución confirmada, gracias!'); $('f-texte').textContent = L('Votre facture arrive par email.', 'Your invoice is on its way by email.', 'Tu factura llega por email.'); return; }
+      else { $('f-avis').hidden = false; $('f-titre').textContent = L('Retour validé', 'Return confirmed', 'Devolución confirmada'); montrerAuCommercant('retour'); $('f-texte').textContent = L('Votre facture arrive par email.', 'Your invoice is on its way by email.', 'Tu factura llega por email.'); return; }
     }).catch(function(x){ b.disabled = false; erreur($('m-com'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
 })();
