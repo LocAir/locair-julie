@@ -320,6 +320,28 @@ input[readonly]{background:rgba(255,255,255,.03);color:var(--fg);font-size:13.5p
   transition:transform .15s,box-shadow .15s,opacity .15s;
 }
 .wa-fab:hover{transform:translateY(-2px);opacity:.9;box-shadow:0 8px 24px rgba(37,211,102,.3),0 3px 10px rgba(0,0,0,.2)}
+
+/* ── Espace partenaire façon Deliveroo, épuré (style commun Loc'Air) ── */
+.dl-hero{background:#fff;border-radius:20px;box-shadow:0 2px 16px rgba(26,94,219,.10);padding:26px 20px 18px;display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;margin:8px 0 14px}
+.dl-n{font:900 38px/1 'DM Sans',sans-serif;letter-spacing:-.03em;color:#1A5EDB}
+.dl-s{margin-top:6px;font-size:14px;color:#4B5873}
+.dl-pied{grid-column:1/-1;border-top:1px solid #DDE6F5;margin-top:14px;padding-top:12px;font-size:14px;color:#4B5873}
+.dl-pied b{color:#0E1726}
+.dl-alerte{background:#FEF3C7;color:#92400E;border-radius:14px;padding:12px 16px;font-size:14px;font-weight:600;margin:0 0 14px}
+.dl-liste{background:#fff;border-radius:20px;box-shadow:0 2px 16px rgba(26,94,219,.10);overflow:hidden;margin-bottom:20px}
+.dl-l{border-bottom:1px solid #DDE6F5}
+.dl-l:last-child{border-bottom:0}
+.dl-l summary,.dl-sum,.dl-btn{display:flex;align-items:center;gap:12px;min-height:62px;padding:0 18px;cursor:pointer;list-style:none;font:600 16px 'DM Sans',sans-serif;color:#0E1726;width:100%;background:none;border:0;text-align:left}
+.dl-l summary::-webkit-details-marker{display:none}
+.dl-t{flex:1}
+.dl-d{color:#4B5873;font-weight:600}
+.dl-big{font:900 26px 'DM Sans',sans-serif;letter-spacing:.08em;color:#0E1726}
+.dl-fl{color:#1A5EDB;flex-shrink:0;transition:transform .2s}
+.dl-l[open] .dl-fl{transform:rotate(90deg)}
+.dl-c{padding:0 18px 16px}
+.dl-c .section-hd{display:none}
+.dl-c .card{box-shadow:none;border:0;padding:0!important;background:none}
+.dl-code .dl-sum{cursor:default}
 </style>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap">
@@ -718,153 +740,40 @@ function renderDashboard(d){
   const annee   = new Date().getFullYear();
   const qrUrl   = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(link)}&size=176x176&color=1a2b4a&bgcolor=ffffff&qzone=1&format=png`;
   const prevision = d.prevision_attente_euros || 0;
+  // Espace partenaire épuré, inspiré de Deliveroo (21/11/2026) : un gros
+  // chiffre (revenus du mois + nombre de locations), puis une liste de
+  // lignes qui s'ouvrent d'un geste. Rien d'autre.
+  const fleche = '<svg class="dl-fl" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+  const ligne = (titre, droite, contenu, ouvert) => `<details class="dl-l"${ouvert ? ' open' : ''}><summary><span class="dl-t">${titre}</span><span class="dl-d">${droite || ''}</span>${fleche}</summary><div class="dl-c">${contenu}</div></details>`;
+  const nbMois = d.reservations_mois || 0;
   zone.innerHTML = `
-    <div class="topnote">Tableau de bord ambassadeur</div>
-
-    <!-- Hero commission -->
-    <div class="commission-hero">
-      <div class="ch-label">Commission disponible</div>
-      <div class="ch-amount">${euros(d.non_verse_euros)}</div>
-      <div class="ch-caption">${STATE.taux}% de chaque réservation confirmée · virée chaque mois, rien à demander</div>
-      <div class="ch-actions">
-        <div class="ch-next">${(d.non_verse_euros||0) > 0
-          ? `Prochain virement : début ${prochainMois}`
-          : 'Rien à virer pour le moment'}</div>
-      </div>
+    <!-- Revenus du mois -->
+    <div class="dl-hero">
+      <div class="dl-h"><div class="dl-n">${euros(d.gain_mois_euros)}</div><div class="dl-s">Revenus ce mois</div></div>
+      <div class="dl-h"><div class="dl-n">${nbMois}</div><div class="dl-s">Location${nbMois > 1 ? 's' : ''}</div></div>
+      <div class="dl-pied">${(d.non_verse_euros||0) > 0 ? `À virer : <b>${euros(d.non_verse_euros)}</b> · début ${prochainMois}` : 'Rien à virer pour le moment'}</div>
     </div>
     <div class="err-msg" id="dash-err"></div>
 
-    ${d.point_retrait ? `
-    <!-- Point de retrait Click & Collect : le code à donner au retour -->
-    <div class="payout-status code-retour" style="background:#EAF6EF;border-color:#0F7A3D">
-      <div class="ps-icon">🔑</div>
-      <div>
-        <div class="ps-title">Votre code retour Click &amp; Collect : <b style="font-size:22px;letter-spacing:.1em">${escHtml(d.point_retrait.code_retour || '—')}</b></div>
-        <div class="ps-sub">${d.point_retrait.code_retour
-          ? 'Écran <b style="color:#0F7A3D">vert</b> = retrait : donnez l’appareil.<br>Écran <b style="color:#1A5EDB">bleu</b> = retour : c’est fini.<br>Votre code se donne au retour, jamais avant.'
-          : 'Aucun téléphone enregistré pour votre boutique : écrivez à Loc’Air pour l’ajouter.'}</div>
-      </div>
-    </div>` : ''}
+    ${(d.non_verse_euros||0) > 0 && d.rib_ok === false ? `<div class="dl-alerte">Il nous manque votre RIB : envoyez-le à contact@locair.fr</div>` : ''}
 
-    ${(d.non_verse_euros||0) > 0 && d.rib_ok === false ? `
-    <!-- RIB manquant : sans lui, pas de virement mensuel -->
-    <div class="payout-status">
-      <div class="ps-icon">🏦</div>
-      <div>
-        <div class="ps-title">Il nous manque votre RIB</div>
-        <div class="ps-sub">Envoyez-le à contact@locair.fr ou par WhatsApp au 06 63 79 87 56 pour recevoir votre virement du mois.</div>
-      </div>
-    </div>` : ''}
-
-    ${virementEnCours ? `
-    <!-- Statut de la demande de virement en cours -->
-    <div class="payout-status">
-      <div class="ps-icon">⏳</div>
-      <div>
-        <div class="ps-title">Demande de ${euros(virementEnCours.montant_cents/100)} envoyée le ${virementEnCours.created_at?new Date(virementEnCours.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long'}):''}</div>
-        <div class="ps-sub">Il partira avec le virement de début de mois. Vous recevrez un e-mail dès qu’il sera effectué.</div>
-      </div>
-    </div>` : ''}
-
-    <!-- Vue d'ensemble -->
-    <div class="big-stats">
-      <div class="big-stat">
-        <div class="bn">${euros(d.total_verse_euros||0)}</div>
-        <div class="bl">Total versé</div>
-      </div>
-      <div class="big-stat">
-        <div class="bn">${euros(d.total_annee_euros||0)}</div>
-        <div class="bl">En ${annee}</div>
-      </div>
-      <div class="big-stat">
-        <div class="bn">${d.reservations_total||0}</div>
-        <div class="bl">Réservations total</div>
-      </div>
-    </div>
-
-    ${prevision > 0 ? `
-    <!-- Pipeline à venir -->
-    <div class="pipeline-note">
-      <div class="pn-amount">${euros(prevision)}</div>
-      <div class="pn-text">En attente de confirmation client — commission potentielle si ces réservations sont finalisées.</div>
-    </div>` : ''}
-
-    <!-- Stat grid mensuelle -->
-    <div class="stat-grid">
-      <div class="stat-cell">
-        <div class="stat-n">${d.reservations_aujourdhui||0}</div>
-        <div class="stat-l">Réservation${(d.reservations_aujourdhui||0)>1?'s':''} aujourd'hui</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-n accent">${euros(d.gain_aujourdhui_euros)}</div>
-        <div class="stat-l">Gagné aujourd'hui</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-n">${d.reservations_mois||0}</div>
-        <div class="stat-l">Réservation${(d.reservations_mois||0)>1?'s':''} ce mois</div>
-      </div>
-      <div class="stat-cell">
-        <div class="stat-n accent">${euros(d.gain_mois_euros)}</div>
-        <div class="stat-l">Gagné ce mois</div>
-      </div>
-    </div>
-
-    <!-- Lien d'affiliation + partage + QR -->
-    <div class="aff-section">
-      <div class="aff-title">Lien d'affiliation</div>
-      <div class="aff-desc">Partagez ce lien à vos clients. Chaque réservation effectuée depuis ce lien vous est automatiquement attribuée.</div>
-      <div class="link-copy-row">
-        <input type="text" id="aff-link" value="${escHtml(link)}" readonly onclick="this.select()"/>
-        <button class="copy-btn" onclick="copyLink()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-          Copier
-        </button>
-      </div>
-      <div class="ok-msg" id="copy-ok">Lien copié !</div>
-
-      <!-- Boutons de partage rapide -->
-      <div class="share-row">
-        <a class="share-btn share-wa" href="${escHtml(`https://wa.me/?text=${encodeURIComponent('Réservez votre climatiseur mobile Loc\'Air directement ici : ' + link)}`)}" target="_blank" rel="noopener noreferrer">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.528 5.855L.057 23.943l6.243-1.635A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.877 9.877 0 01-5.031-1.38l-.361-.214-3.706.972.988-3.614-.235-.372A9.855 9.855 0 012.106 12C2.106 6.53 6.53 2.106 12 2.106c5.47 0 9.894 4.424 9.894 9.894 0 5.47-4.424 9.894-9.894 9.894z"/></svg>
-          Envoyer sur WhatsApp
-        </a>
-        <a class="share-btn share-email" href="${escHtml(`mailto:?subject=Réservez votre climatiseur mobile Loc'Air&body=Bonjour,%0A%0AJe vous partage ce lien pour réserver votre climatiseur mobile Loc'Air :%0A${link}%0A%0ACordialement`)}" target="_blank" rel="noopener noreferrer">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-          Par e-mail
-        </a>
-      </div>
-
-      <!-- QR code -->
-      <div class="qr-section">
-        <div class="qr-img-wrap">
-          <img id="qr-img" src="${escHtml(qrUrl)}" alt="QR code lien d'affiliation" width="88" height="88" loading="lazy"/>
+    <div class="dl-liste">
+      ${d.point_retrait ? `<div class="dl-l dl-code"><div class="dl-sum"><span class="dl-t">Code retour</span><span class="dl-d dl-big">${escHtml(d.point_retrait.code_retour || '—')}</span></div></div>` : ''}
+      ${ligne('Historique des paiements', (d.virements||[]).length ? (d.virements||[]).length + '' : '', virementsHistoryHtml(d.virements) || '<p class="empty">Premier virement début ' + prochainMois + '.</p>')}
+      ${ligne('Locations apportées', (d.reservations_total||0) + '', reservationsHistoryHtml(d.reservations))}
+      ${ligne('Mon lien et mon QR code', '', `
+        <div class="link-copy-row">
+          <input type="text" id="aff-link" value="${escHtml(link)}" readonly onclick="this.select()"/>
+          <button class="copy-btn" onclick="copyLink()">Copier</button>
         </div>
-        <div class="qr-info">
-          <p>Imprimez ce QR code et affichez-le dans vos appartements. Vos clients scannent et réservent directement.</p>
-          <a class="qr-dl" onclick="downloadQR(event,'${escHtml(qrUrl)}')" href="${escHtml(qrUrl)}" download="locair-qr-${escHtml(STATE.code)}.png" target="_blank">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Télécharger le QR code
-          </a>
-        </div>
-      </div>
-
-      <!-- Rappel du mécanisme d'attribution : évite les commissions "perdues"
-           par un partenaire qui pense avoir droit à une commission pour un
-           client simplement informé verbalement, sans passer par le lien. -->
-      <div class="aff-note">
-        <span class="an-icon">💡</span>
-        <span>La commission est attribuée automatiquement quand votre client clique sur ce lien ou scanne ce QR code avant de réserver. Une simple mention de Loc'Air ne suffit pas — pensez à toujours partager le lien ou le QR code.</span>
-      </div>
+        <div class="ok-msg" id="copy-ok">Lien copié !</div>
+        <div class="qr-section">
+          <div class="qr-img-wrap"><img id="qr-img" src="${escHtml(qrUrl)}" alt="QR code de votre lien" width="88" height="88" loading="lazy"/></div>
+          <div class="qr-info"><a class="qr-dl" onclick="downloadQR(event,'${escHtml(qrUrl)}')" href="${escHtml(qrUrl)}" download="locair-qr-${escHtml(STATE.code)}.png" target="_blank">Télécharger le QR code</a></div>
+        </div>`)}
+      ${ligne('Total versé', euros(d.total_verse_euros||0), `<p class="empty">En ${annee} : ${euros(d.total_annee_euros||0)}</p>`)}
+      <button class="dl-l dl-btn" onclick="exportPdf()"><span class="dl-t">Relevé PDF</span>${fleche}</button>
     </div>
-
-    ${reservationsHistoryHtml(d.reservations)}
-    ${virementsHistoryHtml(d.virements)}
-
-    <!-- Export PDF -->
-    <button class="export-btn" onclick="exportPdf()">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Exporter relevé de commissions (PDF)
-    </button>
   `;
 
   // Stocker les données pour l'export PDF
