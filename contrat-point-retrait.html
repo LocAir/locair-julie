@@ -57,6 +57,7 @@ input[aria-invalid="true"]{border-color:var(--err)}
   <div id="e-form">
     <h1>Votre point de retrait</h1>
     <p class="badge">Sans engagement · 2 minutes</p>
+    <p class="badge" style="margin-left:6px;background:#EAF6EF;color:#0F7A3D">Ouverture le 1er juin 2027</p>
 
     <section class="carte" aria-labelledby="t-cond">
       <h2 id="t-cond">Ce que dit le contrat</h2>
@@ -66,7 +67,9 @@ input[aria-invalid="true"]{border-color:var(--err)}
         <li><i aria-hidden="true">3</i><span>On dépose les climatiseurs et on passe <b>une fois par mois</b> pour l’entretien (plus souvent en canicule).</span></li>
         <li><i aria-hidden="true">4</i><span><b>Vol ou casse</b> en boutique : Loc’Air paie, sauf faute grave de votre part.</span></li>
         <li><i aria-hidden="true">5</i><span>Le nombre de climatiseurs <b>selon votre place</b>. L’hiver, ils restent chez vous ou on les reprend : <b>vous choisissez</b>.</span></li>
-        <li><i aria-hidden="true">6</i><span><b>Sans engagement</b> : vous arrêtez quand vous voulez.</span></li>
+        <li><i aria-hidden="true">6</i><span><b>Un seul point par quartier</b> : le premier commerçant qui signe a l’exclusivité.</span></li>
+        <li><i aria-hidden="true">7</i><span><b>50 €</b> pour chaque commerçant que vous faites signer, versés à sa signature.</span></li>
+        <li><i aria-hidden="true">8</i><span><b>Sans engagement</b> : vous arrêtez quand vous voulez.</span></li>
       </ul>
     </section>
 
@@ -93,6 +96,8 @@ input[aria-invalid="true"]{border-color:var(--err)}
           <select id="appareils" name="appareils"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select></div>
         <div><label for="debut">Démarrage</label><input id="debut" name="debut" type="date"></div>
       </div>
+      <label for="parrain">Recommandé par (facultatif)</label>
+      <input id="parrain" name="parrain" maxlength="120" placeholder="Nom du commerce qui vous a parlé de Loc’Air">
       <label for="hiver">L’hiver</label>
       <select id="hiver" name="hiver"><option value="reprise">Loc’Air les reprend jusqu’au printemps</option><option value="garde">Je les garde chez moi</option></select>
       <input class="piege" id="site_web" name="site_web" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -117,7 +122,7 @@ input[aria-invalid="true"]{border-color:var(--err)}
   REQUIS.forEach(function(k){ $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); erreur(''); }); });
   $('f').addEventListener('submit', function(ev){
     ev.preventDefault();
-    var d = {}; REQUIS.concat(['appareils','debut','hiver','site_web']).forEach(function(k){ d[k] = $(k).value.trim(); });
+    var d = {}; REQUIS.concat(['appareils','debut','hiver','parrain','site_web']).forEach(function(k){ d[k] = $(k).value.trim(); });
     for(var i = 0; i < REQUIS.length; i++){ var k = REQUIS[i]; if(!d[k]){ $(k).setAttribute('aria-invalid','true'); $(k).focus(); return erreur('Il manque une information.'); } }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){ $('email').setAttribute('aria-invalid','true'); $('email').focus(); return erreur('Vérifiez l’email.'); }
     if(d.tel.replace(/\D/g,'').length < 9){ $('tel').setAttribute('aria-invalid','true'); $('tel').focus(); return erreur('Vérifiez le téléphone.'); }
