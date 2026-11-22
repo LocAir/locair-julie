@@ -217,7 +217,24 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   /* réservation gardée sur ce téléphone après le paiement : pré-remplie */
   try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && (mr.numero || mr.ref)) $('ref').value = mr.numero || mr.ref; }catch(e){}
 
+  /* MODE DÉMO (présentation aux commerçants) : point test + numéro 0000.
+     Tout se passe dans le téléphone, rien n'est envoyé ni enregistré. */
+  function demo(corps){
+    var k = 'locair_demo_retire', retire = false;
+    try{ retire = sessionStorage.getItem(k) === '1'; }catch(e){}
+    var auj = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
+    var fin = new Date(Date.now() + 3 * 864e5).toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
+    var fiche = {ref:'DEMO', prenom:'Démo', nom:'Loc’Air', quantite:1, date_debut:auj, date_fin:fin, retour_disponible:true,
+                 peut_remettre:!retire, peut_rendre:retire, rendu:false, remis_at: retire ? new Date().toISOString() : null};
+    var r = {ok:true, j:{reservation:fiche}};
+    if(corps.action === 'valider'){ try{ sessionStorage.setItem(k, '1'); }catch(e){} r = {ok:true, j:{ok:true, reservation:Object.assign({}, fiche, {remis_at:new Date().toISOString()})}}; }
+    else if(corps.action === 'photo') r = {ok:true, j:{signedUrl:'demo', path:'demo'}};
+    else if(corps.action === 'rendre'){ try{ sessionStorage.removeItem(k); }catch(e){} r = {ok:true, j:{ok:true}}; }
+    else if(corps.action === 'signaler' || corps.action === 'echanger') r = {ok:true, j:{ok:true}};
+    return new Promise(function(ok){ setTimeout(function(){ ok(r); }, 300); });
+  }
   function appel(corps){
+    if(POINT === 'test-locair' && etat.ref === '0000') return demo(corps);
     corps.point = POINT; corps.ref = etat.ref; corps.lang = langue();
     return fetch('/api/cc-comptoir', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corps)})
       .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
@@ -397,7 +414,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     /* la photo ne part qu'une fois, même si le code est faux et qu'on réessaie */
     var envoiPhoto = photoChemin ? Promise.resolve(photoChemin) : appel({action:'photo', type:photoRetour.type || 'image/jpeg'}).then(function(u){
       if(!u.ok || !u.j.signedUrl) throw new Error(u.j.error || '');
-      return fetch(u.j.signedUrl, {method:'PUT', headers:{'Content-Type': photoRetour.type || 'image/jpeg'}, body:photoRetour}).then(function(x){ if(!x.ok) throw new Error(L('La photo n’a pas pu partir. Réessayez.', 'The photo couldn’t be sent. Try again.', 'No se pudo enviar la foto. Inténtalo de nuevo.')); photoChemin = u.j.path; return photoChemin; });
+      return (u.j.signedUrl === 'demo' ? Promise.resolve({ok:true}) : fetch(u.j.signedUrl, {method:'PUT', headers:{'Content-Type': photoRetour.type || 'image/jpeg'}, body:photoRetour}).then(function(x){ if(!x.ok) throw new Error(L('La photo n’a pas pu partir. Réessayez.', 'The photo couldn’t be sent. Try again.', 'No se pudo enviar la foto. Inténtalo de nuevo.')); photoChemin = u.j.path; return photoChemin; }));
     });
     envoiPhoto.then(function(chemin){ return appel({action:'rendre', photo:chemin, code_commercant:code}); }).then(function(r){
       if(!r.ok){ remettre(); if(r.j.code === 'code_commercant'){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').select(); } return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.')); }

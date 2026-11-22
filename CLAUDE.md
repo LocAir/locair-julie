@@ -51,6 +51,12 @@ concernées (vrais écrans, client d'exemple) et corriger le texte des diapos.
 Le propriétaire l'a demandé le 21/11/2026 : le site et la présentation
 disent toujours la même chose.
 
+Version courte « façon Musk » (22/11/2026) : 7 diapos (mission, démo, au
+comptoir, 20 %, 0 €, plan en 3 étapes, on démarre) + annexes (tarifs, pour
+qui, FAQ). La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
+le numéro **0000** sur ce point lance un mode démo dans le téléphone
+(`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
+
 ## Déploiement
 
 Quand une pull request de correctifs/améliorations est prête sur la branche de
