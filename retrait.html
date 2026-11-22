@@ -195,6 +195,10 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
   </section>
 </main>
 <script>
+/* page disponible sans réseau (retrait-sw.js, seulement /retrait) */
+if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/retrait-sw.js', {scope:'/retrait'}).catch(function(){}); }); }
+</script>
+<script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var q = new URLSearchParams(location.search), POINT = (q.get('p') || '').slice(0, 60), etat = {ref:'', resa:null};
@@ -251,7 +255,14 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       if(!r.ok || !r.j.reservation) return erreur($('m-id'), r.j.error || L('Réservation introuvable.', 'Booking not found.', 'Reserva no encontrada.'));
       etat.resa = r.j.reservation; afficher(etat.resa);
       $('e-id').hidden = true; $('e-resa').hidden = false; window.scrollTo(0, 0);
-    }).catch(function(){ b.disabled = false; erreur($('m-id'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+    }).catch(function(){
+      b.disabled = false;
+      /* pas de réseau (sous-sol, 4G faible) : on garde le numéro, et on réessaie tout seul dès que le réseau revient */
+      var m = null; try{ m = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); }catch(e){}
+      var num = (m && (m.numero || m.ref)) || etat.ref;
+      erreur($('m-id'), L('Pas de réseau ici. Votre numéro : ' + num + '. On réessaie tout seul dès que le réseau revient.', 'No signal here. Your number: ' + num + '. We’ll retry as soon as the signal is back.', 'Sin cobertura aquí. Tu número: ' + num + '. Lo volvemos a intentar en cuanto vuelva la cobertura.'));
+      window.addEventListener('online', function(){ if(!$('e-id').hidden) $('b-id').click(); }, {once:true});
+    });
   });
 
   function afficher(r){

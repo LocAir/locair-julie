@@ -292,6 +292,16 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    À garder derrière le comptoir, jamais affiché.
 5. Faire un essai complet (retrait puis retour) avec le point.
 
+Page `click-and-collect.html` (22/11/2026) : paiement express Apple Pay /
+Google Pay sans formulaire (coordonnées prises dans le téléphone, mention
+« En payant, vous acceptez les conditions ») ; carte avec le stock en direct
+(`api/points-dispo.js` : vert disponible, orange dernier appareil, gris
+complet, pour un retrait demain — jamais le nombre exact) ; « Bonjour
+{prénom}, même point qu'avant » pour un client qui revient ; carte chargée
+au premier geste (page plus rapide). `/retrait` s'ouvre sans réseau
+(`retrait-sw.js`). Apple Pay n'apparaît que si le domaine locair.fr est
+validé dans Stripe.
+
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans
 `api/_lib/clickCollect.js`). Ne jamais écrire cette règle
