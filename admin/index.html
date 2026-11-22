@@ -8836,10 +8836,16 @@ async function addPartenaire(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadPartenairesEquipe();
     const emailNote = email ? `Un email avec ces infos vient de lui être envoyé automatiquement à ${email}.\n\n` : "Pas d'email enregistré — transmets-lui ces infos toi-même :\n\n";
-    showInfo('Ambassadeur ajouté', `${emailNote}Lien à mettre sur son site :\n${partenaireLinkFor(d.code)}\n\nCode personnel pour se connecter sur /partenaire :\n${d.pin}`);
+    showInfo('Ambassadeur ajouté', `${emailNote}Lien à mettre sur son site :\n${partenaireLinkFor(d.code)}\n\nCode personnel pour se connecter sur /partenaire :\n${d.pin}`, () => popupParrainage(d.parrainage, nom));
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
   }
+}
+/* Fiche créée ou activée : le serveur a reconnu un parrainage en attente
+   (même téléphone ou même commerce) et l'a passé à « signé ». */
+function popupParrainage(p, nom){
+  if(!p) return;
+  showInfo('🎁 Parrainage détecté', `${nom || p.commerce} a été parrainé par ${p.parrain_nom || '—'}.\n\nParrainage activé. Le parrain est prévenu.\n\nÀ sa 1re location, tu recevras une notification « À verser » :\n100 % de cette location au parrain\n+ 100 % à ${nom || p.commerce}.`);
 }
 function deletePartenaire(id, nom){
   confirmAction(`Supprimer définitivement ${nom} ? S'il a des réservations ou virements liés, il sera désactivé à la place (pour garder l'historique).`, async () => {
@@ -8859,6 +8865,7 @@ async function togglePartenaire(id, actif, btnEl){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadPartenairesEquipe();
+    popupParrainage(d.parrainage, (PARTENAIRES_CACHE.find(x => x.id === id) || {}).nom);
   }catch(e){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');
@@ -8934,6 +8941,7 @@ function editPartenaireFiche(id){
       closeModal();
       loadPartenairesEquipe();
       showToast('Fiche mise à jour', 'success');
+      popupParrainage(d.parrainage, nom);
     }catch(e){
       okBtn.disabled = false;
       showToast(`Non enregistré : ${e.message}`, 'error');
@@ -11480,7 +11488,7 @@ function prParrainages(d){
   if(!l.length) return '';
   const etat = {en_attente:['En attente','pr-etat exemple'], signe:['Signé · activé','pr-etat ouvert'], refuse:['Refusé','pr-etat ferme']};
   return '<p class="section-title">Parrainages</p><div class="pr-col" style="margin-bottom:8px"><ul>' + l.map(x => {
-    const e = etat[x.statut] || etat.en_attente;
+    const e = x.premiere_resa_id ? ['1re location · à verser','pr-etat exemple'] : (etat[x.statut] || etat.en_attente);
     return `<li><span><b>${escHtml(x.commerce)}</b><small>${escHtml(x.contact_nom||'')} · parrain : ${escHtml(x.parrain_nom||'—')}</small></span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${x.tel?`<a href="tel:${escHtml(String(x.tel).replace(/\s/g,''))}">Appeler</a>`:''}<span class="${e[1]}">${e[0]}</span>${x.statut==='en_attente'?`<button class="btn btn-grey" style="padding:6px 12px;font-size:12px" onclick="setParrainage(${x.id},'signe')">Signé</button><button class="btn btn-grey" style="padding:6px 12px;font-size:12px" onclick="setParrainage(${x.id},'refuse')">Refusé</button>`:''}</span></li>`;
   }).join('') + '</ul></div>';
 }

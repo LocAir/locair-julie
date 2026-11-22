@@ -274,6 +274,12 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    activé » ou « Pas cette fois ». Admin → Points de retrait → Parrainages :
    boutons « Signé » / « Refusé ». Table `parrainages`
    (`supabase/migration_2026-11-22_parrainages.sql`).
+   **Détection automatique** (`api/_lib/parrainage.js`) : quand l'admin
+   crée ou active la fiche du commerçant (même téléphone ou même nom de
+   commerce qu'une demande en attente), le parrainage passe à « signé »,
+   fenêtre « 🎁 Parrainage détecté » + notification admin + email au
+   parrain. À la 1re location payée du nouveau point : notification et
+   email « À verser » (montant de la location, au parrain et au nouveau).
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).

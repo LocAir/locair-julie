@@ -759,9 +759,12 @@ create table parrainages (
   tel         text,
   statut      text not null default 'en_attente' check (statut in ('en_attente','signe','refuse')),
   created_at  timestamptz not null default now(),
-  signe_at    timestamptz
+  signe_at    timestamptz,
+  filleul_id  bigint references partenaires(id),        -- fiche du nouveau commerçant (détectée à sa création)
+  premiere_resa_id bigint references reservations(id)  -- sa 1re location payée (alerte « à verser »)
 );
 create index parrainages_parrain_idx on parrainages (parrain_id, created_at desc);
+create index parrainages_filleul_idx on parrainages (filleul_id) where filleul_id is not null;
 
 create table incidents (
   id                    bigint generated always as identity primary key,
