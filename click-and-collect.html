@@ -62,11 +62,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Playfair+Display:ital,wght@0,700;1,600&display=swap">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&family=Playfair+Display:ital,wght@0,700;1,600&display=swap"></noscript>
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap"></noscript>
 <style>
-/* Thème du site (locair-design.css) : bleu Loc'Air, titres Playfair
-   Display, texte DM Sans. Une colonne étroite, pensée pour le téléphone. */
+/* Thème du site (locair-design.css) : bleu Loc'Air, une seule police :
+   DM Sans (titres en 900, jamais Playfair). Une colonne étroite, pensée pour le téléphone. */
 :root{
   --ink:#0E1726; --ink-2:#4B5873; --ink-3:#8A9EC0;
   --vif:#1A5EDB; --vif-d:#0D3FA0; --vif-clair:#EFF4FD;
@@ -74,7 +74,7 @@
   --etoile:#F59E0B; --ex-fond:#FEF3C7; --ex-txt:#92400E; --alerte:#B8860B;
   --ok:#0F7A3D; --ok-fond:#E7F6EC; --erreur:#B42318; --erreur-fond:#FDECEA;
   --font:'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-  --font-titre:'Playfair Display',Georgia,serif;
+  --font-titre:'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --r-s:8px;--r:14px;--r-l:20px;--r-f:100px;
   --o-1:0 1px 4px rgba(26,94,219,.08);
   --o-2:0 2px 16px rgba(26,94,219,.12);
@@ -156,6 +156,16 @@ h2:focus{outline:none}
 .choix-ville{margin-top:-40px;background:var(--paper);border-radius:24px;padding:20px 16px 16px;position:relative;
   box-shadow:0 24px 60px -12px rgba(11,30,68,.35),0 2px 8px rgba(11,30,68,.06)}
 .choix-ville h2{font-size:23px;margin-bottom:14px}
+.express{display:flex;flex-direction:column;gap:10px;margin:4px 0 18px}
+.express[hidden]{display:none}
+.express-cgv{font-size:13px;color:var(--ink-2,#4B5873);line-height:1.45;margin:0}
+.express-cgv a{color:inherit}
+.express-ou{display:flex;align-items:center;gap:12px;color:var(--ink-2,#4B5873);font-size:14px;font-weight:700;margin:6px 0 0}
+.express-ou::before,.express-ou::after{content:"";flex:1;height:1px;background:var(--line,#E3E9F4)}
+.revient{display:grid;grid-template-columns:1fr auto;grid-template-areas:"t f" "s f";align-items:center;gap:2px 12px;width:100%;text-align:left;background:var(--vif);color:#fff;border:0;border-radius:18px;padding:14px 16px;margin:0 0 16px;cursor:pointer;font-family:var(--font)}
+.revient .rv-t{grid-area:t;font-weight:900;font-size:18px;letter-spacing:-.01em}
+.revient .rv-s{grid-area:s;font-size:14.5px;opacity:.92}
+.revient svg{grid-area:f;width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .localiser{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;border:0;border-radius:var(--r-f);
   background:linear-gradient(135deg,#2A6EF0 0%,#1A5EDB 45%,#0D3FA0 100%);color:#fff;font-weight:700;font-size:16.5px;
   box-shadow:0 10px 24px -6px rgba(26,94,219,.55);position:relative;overflow:hidden;transition:transform .14s var(--mv),box-shadow .14s var(--mv)}
@@ -476,7 +486,10 @@ body:not(.en-etape) .nav-tel{background:rgba(255,255,255,.16);border:1px solid r
 .gpin .g-f{fill:var(--vif)}.gpin .g-c{fill:#fff}
 .gpin.ex .g-f{fill:var(--vif)}
 .gpin.on{transform:scale(1.3)}.gpin.on .g-f{fill:var(--vif-d)}
-.gpin.proche .g-f{fill:#0F7A3D}
+.gpin.proche{transform:scale(1.15)}
+/* stock en direct (api/points-dispo.js) : vert = disponible, orange = dernier appareil, gris = complet */
+.gpin.d-dispo .g-f{fill:#0F7A3D}.gpin.d-dernier .g-f{fill:#C2410C}.gpin.d-complet .g-f{fill:#98A2B3}
+.badge-dispo{background:#E6F4EC;color:#0F7A3D}.badge-dernier{background:#FDF1E3;color:#B45309}.badge-complet{background:#EEF1F6;color:#4B5873}
 .gc-fiche{position:absolute;left:10px;right:10px;bottom:10px;z-index:4;background:#fff;border-radius:20px;padding:14px 14px 12px;box-shadow:0 18px 40px -12px rgba(11,30,68,.5);animation:gcMonte .3s cubic-bezier(.2,.8,.2,1)}
 .gc-fiche[hidden]{display:none}
 @keyframes gcMonte{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -1344,6 +1357,8 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
 
     <div class="col">
       <div class="choix-ville" id="choix">
+        <!-- Client qui revient (dernière réservation payée sur ce téléphone) : un bouton, même point. -->
+        <button type="button" class="revient" id="revient" hidden><span class="rv-t" id="rv-t"></span><span class="rv-s" id="rv-s"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
         <h2 id="t-ville" tabindex="-1"><span lang="fr">Où voulez-vous le récupérer&nbsp;?</span><span lang="en">Where would you like to pick it up?</span><span lang="es">¿Dónde quieres recogerlo?</span></h2>
         <!-- GRANDE CARTE (essai) : tous les points, on touche, on choisit.
              Pour la retirer : supprimer ce bloc, le CSS « GRANDE CARTE » et le
@@ -1577,6 +1592,15 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
         <div class="total"><dt><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 7a7 7 0 100 10M4 10h9M4 14h9"/></svg>Total</dt><dd><span id="r-prix"></span> <small id="r-detail"></small></dd></div>
       </dl>
       <p class="stock-bas" id="r-stock" role="status" hidden></p>
+      <!-- PAIEMENT EXPRESS (Apple Pay / Google Pay) : nom, email, téléphone et
+           adresse viennent du téléphone, rien à taper. Caché si le téléphone
+           n'en propose aucun, ou si le point n'est pas encore ouvert. -->
+      <div class="express" id="express" hidden>
+        <div id="express-el"></div>
+        <p class="express-cgv"><span lang="fr">En payant, vous acceptez les <a href="/cgv#click-collect" target="_blank" rel="noopener noreferrer">conditions de location</a>, et un prélèvement seulement si vous rendez l’appareil en retard.</span><span lang="en">By paying, you accept the <a href="/cgv" target="_blank" rel="noopener noreferrer">rental terms</a> (in French), and a charge only if you return the unit late.</span><span lang="es">Al pagar, aceptas las <a href="/cgv" target="_blank" rel="noopener noreferrer">condiciones de alquiler</a> (en francés) y un cargo solo si devuelves el aparato tarde.</span></p>
+        <p class="err" id="express-err" role="alert" hidden></p>
+        <p class="express-ou"><span lang="fr">ou avec vos coordonnées</span><span lang="en">or with your details</span><span lang="es">o con tus datos</span></p>
+      </div>
       <form class="form" id="form" novalidate>
         <div class="deux">
           <div><label class="champ-l" for="prenom"><span lang="fr">Prénom</span><span lang="en">First name</span><span lang="es">Nombre</span></label><input class="champ" id="prenom" name="prenom" autocomplete="given-name" enterkeyhint="next" required maxlength="60"></div>
@@ -2261,6 +2285,21 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     return jours + ' · ' + hh(o[0]) + '–' + hh(o[1]);
   }
   function dist(n){ var v = n < 10 ? n.toFixed(1) : String(Math.round(n)); return L('À ' + v.replace('.', ','), v, 'A ' + v.replace('.', ',')) + ' km' + L('', ' away'); }
+  /* Stock en direct : état de chaque point pour un retrait demain (jamais le nombre exact). */
+  var DISPO = {};
+  function badgeDispo(p){
+    var e = !p.exemple && DISPO[p.id]; if(!e) return '';
+    var t = e === 'dispo' ? L('Dispo demain', 'Available tomorrow', 'Disponible mañana') : e === 'dernier' ? L('Dernier appareil', 'Last unit', 'Último aparato') : L('Complet demain', 'Full tomorrow', 'Completo mañana');
+    return '<span class="badge badge-' + e + '">' + t + '</span>';
+  }
+  function appliquerDispo(){
+    (gc.pins || []).forEach(function(x, i){ var p = POINTS[i]; if(!p) return; ['dispo','dernier','complet'].forEach(function(k){ x.el.classList.toggle('d-' + k, !p.exemple && DISPO[p.id] === k); }); });
+    if(etat.liste && etat.liste.length && !ecrans.point.hidden) dessinerPoints(etat.liste, etat.pos);
+  }
+  function chargerDispo(){
+    fetch('/api/points-dispo' + (/[?&]test=1\b/.test(location.search) ? '?test=1' : '')).then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ if(j && j.etats){ DISPO = j.etats; appliquerDispo(); } }).catch(function(){});
+  }
   function dessinerPoints(liste, pos){
     etat.liste = liste; etat.pos = pos;
     $('point-dire').textContent = pos ? L('Du plus proche au plus loin de vous. Touchez un point pour le choisir.', 'Nearest first. Tap a point to choose it.')
@@ -2268,7 +2307,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     $('avert-ex').hidden = true;
     $('points').innerHTML = liste.map(function(p, k){
       var d = pos ? dist(km(pos, p)) + ' · ' : '';
-      var tags = (pos && k === 0 ? '<span class="badge badge-proche">' + L('Le plus proche', 'Nearest') + '</span>' : '') + (p.exemple ? '<span class="badge badge-ex">' + L('Exemple', 'Example') + '</span>' : '');
+      var tags = (pos && k === 0 ? '<span class="badge badge-proche">' + L('Le plus proche', 'Nearest') + '</span>' : '') + (p.exemple ? '<span class="badge badge-ex">' + L('Exemple', 'Example') + '</span>' : '') + badgeDispo(p);
       return '<button type="button" class="carte" data-point="' + esc(p.id) + '" data-k="' + k + '">' + ((p.photos || [])[0] ? '<img class="carte-img" src="' + esc(p.photos[0]) + '" alt="" loading="lazy" decoding="async">' : '') + '<span class="carte-txt">' +
         (tags ? '<span class="etiquettes">' + tags + '</span>' : '') +
         '<span class="carte-t"><span class="lettre" aria-hidden="true">' + LETTRES[k] + '</span>' + esc(p.nom) + '</span>' +
@@ -2753,7 +2792,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function monterInline(){
     var boite = $('paie-inline');
     if(!etat.point){ boite.hidden = true; return; }
-    if(inl.ok){ if(inl.montant !== montantCents()){ inl.montant = montantCents(); try{ inl.el.update({amount:inl.montant}); }catch(e){} } return; }
+    if(inl.ok){ if(inl.montant !== montantCents()){ inl.montant = montantCents(); try{ inl.el.update({amount:inl.montant}); }catch(e){} } majExpress(); return; }
     if(inl.essai) return;
     boite.hidden = false;
     /* le module de carte mesure la largeur disponible : on attend que
@@ -2769,7 +2808,71 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       pe.on('ready', function(){ inl.ok = true; remplirRecap(); });
       pe.on('loaderror', function(){ boite.hidden = true; inl.ok = false; remplirRecap(); });
       pe.mount('#stripe-inline');
+      monterExpress(st);
     }).catch(function(){ boite.hidden = true; inl.ok = false; });
+  }
+  /* ── PAIEMENT EXPRESS : Apple Pay / Google Pay, sans formulaire ──
+     Groupe Stripe séparé (le formulaire carte n'est pas vérifié). Au geste
+     du client : ses coordonnées arrivent du téléphone, le serveur crée le
+     paiement (prix revérifié, comme avec le formulaire), puis confirmation. */
+  var exp = {el:null, ece:null, montant:0};
+  function majExpress(){
+    var b = $('express'); if(!exp.ece) return;
+    if(!etat.point || etat.point.exemple || !exp.dispo){ b.hidden = true; return; }
+    b.hidden = false;
+    var m = montantCents(); if(m !== exp.montant){ exp.montant = m; try{ exp.el.update({amount:m}); }catch(e){} }
+  }
+  function monterExpress(st){
+    if(exp.ece) return majExpress();
+    exp.montant = montantCents();
+    exp.el = st.elements({mode:'payment', amount:exp.montant, currency:'eur', setupFutureUsage:'off_session', locale:langue()});
+    exp.ece = exp.el.create('expressCheckout', {buttonType:{applePay:'book', googlePay:'book'}, buttonHeight:52, paymentMethods:{link:'never', paypal:'never', amazonPay:'never', klarna:'never'}});
+    exp.ece.on('ready', function(ev){ var m = ev.availablePaymentMethods; exp.dispo = !!(m && (m.applePay || m.googlePay)); majExpress(); });
+    exp.ece.on('click', function(ev){
+      $('express-err').hidden = true;
+      if(!etat.point || etat.point.exemple) return;   /* bouton caché dans ce cas */
+      window.mesurer && window.mesurer('cc_express_clic');
+      ev.resolve({emailRequired:true, phoneNumberRequired:true, billingAddressRequired:true,
+        lineItems:[{name:(qte() > 1 ? qte() + ' × ' : '') + L('Climatiseur', 'Air conditioner', 'Aire acondicionado') + ' · ' + jours() + L(' jours', ' days', ' días'), amount:montantCents()}]});
+    });
+    exp.ece.on('confirm', function(ev){
+      var bd = ev.billingDetails || {}, a = bd.address || {}, err = $('express-err');
+      var noms = String(bd.name || '').trim().split(/\s+/);
+      var c = {prenom:noms.shift() || '', nom:noms.join(' ') || '', email:String(bd.email || '').trim(), tel:String(bd.phone || '').trim(),
+        adr1:a.line1 || '', adr2:a.line2 || '', cp:a.postal_code || '', ville:a.city || '', pays:a.country || 'FR', societe:'', siret:''};
+      c.nom = c.nom || c.prenom;
+      c.adresse = [c.adr2, c.adr1, (c.cp + ' ' + c.ville).trim(), c.pays !== 'FR' ? c.pays : ''].filter(Boolean).join(', ');
+      function rate(msg){ ev.paymentFailed({reason:'fail'}); err.textContent = msg; err.hidden = false; }
+      if(!c.prenom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email) || c.tel.replace(/\D/g, '').length < 9 || c.adresse.length < 8)
+        return rate(L('Il manque une information (nom, email, téléphone ou adresse). Utilisez le formulaire ci-dessous.', 'Some details are missing (name, email, phone or address). Please use the form below.', 'Falta un dato (nombre, email, teléfono o dirección). Usa el formulario de abajo.'));
+      var ancienne = (!etat.paye && etat.ref) ? etat.ref : null;
+      if(etat.paye){ etat.paye = false; etat.secret = etat.ref = etat.idtok = etat.remise = null; }
+      var vuCents = montantCents();
+      exp.el.submit().then(function(r){ if(r.error) throw new Error(r.error.message || '');
+        return fetch('/api/checkout-click-collect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+          prenom:c.prenom, nom:c.nom, email:c.email, tel:c.tel, adresse_client:c.adresse, raison_sociale:'', siret:'', point_id:etat.point.id, date:etat.debut, jours:jours(), prix_vu_cents:Math.round(totalUnit() * 100), quantite:qte(), devis:(etat.prix && etat.prix.cle === clePrix() && etat.prix.devis) || '', lang:langue(), remplace:ancienne || '',
+          cgv_accepted:true, conditions_utilisation_accepted:true, retard_accepted:true, campagne:campagne, express:true
+        })}).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
+      }).then(function(r){
+        if(r.j.libres){ etat.qte = r.j.libres; remplirRecap(); majResume('infos'); }
+        if(r.j.nouveauPrixCents){ etat.prix = {cle:clePrix(), totalCents:r.j.nouveauPrixCents, majore:r.j.majore, normalCents:prix(jours()) * 100, majorationPct:r.j.majorationPct || 0}; remplirRecap(); majResume('infos'); }
+        if(!r.ok || !r.j.clientSecret) throw new Error(r.j.error || '');
+        etat.client = c; etat.secret = r.j.clientSecret; etat.secretCle = clePrix(); etat.ref = r.j.ref; etat.numero = r.j.numero || null; etat.montant = r.j.amountCents / 100; etat.remise = r.j.remise || null; etat.idtok = r.j.identite || null;
+        if(r.j.amountCents !== vuCents){ remplirRecap(); majResume('infos'); majExpress(); var y = new Error(L('Le prix vient d’être mis à jour : ', 'The price has just been updated: ', 'El precio se acaba de actualizar: ') + euros(r.j.amountCents / 100) + L('. Vérifiez puis réessayez.', '. Check it and try again.', '. Revísalo y vuelve a intentarlo.')); throw y; }
+        sauver('paiement'); window._ccValeur = etat.montant; window.mesurer('cc_vers_paiement');
+        return stripe.confirmPayment({elements:exp.el, clientSecret:etat.secret, redirect:'if_required',
+          confirmParams:{return_url: location.origin + location.pathname + '?retour=paiement'}
+        }).then(function(r){
+          if(r.error) throw new Error(r.error.message || L('Le paiement n’est pas passé.', 'Payment didn’t go through.', 'El pago no se ha realizado.'));
+          if(r.paymentIntent && (r.paymentIntent.status === 'succeeded' || r.paymentIntent.status === 'processing')){
+            try{ localStorage.setItem('locair_cc_client', JSON.stringify(c)); }catch(e){}
+            window.mesurer && window.mesurer('cc_express_paye');
+            paye();
+          }
+        });
+      }).catch(function(x){ rate((x && x.message) || L('Le paiement n’a pas pu être préparé. Réessayez, ou utilisez le formulaire ci-dessous.', 'Payment could not be prepared. Try again, or use the form below.', 'No se pudo preparar el pago. Inténtalo de nuevo o usa el formulario de abajo.')); });
+    });
+    exp.ece.mount('#express-el');
   }
   $('form').addEventListener('submit', function(e){
     e.preventDefault();
@@ -2934,6 +3037,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   /* ── 6. c'est réservé ── */
   function paye(){
     etat.paye = true;
+    try{ localStorage.setItem('locair_cc_dernier', JSON.stringify({prenom:(etat.client && etat.client.prenom) || '', point:etat.point && etat.point.id, jours:jours(), qte:qte()})); }catch(e){}
     window.conversionAchat(etat.montant, etat.ref); window._ccValeur = etat.montant; window.mesurer('cc_paiement');
     merci();
   }
@@ -3028,7 +3132,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     var f = $('gc-fiche');
     var ph1 = (p.photos || [])[0];
     f.innerHTML = (ph1 ? '<img class="gf-photo" src="' + esc(ph1) + '" alt="' + esc(p.nom) + '" decoding="async">' : '') + '<button type="button" class="gf-x" aria-label="' + L('Fermer', 'Close') + '">×</button>' +
-      ((plusProche || p.exemple) ? '<span class="gf-tags">' + (plusProche ? '<span class="badge badge-proche">' + L('Le plus proche', 'Nearest') + '</span>' : '') + (p.exemple ? '<span class="badge badge-ex">' + L('Exemple', 'Example') + '</span>' : '') + '</span>' : '') +
+      ((plusProche || p.exemple || badgeDispo(p)) ? '<span class="gf-tags">' + (plusProche ? '<span class="badge badge-proche">' + L('Le plus proche', 'Nearest') + '</span>' : '') + (p.exemple ? '<span class="badge badge-ex">' + L('Exemple', 'Example') + '</span>' : '') + badgeDispo(p) + '</span>' : '') +
       '<h3>' + esc(p.nom) + '</h3><p>' + (d ? esc(d) + ' · ' : '') + esc(p.adresse) + '</p><p>' + esc(horairesTexte(p)) + '</p>' +
       (ov.txt ? '<span class="ouvert ' + (ov.ouvert ? 'oui' : 'non') + '">' + esc(ov.txt) + '</span>' : '') +
       (!p.exemple ? '<p class="gf-promesse">' + esc(promesse(p, gc.pos ? km(gc.pos, p) : null)) + '</p>' : '') +
@@ -3076,6 +3180,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
         bornes.extend([p.lng, p.lat]);
       });
       gc.carte.fitBounds(bornes, {padding:{top:60, bottom:40, left:30, right:30}, duration:0});
+      appliquerDispo();
       try{
         if(navigator.permissions) navigator.permissions.query({name:'geolocation'}).then(function(st){ if(st.state === 'granted') gcLocaliser(true); }).catch(function(){});
       }catch(e){}
@@ -3095,6 +3200,14 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   });
   /* charge la carte quand le bloc approche de l'écran (le haut de page reste rapide) */
   function gcQuandVisible(){
+    /* La carte (≈ 2 Mo avec ses fonds) ne passe pas avant la photo du haut :
+       elle attend le premier geste du visiteur, ou 3 s au plus. */
+    var parti = false;
+    function go(){ if(parti) return; parti = true; ['scroll','pointerdown','keydown','touchstart'].forEach(function(t){ window.removeEventListener(t, go, true); }); gcQuandVisible2(); }
+    ['scroll','pointerdown','keydown','touchstart'].forEach(function(t){ window.addEventListener(t, go, {capture:true, passive:true}); });
+    setTimeout(go, 3000);
+  }
+  function gcQuandVisible2(){
     if(!('IntersectionObserver' in window)){ gcDemarrer(); return; }
     var io = new IntersectionObserver(function(es){ if(es.some(function(x){ return x.isIntersecting; })){ io.disconnect(); gcDemarrer(); } }, {rootMargin:'0px', threshold:0.2});
     io.observe($('choix'));
@@ -3262,6 +3375,19 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   })();
 
   /* ── démarrage : points, prix, puis reprise là où le client en était ── */
+  /* Client qui revient : « Bonjour Léa, même point qu'avant ? » → un toucher, et on va au paiement. */
+  function montrerRevient(){
+    var d = null; try{ d = JSON.parse(localStorage.getItem('locair_cc_dernier') || 'null'); }catch(e){}
+    var p = d && parId(d.point); if(!p || p.exemple) return;
+    $('rv-t').textContent = d.prenom ? L('Bonjour ' + d.prenom + ' !', 'Hello ' + d.prenom + '!', '¡Hola ' + d.prenom + '!') : L('Bon retour !', 'Welcome back!', '¡Bienvenido de nuevo!');
+    $('rv-s').textContent = L('Même point qu’avant : ', 'Same point as last time: ', 'El mismo punto que la última vez: ') + p.nom;
+    var b = $('revient'); b.hidden = false;
+    b.onclick = function(){
+      window.mesurer && window.mesurer('cc_client_revient');
+      if(d.jours >= JOURS_MIN) etat.dureeSimu = d.jours;
+      etat.ville = p.ville; dessinerPoints(POINTS.filter(function(x){ return x.ville === p.ville; }), null); choisirPoint(p);
+    };
+  }
   function demarrer(){
     var lg = null; try{ lg = localStorage.getItem('locair_cc_langue'); }catch(e){}
     choisirLangue(lg || (/^en/i.test(navigator.language || '') ? 'en' : /^es/i.test(navigator.language || '') ? 'es' : 'fr'));
@@ -3298,7 +3424,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   }
   fetch('/api/points-retrait' + (/[?&]test=1\b/.test(location.search) ? '?test=1' : '')).then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine, court:(j.tarif.court && j.tarif.court.base > 0) ? j.tarif.court : CC.court, demain:CC.demain}; majPrixTextes(); } })
     .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (menu ☰ → Aide).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (bubble, bottom right).'); $('loc-err').hidden = false; })
-    .then(demarrer).then(function(){ majSimu(); if(POINTS.length) gcQuandVisible(); });
+    .then(demarrer).then(function(){ majSimu(); if(POINTS.length){ gcQuandVisible(); chargerDispo(); montrerRevient(); } });
   majPrixTextes();
   /* vrai prix de demain (7 jours) + nombre de locations de la semaine (affiché à partir de 10) */
   fetch('/api/click-collect-prix?apercu=1').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
