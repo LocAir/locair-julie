@@ -14,4 +14,11 @@ create table if not exists parrainages (
   created_at  timestamptz not null default now(),
   signe_at    timestamptz
 );
+-- Détection automatique (22/11/2026) : fiche du nouveau commerçant reliée
+-- (filleul_id) et sa 1re location repérée (premiere_resa_id) pour l'alerte
+-- « à verser ». « add column if not exists » : marche aussi si la table
+-- existait déjà.
+alter table parrainages add column if not exists filleul_id bigint references partenaires(id);
+alter table parrainages add column if not exists premiere_resa_id bigint references reservations(id);
+create index if not exists parrainages_filleul_idx on parrainages (filleul_id) where filleul_id is not null;
 create index if not exists parrainages_parrain_idx on parrainages (parrain_id, created_at desc);

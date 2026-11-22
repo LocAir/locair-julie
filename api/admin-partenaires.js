@@ -6,6 +6,7 @@ const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplAmbassadeurCredentials } = require('./_lib/emailTemplates');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
 const { hashPin } = require('./_lib/pinHash');
+const { detecterParrainage } = require('./_lib/parrainage');
 
 function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIComponent(code)}`; }
 
@@ -108,7 +109,10 @@ module.exports = async (req, res) => {
         }).select('id, code').single();
         if (!error) {
           await notifyPartenaireCredentials(supabase, { nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: pinPlain });
-          return res.status(200).json({ ok: true, code: created.code, pin: pinPlain });
+          // Fiche créée : un parrainage en attente lui correspond ? (même
+          // téléphone ou même commerce) → signé + notifications.
+          const parrainage = await detecterParrainage(supabase, { id: created.id, nom, telephone: body.telephone });
+          return res.status(200).json({ ok: true, code: created.code, pin: pinPlain, parrainage });
         }
         if (error.code !== '23505') throw error;
       }
@@ -148,7 +152,13 @@ module.exports = async (req, res) => {
         const { data: fresh } = await supabase.from('partenaires').select('nom, email, code').eq('id', id).maybeSingle();
         if (fresh) await notifyPartenaireCredentials(supabase, { ...fresh, pin: newPinPlain });
       }
-      return res.status(200).json({ ok: true });
+      // Fiche activée, ou téléphone / nom renseigné : parrainage à détecter.
+      let parrainage = null;
+      if (patch.actif === true || patch.telephone || patch.nom) {
+        const { data: fiche } = await supabase.from('partenaires').select('id, nom, telephone, actif').eq('id', id).maybeSingle();
+        if (fiche && fiche.actif !== false) parrainage = await detecterParrainage(supabase, fiche);
+      }
+      return res.status(200).json({ ok: true, parrainage });
     }
 
     if (action === 'delete') {

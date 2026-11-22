@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
     const { data, error } = await supabase.from('parrainages')
-      .select('id, parrain_nom, commerce, contact_nom, tel, statut, created_at, signe_at')
+      .select('*')
       .order('created_at', { ascending: false }).limit(200);
     if (error) {
       if (/parrainages|does not exist|42P01/.test(String(error.message) + (error.code || ''))) return res.status(200).json({ manque_table: true, parrainages: [] });
