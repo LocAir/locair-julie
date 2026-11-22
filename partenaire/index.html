@@ -771,16 +771,22 @@ function renderDashboard(d){
           <div class="qr-img-wrap"><img id="qr-img" src="${escHtml(qrUrl)}" alt="QR code de votre lien" width="88" height="88" loading="lazy"/></div>
           <div class="qr-info"><a class="qr-dl" onclick="downloadQR(event,'${escHtml(qrUrl)}')" href="${escHtml(qrUrl)}" download="locair-qr-${escHtml(STATE.code)}.png" target="_blank">Télécharger le QR code</a></div>
         </div>`)}
-      ${d.point_retrait ? ligne('Parrainer un commerçant', '100 %', (() => {
-        const lienParrain = 'https://www.locair.fr/parrainage?parrain=' + encodeURIComponent(d.point_retrait.nom || STATE.nom || STATE.code || '');
+      ${d.point_retrait ? ligne('Développer mes revenus', (d.parrainages||[]).filter(x => x.statut === 'en_attente').length ? (d.parrainages||[]).filter(x => x.statut === 'en_attente').length + ' en attente' : 'Parrainage', (() => {
+        const lienParrain = 'https://www.locair.fr/parrainage?parrain=' + encodeURIComponent(d.point_retrait.nom || STATE.nom || STATE.code || '') + '&c=' + encodeURIComponent(STATE.code || '');
         const msg = 'Bonjour, je suis point de retrait Loc’Air : mes clients viennent chercher leur climatiseur chez moi et je touche 20 % de chaque location, sans engagement. Avec mon lien, ta 1re location t’est reversée à 100 %. Laisse ton numéro, Loc’Air te rappelle : ' + lienParrain;
-        return `<p style="margin:4px 0 14px;font-size:15px;line-height:1.5;color:#4B5873">Un commerçant d’un <b>autre quartier</b> ? Envoyez-lui ce lien : il laisse son numéro, on le rappelle. S’il signe, sa <b>1re location</b> vous est reversée à <b>100 %</b>… et à lui aussi.</p>
+        return `<p style="margin:4px 0 14px;font-size:15px;line-height:1.5;color:#4B5873"><b style="color:#0E1726">Parrainez un commerçant d’un autre quartier.</b> Il laisse son numéro, on le rappelle. S’il signe, sa <b>1re location</b> vous est reversée à <b>100 %</b>… et à lui aussi.</p>
         <div class="link-copy-row">
           <input type="text" id="parrain-link" value="${escHtml(lienParrain)}" readonly onclick="this.select()"/>
           <button class="copy-btn" onclick="(function(){var i=document.getElementById('parrain-link');i.select();try{navigator.clipboard.writeText(i.value);}catch(e){document.execCommand('copy');}var o=document.getElementById('parrain-ok');o.style.display='block';setTimeout(function(){o.style.display='none';},2000);})()">Copier</button>
         </div>
         <div class="ok-msg" id="parrain-ok">Lien copié !</div>
-        <a style="display:flex;align-items:center;justify-content:center;min-height:50px;margin-top:12px;border-radius:100px;background:#0F7A3D;color:#fff;font:700 15px \'DM Sans\',sans-serif;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Envoyer sur WhatsApp</a>`;
+        <a style="display:flex;align-items:center;justify-content:center;min-height:50px;margin-top:12px;border-radius:100px;background:#0F7A3D;color:#fff;font:700 15px \'DM Sans\',sans-serif;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Envoyer sur WhatsApp</a>${(() => {
+          const pr = d.parrainages || [];
+          if (!pr.length) return '';
+          const etat = { en_attente:['En attente','#B45309','#f6eed9'], signe:['Signé · 100 % activé','#0F7A3D','#e6f0ea'], refuse:['Pas cette fois','#57687C','#F4F7FC'] };
+          return '<p style="margin:18px 0 8px;font-weight:800;font-size:15px;color:#0E1726">Mes parrainages</p>' + pr.map(x => { const e = etat[x.statut] || etat.en_attente;
+            return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #E3E9F4"><span style="font-size:15px;color:#0E1726"><b>' + escHtml(x.commerce) + '</b><br><span style="font-size:13px;color:#57687C">' + new Date(x.created_at).toLocaleDateString('fr-FR', {day:'numeric', month:'long'}) + '</span></span><span style="font-size:12.5px;font-weight:800;color:' + e[1] + ';background:' + e[2] + ';border-radius:100px;padding:6px 10px;white-space:nowrap">' + e[0] + '</span></div>'; }).join('');
+        })()}`;
       })()) : ''}
       ${ligne('Total versé', euros(d.total_verse_euros||0), `<p class="empty">En ${annee} : ${euros(d.total_annee_euros||0)}</p>`)}
       <button class="dl-l dl-btn" onclick="exportPdf()"><span class="dl-t">Relevé PDF</span>${fleche}</button>

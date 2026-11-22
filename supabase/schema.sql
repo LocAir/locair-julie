@@ -748,6 +748,21 @@ create table partenaire_virements (
 );
 create index partenaire_virements_partenaire_idx on partenaire_virements (partenaire_id, statut);
 
+-- Parrainages entre commerçants points de retrait (22/11/2026) : une ligne
+-- par demande de rappel venue d'un lien de parrainage (/parrainage).
+create table parrainages (
+  id          bigint generated always as identity primary key,
+  parrain_id  bigint references partenaires(id),
+  parrain_nom text,
+  commerce    text not null,
+  contact_nom text,
+  tel         text,
+  statut      text not null default 'en_attente' check (statut in ('en_attente','signe','refuse')),
+  created_at  timestamptz not null default now(),
+  signe_at    timestamptz
+);
+create index parrainages_parrain_idx on parrainages (parrain_id, created_at desc);
+
 create table incidents (
   id                    bigint generated always as identity primary key,
   city_id               bigint references cities(id), -- indispensable dès qu'une 2e ville partage cette base

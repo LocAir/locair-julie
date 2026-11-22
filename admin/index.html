@@ -11436,9 +11436,13 @@ async function loadPointsRetrait(silent){
   const zone = document.getElementById('tab-pointsretrait');
   if(!silent) zone.innerHTML = loading();
   try{
-    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const [r, rp] = await Promise.all([
+      fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:'{}'}),
+      fetch(API('admin-parrainages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'liste'})}).catch(() => null),
+    ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
+    try{ const jp = rp && rp.ok ? await rp.json() : null; d.parrainages = jp ? jp.parrainages : null; d.parrainages_table = !(jp && jp.manque_table); }catch(e){ d.parrainages = null; }
     PR_DATA = d; renderPointsRetrait();
   }catch(e){ zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>'; }
 }
@@ -11468,6 +11472,26 @@ function prCarte(p){
   </div>`;
 }
 function setPrFiltre(f){ PR_FILTRE = f; renderPointsRetrait(); }
+/* Parrainages : demandes de rappel venues d'un lien de parrainage. « Signé » active
+   le parrainage (1re location du nouveau point : 100 % au parrain et au nouveau, à la main). */
+function prParrainages(d){
+  if(d.parrainages_table === false) return '<p class="section-title">Parrainages</p><p class="empty" style="padding:16px">Table à créer dans Supabase (supabase/migration_2026-11-22_parrainages.sql).</p>';
+  const l = d.parrainages || [];
+  if(!l.length) return '';
+  const etat = {en_attente:['En attente','pr-etat exemple'], signe:['Signé · activé','pr-etat ouvert'], refuse:['Refusé','pr-etat ferme']};
+  return '<p class="section-title">Parrainages</p><div class="pr-col" style="margin-bottom:8px"><ul>' + l.map(x => {
+    const e = etat[x.statut] || etat.en_attente;
+    return `<li><span><b>${escHtml(x.commerce)}</b><small>${escHtml(x.contact_nom||'')} · parrain : ${escHtml(x.parrain_nom||'—')}</small></span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${x.tel?`<a href="tel:${escHtml(String(x.tel).replace(/\s/g,''))}">Appeler</a>`:''}<span class="${e[1]}">${e[0]}</span>${x.statut==='en_attente'?`<button class="btn btn-grey" style="padding:6px 12px;font-size:12px" onclick="setParrainage(${x.id},'signe')">Signé</button><button class="btn btn-grey" style="padding:6px 12px;font-size:12px" onclick="setParrainage(${x.id},'refuse')">Refusé</button>`:''}</span></li>`;
+  }).join('') + '</ul></div>';
+}
+async function setParrainage(id, statut){
+  if(statut === 'signe' && !confirm('Parrainage signé ? Pensez à verser 100 % de sa 1re location au parrain ET au nouveau commerçant.')) return;
+  try{
+    const r = await fetch(API('admin-parrainages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'statut', id, statut})});
+    if(!r.ok) throw new Error();
+    loadPointsRetrait(true);
+  }catch(e){ alert('Échec. Réessaie.'); }
+}
 function renderPointsRetrait(){
   const d = PR_DATA, zone = document.getElementById('tab-pointsretrait'); if(!d) return;
   const r = d.resume, j = d.aujourdhui;
@@ -11494,6 +11518,7 @@ function renderPointsRetrait(){
       <div class="pr-filtres">${[['tous','Tous'],['ouverts','Ouverts'],['exemples','Exemples'],['test','Test']].map(([k,t]) => `<button type="button" class="${PR_FILTRE===k?'on':''}" onclick="setPrFiltre('${k}')">${t}</button>`).join('')}</div>
     </div>
     ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
+    ${prParrainages(d)}
     <p class="section-title">Outils</p>
     <div class="pr-outils">
       <a class="pr-outil" href="/admin/cc-retours" target="_blank" rel="noopener"><b>À reconditionner${r.a_reconditionner?' · '+r.a_reconditionner:''}</b><span>Appareils rendus, avec leur photo</span></a>

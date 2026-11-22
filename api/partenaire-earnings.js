@@ -107,7 +107,18 @@ module.exports = async (req, res) => {
       // climatiseur. Montré seulement à lui, une fois connecté.
       const pointCC = partenaireRow ? pointDuPartenaire(partenaireRow.code) : null;
 
+      // Ses parrainages (demandes de rappel venues de son lien). Table
+      // absente (migration pas passée) : rien, sans erreur.
+      let parrainages = null;
+      try {
+        const { data: pr, error: prErr } = await supabase.from('parrainages')
+          .select('id, commerce, statut, created_at').eq('parrain_id', partenaireId)
+          .order('created_at', { ascending: false }).limit(30);
+        if (!prErr) parrainages = pr || [];
+      } catch (e) { /* table absente */ }
+
       return res.status(200).json({
+        parrainages,
         taux_commission_pct: tauxAffiche(partenaireRow),
         // Virement mensuel : le partenaire voit s'il manque son RIB (jamais le RIB lui-même).
         rib_ok: !!(partenaireRow && partenaireRow.iban && String(partenaireRow.iban).trim()),
