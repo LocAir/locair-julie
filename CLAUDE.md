@@ -265,10 +265,10 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
    parrainage (changé le 22/11/2026) : la 1re location du nouveau point
    est reversée à 100 % au parrain ET à 100 % au nouveau commerçant
-   (champ « Recommandé par » du formulaire ; à verser à la main, le site
-   compte 20 % comme d'habitude). Le lien de parrainage est dans
-   l'espace partenaire (« Parrainer un commerçant ») :
-   `locair.fr/contrat-point-retrait?parrain=<commerce>` remplit la case.
+   (à verser à la main, le site compte 20 % comme d'habitude). Le lien de parrainage (espace partenaire,
+   « Parrainer un commerçant ») : `locair.fr/parrainage?parrain=<commerce>`,
+   une demande de rappel très courte (commerce, nom, téléphone) qui
+   déclenche le parrainage ; si le commerçant signe, il est activé.
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
