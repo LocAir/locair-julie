@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Être rappelé — Loc’Air</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1A5EDB">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
+<!-- Lien de parrainage (espace partenaire) : /parrainage?parrain=<commerce>.
+     Demande de rappel très courte. Elle déclenche le parrainage ; si le
+     commerçant signe ensuite, le parrainage est activé (voir CLAUDE.md).
+     Serveur : api/parrainage-rappel.js. -->
+<style>
+:root{--vif:#1A5EDB;--vif-d:#0D3FA0;--ink:#0E1726;--ink-2:#4B5873;--line:#E3E9F4;--mist:#F4F7FC;--ok:#0F7A3D;--err:#B42318}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--mist);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.haut{background:linear-gradient(135deg,#1A5EDB,#0D3FA0);text-align:center;padding:26px 16px}
+.logo{font-weight:900;font-size:28px;letter-spacing:-.04em;color:#fff;text-decoration:none}.logo em{font-style:italic}
+main{max-width:480px;margin:0 auto;padding:8px 16px 48px}
+h1{font-size:clamp(30px,8.5vw,38px);font-weight:900;letter-spacing:-.035em;line-height:1.08;margin:24px 0 8px}
+.sous{color:var(--ink-2);font-size:17px;line-height:1.5;margin:0 0 20px}
+.sous b{color:var(--ink)}
+.carte{background:#fff;border-radius:22px;padding:22px;box-shadow:0 1px 2px rgba(11,30,68,.05),0 12px 32px -16px rgba(11,30,68,.22)}
+label{display:block;font-weight:700;font-size:14px;margin:14px 0 6px}
+label:first-child{margin-top:0}
+input{width:100%;min-height:52px;border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;font:500 17px 'DM Sans',sans-serif;color:var(--ink);background:#fff}
+input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94,219,.18)}
+input[aria-invalid="true"]{border-color:var(--err)}
+.btn{display:block;width:100%;border:0;border-radius:100px;background:var(--vif);color:#fff;font:800 18px 'DM Sans',sans-serif;min-height:58px;margin-top:20px;cursor:pointer}
+.btn:disabled{opacity:.6}
+.err{background:#FDECEA;color:var(--err);border-radius:14px;padding:12px 14px;font-size:15px;margin:14px 0 0}
+.fini{text-align:center;padding:34px 22px}
+.rond{width:84px;height:84px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.rond svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.fini h2{font-size:28px;margin:0 0 8px}
+.fini p{color:var(--ink-2);font-size:17px;margin:0}
+.piege{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<header class="haut"><a class="logo" href="/">Loc<em>’Air</em></a></header>
+<main>
+  <div id="e-form">
+    <h1>On vous rappelle.</h1>
+    <p class="sous" id="sous">Devenez point de retrait Loc’Air : <b>20 % de chaque location</b>, sans engagement.</p>
+    <form class="carte" id="f" novalidate>
+      <label for="commerce">Votre commerce</label>
+      <input id="commerce" autocomplete="organization" maxlength="120">
+      <label for="nom">Votre nom</label>
+      <input id="nom" autocomplete="name" maxlength="120">
+      <label for="tel">Téléphone</label>
+      <input id="tel" type="tel" inputmode="tel" autocomplete="tel" maxlength="30">
+      <input class="piege" id="site_web" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="btn" id="envoyer" type="submit">Être rappelé</button>
+      <p class="err" id="err" role="alert" hidden></p>
+    </form>
+  </div>
+  <section class="carte fini" id="e-fini" hidden aria-live="polite">
+    <div class="rond"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h2>C’est noté !</h2>
+    <p>On vous rappelle très vite.</p>
+  </section>
+</main>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var parrain = ''; try{ parrain = (new URLSearchParams(location.search).get('parrain') || '').slice(0, 120); }catch(e){}
+  if(parrain){ var s = $('sous'); s.innerHTML = ''; s.appendChild(document.createTextNode('De la part de ' + parrain + '. ')); var b = document.createElement('b'); b.textContent = 'Si vous signez, votre 1re location vous est reversée à 100 %.'; s.appendChild(b); }
+  function erreur(t){ var e = $('err'); e.textContent = t; e.hidden = !t; }
+  ['commerce','nom','tel'].forEach(function(k){ $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); erreur(''); }); });
+  $('f').addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var d = {commerce:$('commerce').value.trim(), nom:$('nom').value.trim(), tel:$('tel').value.trim(), parrain:parrain, site_web:$('site_web').value};
+    if(!d.commerce){ $('commerce').setAttribute('aria-invalid','true'); $('commerce').focus(); return erreur('Indiquez votre commerce.'); }
+    if(!d.nom){ $('nom').setAttribute('aria-invalid','true'); $('nom').focus(); return erreur('Indiquez votre nom.'); }
+    if(d.tel.replace(/\D/g,'').length < 9){ $('tel').setAttribute('aria-invalid','true'); $('tel').focus(); return erreur('Vérifiez le téléphone.'); }
+    var b = $('envoyer'); b.disabled = true; b.textContent = 'Envoi…';
+    fetch('/api/parrainage-rappel', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d)})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok && j.ok, j:j}; }); })
+      .then(function(r){
+        b.disabled = false; b.textContent = 'Être rappelé';
+        if(!r.ok) return erreur(r.j.error || 'L’envoi n’a pas marché. Appelez le 06 63 79 87 56.');
+        $('e-form').hidden = true; $('e-fini').hidden = false;
+      })
+      .catch(function(){ b.disabled = false; b.textContent = 'Être rappelé'; erreur('Pas de connexion. Réessayez.'); });
+  });
+})();
+</script>
+</body>
+</html>
