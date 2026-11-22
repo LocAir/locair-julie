@@ -3,7 +3,8 @@
 // parrainage ; si le commerçant signe ensuite, le parrainage est activé :
 // la 1re location du nouveau point est reversée à 100 % au parrain ET à
 // 100 % au nouveau commerçant (à verser à la main, voir CLAUDE.md).
-// Pas de table : email à Loc'Air + notification admin.
+// Gardé dans la table parrainages (vue par le parrain et l'admin) + email à
+// Loc'Air + notification admin.
 const { getSupabase } = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
@@ -16,7 +17,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const b = req.body && typeof req.body === 'object' ? req.body : {};
   if (b.site_web) return res.json({ ok: true }); // piège anti-robots
-  const d = { commerce: clip(b.commerce, 120), nom: clip(b.nom, 120), tel: clip(b.tel, 30), parrain: clip(b.parrain, 120) };
+  const d = { commerce: clip(b.commerce, 120), nom: clip(b.nom, 120), tel: clip(b.tel, 30), parrain: clip(b.parrain, 120), code: clip(b.code, 60).toLowerCase() };
   if (!d.commerce || !d.nom || d.tel.replace(/\D/g, '').length < 9) {
     return res.status(400).json({ ok: false, error: 'Il manque une information.' });
   }
@@ -26,6 +27,18 @@ module.exports = async (req, res) => {
     if (await isRateLimited(supabase, `parrainage:${ip}`, 5, 60)) return res.status(429).json({ ok: false, error: 'Trop d’envois. Appelez le 06 63 79 87 56.' });
     await recordFailedAttempt(supabase, `parrainage:${ip}`);
   } catch (_e) { /* ne jamais perdre une demande pour un souci de limitation */ }
+
+  // La demande est gardée pour que le parrain la voie dans son espace
+  // (table parrainages : supabase/migration_2026-11-22_parrainages.sql).
+  // Table absente (migration pas passée) : on continue, l'email suffit.
+  try {
+    let parrainId = null;
+    if (/^[a-z0-9_-]{2,60}$/.test(d.code)) {
+      const { data: p } = await supabase.from('partenaires').select('id, nom').eq('code', d.code).maybeSingle();
+      if (p) { parrainId = p.id; d.parrain = p.nom || d.parrain; }
+    }
+    await supabase.from('parrainages').insert({ parrain_id: parrainId, parrain_nom: d.parrain || null, commerce: d.commerce, contact_nom: d.nom, tel: d.tel });
+  } catch (e) { console.error('[parrainage enregistrement]', e.message); }
 
   const r = await sendBrevoEmail({
     to: process.env.CONTACT_EMAIL || 'contact@locair.fr',

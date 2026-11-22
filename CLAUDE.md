@@ -269,6 +269,11 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    « Parrainer un commerçant ») : `locair.fr/parrainage?parrain=<commerce>`,
    une demande de rappel très courte (commerce, nom, téléphone) qui
    déclenche le parrainage ; si le commerçant signe, il est activé.
+   Présenté au commerçant comme « Développer mes revenus » (espace
+   partenaire) : il y voit ses demandes « En attente », « Signé · 100 %
+   activé » ou « Pas cette fois ». Admin → Points de retrait → Parrainages :
+   boutons « Signé » / « Refusé ». Table `parrainages`
+   (`supabase/migration_2026-11-22_parrainages.sql`).
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
