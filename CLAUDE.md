@@ -302,6 +302,12 @@ au premier geste (page plus rapide). `/retrait` s'ouvre sans réseau
 (`retrait-sw.js`). Apple Pay n'apparaît que si le domaine locair.fr est
 validé dans Stripe.
 
+**Retrait sans pièce d'identité (décidé le 22/11/2026)** : la vérification,
+c'est le numéro de commande tapé par le client. Il valide et montre l'écran
+vert ; le commerçant n'a rien à faire sur un téléphone et ne demande aucune
+pièce d'identité. Ne plus en parler nulle part (site, emails, CGV, Julie,
+présentations).
+
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans
 `api/_lib/clickCollect.js`). Ne jamais écrire cette règle

@@ -4,7 +4,7 @@
 //    le SMS de confirmation). C'est le SEUL numéro du séjour : il reste valable
 //    après une prolongation, jusqu'au retour. Il est long et tiré au hasard
 //    (32^8 possibilités) : impossible à deviner, et les essais sont limités.
-// 2. RETRAIT : il montre sa pièce d'identité au commerçant et valide lui-même
+// 2. RETRAIT : il valide lui-même (numéro de commande tapé = vérification) et montre l'écran vert
 //    le retrait sur son téléphone, puis montre l'écran de confirmation au
 //    commerçant. RETOUR : il dépose l'appareil dans sa housse, prend une photo,
 //    tape le code commerçant (donné par le commerçant, voir
@@ -151,9 +151,9 @@ module.exports = async (req, res) => {
       return res.status(out.status).json(out.body);
     }
 
-    // RETRAIT : le client le valide lui-même avec son numéro de commande,
-    // après avoir montré sa pièce d'identité au commerçant (décision du
-    // propriétaire, 20/11/2026). Le commerçant n'a rien à taper.
+    // RETRAIT : le client le valide lui-même avec son numéro de commande, puis
+    // montre l'écran vert. Pas de pièce d'identité (décision du propriétaire,
+    // 22/11/2026). Le commerçant n'a rien à taper.
     if (action === 'valider') {
       const out = await agir(supabase, r, partenaire ? partenaire.id : null, 'valider');
       return res.status(out.status).json(out.body);

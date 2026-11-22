@@ -582,7 +582,7 @@ function authHeaders(){ return {'Content-Type':'application/json','x-partenaire-
 // Le client montre son QR code ; le commerçant le scanne avec l'appareil
 // photo de son téléphone → cette page s'ouvre avec ?remise=<id>.<code>.
 // On garde le code le temps de la connexion, puis on affiche la réservation
-// (api/partenaire-remise.js) avec un rappel de vérifier la pièce d'identité.
+// (api/partenaire-remise.js).
 (function captureRemise(){
   const q = new URLSearchParams(location.search), c = q.get('remise');
   if(c){ try{ sessionStorage.setItem('p_remise', c); }catch(e){} q.delete('remise'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); }
@@ -618,10 +618,7 @@ async function ouvrirRemise(code){
     } else if(!v.peut_remettre){
       corps = `<p style="margin:14px 0;padding:10px 12px;border-radius:10px;background:#FEF3C7;color:#92400E;font-size:14px">${escHtml(v.remise_message || 'Remise impossible aujourd’hui.')}</p>`;
     } else {
-      corps = `${v.piece_recue
-              ? `<p style="margin:14px 0 6px;padding:10px 12px;border-radius:10px;background:#E8F6EE;color:#0F7A3D;font-size:14px">✓ Pièce d’identité <b>reçue en ligne</b> par Loc’Air.</p>`
-              : `<p style="margin:14px 0 6px;padding:10px 12px;border-radius:10px;background:#FEE2E2;color:#991B1B;font-size:14px">Pièce d’identité <b>pas envoyée en ligne</b> (c’est facultatif) : vérifiez l’originale avec soin.</p>`}
-           <p style="margin:0 0 14px;padding:10px 12px;border-radius:10px;background:#FEF3C7;color:#92400E;font-size:14px">Demandez sa <b>pièce d’identité originale</b> : le nom doit être <b>${qui}</b>. Remettez l’appareil sous sa housse, avec sa gaine d’évacuation (pas de kit fenêtre ni de télécommande).</p>
+      corps = `<p style="margin:14px 0 14px;padding:10px 12px;border-radius:10px;background:#E8F6EE;color:#0F7A3D;font-size:14px">Réservation au nom de <b>${qui}</b>. Remettez l’appareil sous sa housse, avec sa gaine d’évacuation.</p>
            <button class="btn" id="remise-ok">Confirmer la remise</button>`;
     }
     carte.innerHTML = `

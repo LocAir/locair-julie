@@ -1191,7 +1191,7 @@ function tplCCRappelRetrait({ prenom, ref, lang, point, dateRetrait, itineraire,
         <p style="margin:0 0 4px">${escHtml(pt.adresse || '')}</p>
         ${pt.horaires ? `<p style="margin:0">${T('Horaires', 'Opening hours', 'Horario')} : ${escHtml(pt.horaires)}</p>` : ''}
       </div>
-      <p>${T('À apporter : <strong>votre QR code</strong> (dans l’email de confirmation) et <strong>votre pièce d’identité</strong>.', 'Bring <strong>your QR code</strong> (in your confirmation email) and <strong>your ID</strong>.', 'Trae <strong>tu código QR</strong> (en el email de confirmación) y <strong>tu documento de identidad</strong>.')}</p>
+      <p>${T('Au comptoir : scannez le QR code de la boutique et tapez votre <strong>numéro de commande</strong>.', 'At the counter: scan the shop’s QR code and enter your <strong>order number</strong>.', 'En el mostrador: escanea el código QR de la tienda y escribe tu <strong>número de pedido</strong>.')}</p>
       ${lienQr ? `<p style="font-size:13px"><a href="${lienQr}" style="color:#1A5EDB;font-weight:700">${T('Afficher mon QR code', 'Show my QR code', 'Ver mi código QR')}</a></p>` : ''}
       ${itineraire ? `<p style="font-size:13px"><a href="${itineraire}" style="color:#1A5EDB;font-weight:700">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
       <p style="font-size:13px;color:#666">${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.')}</p>`,
