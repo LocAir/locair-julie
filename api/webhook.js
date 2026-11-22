@@ -798,7 +798,7 @@ const handler = async (req, res) => {
         }
       } catch (e) { console.error('[CC stock après paiement]', e.message); }
       await sendConfirmationClickCollect(getSupabase(), confirmedResa, meta, amount);
-      // 1re location d'un commerçant parrainé : « à verser » (100 % + 100 %).
+      // 1re location d'un commerçant parrainé : « à verser » (50 € + 50 €).
       await require('./_lib/parrainage').premiereLocationParrainee(getSupabase(), confirmedResa);
     } else if (confirmedResa) {
       try {
