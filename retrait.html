@@ -386,20 +386,27 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
     if(!photoRetour) return erreur($('m-com'), L('Prenez d’abord une photo du climatiseur dans sa housse.', 'First take a photo of the air conditioner in its cover.', 'Primero haz una foto del aire acondicionado en su funda.'));
     var code = $('code-com').value.replace(/\s/g, '').toUpperCase();
     if(!code){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').focus(); return erreur($('m-com'), L('Demandez le code commerçant au commerçant et tapez-le.', 'Ask the shopkeeper for the shop code and enter it.', 'Pide el código de comercio al comerciante e introdúcelo.')); }
-    var b = $('b-com'); b.disabled = true; erreur($('m-com'), '');
+    var b = $('b-com'), libelle = b.textContent; b.disabled = true; erreur($('m-com'), '');
     var action = etat.action;
+    /* retour : quelques secondes de vérification à l'écran (6 s au total), puis l'écran bleu */
+    var t0 = Date.now(), ATTENTE = 6000;
+    b.setAttribute('aria-busy', 'true'); b.textContent = L('Vérification du retour…', 'Checking the return…', 'Comprobando la devolución…');
+    function remettre(){ b.disabled = false; b.removeAttribute('aria-busy'); b.textContent = libelle; }
+    function apres(fn){ setTimeout(fn, Math.max(0, ATTENTE - (Date.now() - t0))); }
     /* la photo ne part qu'une fois, même si le code est faux et qu'on réessaie */
     var envoiPhoto = photoChemin ? Promise.resolve(photoChemin) : appel({action:'photo', type:photoRetour.type || 'image/jpeg'}).then(function(u){
       if(!u.ok || !u.j.signedUrl) throw new Error(u.j.error || '');
       return fetch(u.j.signedUrl, {method:'PUT', headers:{'Content-Type': photoRetour.type || 'image/jpeg'}, body:photoRetour}).then(function(x){ if(!x.ok) throw new Error(L('La photo n’a pas pu partir. Réessayez.', 'The photo couldn’t be sent. Try again.', 'No se pudo enviar la foto. Inténtalo de nuevo.')); photoChemin = u.j.path; return photoChemin; });
     });
     envoiPhoto.then(function(chemin){ return appel({action:'rendre', photo:chemin, code_commercant:code}); }).then(function(r){
-      b.disabled = false;
-      if(!r.ok){ if(r.j.code === 'code_commercant'){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').select(); } return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.')); }
+      if(!r.ok){ remettre(); if(r.j.code === 'code_commercant'){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').select(); } return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.')); }
+      apres(function(){
+      remettre();
       $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
       if(action === 'valider'){ $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!'); $('f-texte').textContent = L('Remise confirmée. Rapportez l’appareil ici le ', 'Handover confirmed. Bring the unit back here on ', 'Entrega confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.'; }
-      else { $('f-avis').hidden = false; $('f-titre').textContent = L('Retour validé', 'Return confirmed', 'Devolución confirmada'); montrerAuCommercant('retour'); $('f-texte').hidden = true; return; }
-    }).catch(function(x){ b.disabled = false; erreur($('m-com'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+      else { $('f-avis').hidden = false; $('f-titre').textContent = L('Retour validé', 'Return confirmed', 'Devolución confirmada'); montrerAuCommercant('retour'); $('f-texte').hidden = false; $('f-texte').textContent = L('Merci pour votre confiance !', 'Thank you for your trust!', '¡Gracias por tu confianza!'); }
+      });
+    }).catch(function(x){ remettre(); erreur($('m-com'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
 })();
 </script>

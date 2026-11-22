@@ -242,6 +242,11 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
 À rappeler au propriétaire à chaque nouveau commerçant (il l'a demandé le
 20/11/2026) :
 
+0. Le commerçant crée sa demande de contrat sur `locair.fr/contrat-point-retrait`
+   (lien et QR code de la dernière diapo de la présentation, sans
+   engagement). Loc'Air reçoit un email + une notification, l'appelle et
+   lui envoie le contrat à signer. Entretien des climatiseurs : un passage
+   par mois au point, plus souvent pendant une forte canicule.
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
