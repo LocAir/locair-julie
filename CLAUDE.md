@@ -263,9 +263,10 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    la boutique (pas par un client) : Loc'Air paie, sauf faute grave du
    commerçant ; un seul point de retrait par quartier (le premier qui
    signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
-   parrainage : 50 € au commerçant qui en fait signer un autre, ajoutés à
-   son premier virement de commissions (champ « Recommandé par » du
-   formulaire ; virement fait à la main). Le lien de parrainage est dans
+   parrainage (changé le 22/11/2026) : la 1re location du nouveau point
+   est reversée à 100 % au parrain ET à 100 % au nouveau commerçant
+   (champ « Recommandé par » du formulaire ; à verser à la main, le site
+   compte 20 % comme d'habitude). Le lien de parrainage est dans
    l'espace partenaire (« Parrainer un commerçant ») :
    `locair.fr/contrat-point-retrait?parrain=<commerce>` remplit la case.
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
