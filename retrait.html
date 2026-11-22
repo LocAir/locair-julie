@@ -322,6 +322,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
       return pr.then(function(chemins){
         return appel({action:'photo', type:p.blob.type || 'image/jpeg'}).then(function(r){
           if(!r.ok || !r.j.signedUrl) throw new Error(r.j.error || '');
+          if(r.j.signedUrl === 'demo') return chemins.concat('demo');   /* mode démo (0000) : rien n'est envoyé */
           return fetch(r.j.signedUrl, {method:'PUT', headers:{'Content-Type': p.blob.type || 'image/jpeg'}, body:p.blob}).then(function(x){ if(!x.ok) throw new Error(''); return chemins.concat(r.j.path); });
         });
       });
@@ -332,8 +333,9 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
   $('sig-ouvrir').addEventListener('click', function(){ var f = $('sig-form'), o = f.hidden; f.hidden = !o; this.setAttribute('aria-expanded', String(o)); $('sig-msg').placeholder = L('Exemple : rayure sur le côté, gaine percée…', 'E.g. scratch on the side, torn hose…', 'Ej.: arañazo en el lateral, tubo roto…'); });
   $('sig-envoyer').addEventListener('click', function(){
     var b = this, c = document.querySelector('input[name="sig"]:checked'); var lib = b.innerHTML; b.disabled = true; b.textContent = L('Envoi…', 'Sending…', 'Enviando…'); erreur($('sig-err'), '');
-    envoyerPhotos().catch(function(){ return null; }).then(function(chemins){
-      if(chemins === null && photosSig.length){ throw new Error(L('La photo n’a pas pu partir. Réessayez, ou retirez-la pour envoyer sans photo.', 'The photo couldn’t be sent. Try again, or remove it to send without a photo.', 'No se pudo enviar la foto. Inténtalo de nuevo o quítala para enviar sin foto.')); }
+    /* une photo qui ne part pas ne bloque jamais le signalement : il part sans elle */
+    var sansPhoto = false;
+    envoyerPhotos().catch(function(){ sansPhoto = photosSig.length > 0; return []; }).then(function(chemins){
       var corps = {categorie:c ? c.value : 'autre', moment:etat.moment, message:$('sig-msg').value, photos:chemins || []};
       if(corps.categorie === 'panne' && etat.peutEchanger){ corps.action = 'echanger'; return faireEchange(b, lib, corps).then(function(){ return null; }); }
       corps.action = 'signaler'; return appel(corps);
@@ -347,7 +349,9 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
         ? L('C’est noté. Le commerçant vous donne un autre climatiseur. Validez ensuite normalement.', 'Noted. The shopkeeper gives you another air conditioner. Then confirm as usual.', 'Anotado. El comerciante te da otro aire acondicionado. Después confirma con normalidad.')
         : issue === 'reapprovisionnement'
         ? L('C’est noté. Plus d’appareil ici aujourd’hui : ne validez pas le retrait. On apporte un climatiseur le jour même ou le lendemain, et vous recevez un SMS.', 'Noted. No unit left here today: don’t confirm the pick-up. We’re bringing one the same day or the next, and you’ll get a text.', 'Anotado. Hoy no queda aparato aquí: no confirmes la recogida. Llevamos uno el mismo día o al siguiente y recibirás un SMS.')
-        : L('Merci, c’est noté. Vous pouvez valider normalement.', 'Thanks, noted. You can confirm as usual.', 'Gracias, anotado. Puedes confirmar con normalidad.'); ok.hidden = false;
+        : L('Merci, c’est noté. Vous pouvez valider normalement.', 'Thanks, noted. You can confirm as usual.', 'Gracias, anotado. Puedes confirmar con normalidad.');
+      if(sansPhoto) ok.textContent += ' ' + L('(La photo n’est pas passée : envoyez-la à Julie si besoin.)', '(The photo didn’t go through: send it to Julie if needed.)', '(La foto no se envió: mándasela a Julie si hace falta.)');
+      ok.hidden = false;
     }).catch(function(x){ b.disabled = false; b.innerHTML = lib; erreur($('sig-err'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
   });
   /* écran de confirmation à montrer au commerçant : nom, numéro, et une
