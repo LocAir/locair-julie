@@ -4,7 +4,7 @@
 // et le commerçant reçoit un récapitulatif. Loc'Air lui envoie ensuite le
 // contrat à signer. Seules les conditions déjà décidées sont écrites
 // (20 %, virement mensuel, entretien mensuel, nombre d'appareils selon la
-// place, hiver au choix, vol ou casse payés par Loc'Air sauf faute grave,
+// place, reprise des appareils l'hiver, vol ou casse payés par Loc'Air sauf faute grave,
 // sans engagement).
 const { getSupabase } = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
@@ -28,7 +28,6 @@ const CHAMPS = [
   ['horaires', 'Horaires', 160],
   ['appareils', 'Climatiseurs à garder', 3],
   ['debut', 'Démarrage souhaité', 10],
-  ['hiver', 'L’hiver', 20],
   ['parrain', 'Recommandé par (parrainage : 50 € au parrain ET 50 € au nouveau commerçant)', 120],
 ];
 
@@ -46,7 +45,6 @@ module.exports = async (req, res) => {
   }
   if (!/^\d{1,2}$/.test(d.appareils)) d.appareils = '4';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.debut)) d.debut = '';
-  d.hiver = d.hiver === 'garde' ? 'Il les garde chez lui' : 'Loc’Air les reprend jusqu’au printemps';
 
   const supabase = getSupabase();
   try {
@@ -90,6 +88,7 @@ ${table}
       </tr></table>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
         ${coche('Entretien des climatiseurs chaque mois, plus souvent en canicule.')}
+        ${coche('L’hiver, on reprend les climatiseurs et on les rapporte au printemps.')}
         ${coche('Vol ou casse en boutique : Loc’Air paie (sauf faute grave).')}
         ${coche('Seul point de votre quartier : le premier qui signe a l’exclusivité.')}
         ${coche('Parrainage : 50 € pour vous et 50 € pour le commerçant que vous recommandez, virés après sa 1re location.')}
@@ -97,7 +96,7 @@ ${table}
       <p style="font-size:14px;color:#4B5873;margin:0 0 18px">Ouverture des points de retrait : <b style="color:#0E1726">1er juin 2027</b>.</p>
       <span class="lbl">Votre demande</span>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0">
-        ${ligne('Commerce', d.commerce)}${ligne('Adresse', `${d.adresse}, ${d.cp} ${d.ville}`)}${ligne('Horaires', d.horaires)}${ligne('Climatiseurs', d.appareils)}${ligne('Démarrage', debutTxt)}${ligne('L’hiver', b.hiver === 'garde' ? 'Vous les gardez' : 'Loc’Air les reprend jusqu’au printemps')}
+        ${ligne('Commerce', d.commerce)}${ligne('Adresse', `${d.adresse}, ${d.cp} ${d.ville}`)}${ligne('Horaires', d.horaires)}${ligne('Climatiseurs', d.appareils)}${ligne('Démarrage', debutTxt)}
       </table>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });

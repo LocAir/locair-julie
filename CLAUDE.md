@@ -258,8 +258,10 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    lui envoie le contrat à signer. Entretien des climatiseurs : un passage
    par mois au point, plus souvent pendant une forte canicule.
    Décidé le 22/11/2026 : nombre de climatiseurs selon la place du
-   commerçant (fixé à la signature) ; l'hiver, au choix du commerçant (il
-   les garde ou Loc'Air les reprend jusqu'au printemps) ; vol ou casse dans
+   commerçant (fixé à la signature) ; l'hiver, Loc'Air reprend les climatiseurs
+   et les rapporte au printemps (changé le 22/11/2026 ; une offre de
+   stockage hivernal payée au commerçant est à l'étude : ne pas en
+   parler par écrit tant qu'elle n'est pas décidée) ; vol ou casse dans
    la boutique (pas par un client) : Loc'Air paie, sauf faute grave du
    commerçant ; un seul point de retrait par quartier (le premier qui
    signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
