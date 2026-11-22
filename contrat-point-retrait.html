@@ -118,6 +118,8 @@ input[aria-invalid="true"]{border-color:var(--err)}
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var REQUIS = ['commerce','gerant','tel','email','adresse','cp','ville','horaires'];
+  /* lien de parrainage (espace partenaire) : ?parrain=<commerce qui recommande> */
+  try{ var pr = new URLSearchParams(location.search).get('parrain'); if(pr) $('parrain').value = pr.slice(0, 120); }catch(e){}
   function erreur(t){ var e = $('err'); e.textContent = t; e.hidden = !t; }
   REQUIS.forEach(function(k){ $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); erreur(''); }); });
   $('f').addEventListener('submit', function(ev){

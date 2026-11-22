@@ -265,7 +265,9 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
    parrainage : 50 € au commerçant qui en fait signer un autre, ajoutés à
    son premier virement de commissions (champ « Recommandé par » du
-   formulaire ; virement fait à la main).
+   formulaire ; virement fait à la main). Le lien de parrainage est dans
+   l'espace partenaire (« Parrainer un commerçant ») :
+   `locair.fr/contrat-point-retrait?parrain=<commerce>` remplit la case.
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
