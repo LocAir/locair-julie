@@ -57,6 +57,10 @@ qui, FAQ). La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
 le numéro **0000** sur ce point lance un mode démo dans le téléphone
 (`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
 
+Version à envoyer par email (22/11/2026), à tenir à jour en même temps :
+https://claude.ai/artifact/JLju4FoAqkFuP36kpFTi1M — 8 diapos qui se lisent
+seules (liens cliquables, aucune note interne), envoyée en PDF.
+
 ## Déploiement
 
 Quand une pull request de correctifs/améliorations est prête sur la branche de
