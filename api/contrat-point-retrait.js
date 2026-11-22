@@ -26,7 +26,7 @@ const CHAMPS = [
   ['appareils', 'Climatiseurs à garder', 3],
   ['debut', 'Démarrage souhaité', 10],
   ['hiver', 'L’hiver', 20],
-  ['parrain', 'Recommandé par (bonus 50 € à verser à la signature)', 120],
+  ['parrain', 'Recommandé par (bonus 50 € à ajouter au 1er virement de commissions du parrain)', 120],
 ];
 
 module.exports = async (req, res) => {
@@ -84,7 +84,7 @@ ${table}
 <li>Vol ou casse en boutique : Loc’Air paie, sauf faute grave de votre part.</li>
 <li>Un seul point par quartier : le premier commerçant qui signe a l’exclusivité.</li>
 <li>Ouverture des points de retrait le 1er juin 2027.</li>
-<li>50 € pour chaque commerçant que vous faites signer, versés à sa signature.</li>
+<li>50 € pour chaque commerçant que vous faites signer, versés avec votre premier virement de commissions.</li>
 <li><b>Sans engagement</b> : vous arrêtez quand vous voulez.</li>
 </ul>
 ${table}

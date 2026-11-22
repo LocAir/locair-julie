@@ -263,8 +263,9 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    la boutique (pas par un client) : Loc'Air paie, sauf faute grave du
    commerçant ; un seul point de retrait par quartier (le premier qui
    signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
-   parrainage : 50 € au commerçant qui en fait signer un autre, versés à
-   la signature du nouveau (champ « Recommandé par » du formulaire).
+   parrainage : 50 € au commerçant qui en fait signer un autre, ajoutés à
+   son premier virement de commissions (champ « Recommandé par » du
+   formulaire ; virement fait à la main).
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
