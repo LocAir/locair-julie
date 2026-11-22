@@ -29,7 +29,7 @@ const CHAMPS = [
   ['appareils', 'Climatiseurs à garder', 3],
   ['debut', 'Démarrage souhaité', 10],
   ['hiver', 'L’hiver', 20],
-  ['parrain', 'Recommandé par (parrainage : 1re location de ce point reversée à 100 % au parrain ET à 100 % au nouveau commerçant)', 120],
+  ['parrain', 'Recommandé par (parrainage : 50 € au parrain ET 50 € au nouveau commerçant)', 120],
 ];
 
 module.exports = async (req, res) => {
@@ -92,7 +92,7 @@ ${table}
         ${coche('Entretien des climatiseurs chaque mois, plus souvent en canicule.')}
         ${coche('Vol ou casse en boutique : Loc’Air paie (sauf faute grave).')}
         ${coche('Seul point de votre quartier : le premier qui signe a l’exclusivité.')}
-        ${coche('Parrainage : la 1re location d’un commerçant parrainé, 100 % pour vous et 100 % pour lui.')}
+        ${coche('Parrainage : 50 € pour vous et 50 € pour le commerçant que vous recommandez.')}
       </table>
       <p style="font-size:14px;color:#4B5873;margin:0 0 18px">Ouverture des points de retrait : <b style="color:#0E1726">1er juin 2027</b>.</p>
       <span class="lbl">Votre demande</span>

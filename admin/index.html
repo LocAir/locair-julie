@@ -8845,7 +8845,7 @@ async function addPartenaire(){
    (même téléphone ou même commerce) et l'a passé à « signé ». */
 function popupParrainage(p, nom){
   if(!p) return;
-  showInfo('🎁 Parrainage détecté', `${nom || p.commerce} a été parrainé par ${p.parrain_nom || '—'}.\n\nParrainage activé. Le parrain est prévenu.\n\nÀ sa 1re location, tu recevras une notification « À verser » :\n100 % de cette location au parrain\n+ 100 % à ${nom || p.commerce}.`);
+  showInfo('🎁 Parrainage détecté', `${nom || p.commerce} a été parrainé par ${p.parrain_nom || '—'}.\n\nParrainage activé. Le parrain est prévenu.\n\nÀ sa 1re location, tu recevras une notification « À verser » :\n50 € au parrain\n+ 50 € à ${nom || p.commerce}.`);
 }
 function deletePartenaire(id, nom){
   confirmAction(`Supprimer définitivement ${nom} ? S'il a des réservations ou virements liés, il sera désactivé à la place (pour garder l'historique).`, async () => {
@@ -11481,7 +11481,7 @@ function prCarte(p){
 }
 function setPrFiltre(f){ PR_FILTRE = f; renderPointsRetrait(); }
 /* Parrainages : demandes de rappel venues d'un lien de parrainage. « Signé » active
-   le parrainage (1re location du nouveau point : 100 % au parrain et au nouveau, à la main). */
+   le parrainage (50 € au parrain et 50 € au nouveau, versés à la main avec le 1er virement). */
 function prParrainages(d){
   if(d.parrainages_table === false) return '<p class="section-title">Parrainages</p><p class="empty" style="padding:16px">Table à créer dans Supabase (supabase/migration_2026-11-22_parrainages.sql).</p>';
   const l = d.parrainages || [];
@@ -11493,7 +11493,7 @@ function prParrainages(d){
   }).join('') + '</ul></div>';
 }
 async function setParrainage(id, statut){
-  if(statut === 'signe' && !confirm('Parrainage signé ? Pensez à verser 100 % de sa 1re location au parrain ET au nouveau commerçant.')) return;
+  if(statut === 'signe' && !confirm('Parrainage signé ? Pensez à verser 50 € au parrain ET 50 € au nouveau commerçant.')) return;
   try{
     const r = await fetch(API('admin-parrainages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'statut', id, statut})});
     if(!r.ok) throw new Error();

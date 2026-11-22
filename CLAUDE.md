@@ -263,14 +263,14 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    la boutique (pas par un client) : Loc'Air paie, sauf faute grave du
    commerçant ; un seul point de retrait par quartier (le premier qui
    signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
-   parrainage (changé le 22/11/2026) : la 1re location du nouveau point
-   est reversée à 100 % au parrain ET à 100 % au nouveau commerçant
-   (à verser à la main, le site compte 20 % comme d'habitude). Le lien de parrainage (espace partenaire,
+   parrainage (changé le 22/11/2026) : **50 € au parrain ET 50 € au
+   nouveau commerçant**, versés à la main avec le virement qui suit la
+   1re location du nouveau point (le site compte 20 % comme d'habitude). Le lien de parrainage (espace partenaire,
    « Parrainer un commerçant ») : `locair.fr/parrainage?parrain=<commerce>`,
    une demande de rappel très courte (commerce, nom, téléphone) qui
    déclenche le parrainage ; si le commerçant signe, il est activé.
    Présenté au commerçant comme « Développer mes revenus » (espace
-   partenaire) : il y voit ses demandes « En attente », « Signé · 100 %
+   partenaire) : il y voit ses demandes « En attente », « Signé · 50 €
    activé » ou « Pas cette fois ». Admin → Points de retrait → Parrainages :
    boutons « Signé » / « Refusé ». Table `parrainages`
    (`supabase/migration_2026-11-22_parrainages.sql`).
@@ -279,7 +279,7 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    commerce qu'une demande en attente), le parrainage passe à « signé »,
    fenêtre « 🎁 Parrainage détecté » + notification admin + email au
    parrain. À la 1re location payée du nouveau point : notification et
-   email « À verser » (montant de la location, au parrain et au nouveau).
+   email « À verser » (50 € au parrain et 50 € au nouveau).
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).

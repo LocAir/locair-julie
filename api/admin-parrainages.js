@@ -1,6 +1,6 @@
 // Admin : parrainages entre commerçants (demandes de rappel venues d'un lien
 // de parrainage, table parrainages). L'admin passe une demande à « signé »
-// (parrainage activé : 1re location du nouveau point reversée à 100 % au
+// (parrainage activé : 50 € au
 // parrain et au nouveau, à verser à la main) ou « refusé ».
 // POST { action: 'liste' } | { action: 'statut', id, statut }
 const { getSupabase } = require('./_lib/supabase');
