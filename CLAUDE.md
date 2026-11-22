@@ -257,6 +257,11 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    engagement). Loc'Air reçoit un email + une notification, l'appelle et
    lui envoie le contrat à signer. Entretien des climatiseurs : un passage
    par mois au point, plus souvent pendant une forte canicule.
+   Décidé le 22/11/2026 : nombre de climatiseurs selon la place du
+   commerçant (fixé à la signature) ; l'hiver, au choix du commerçant (il
+   les garde ou Loc'Air les reprend jusqu'au printemps) ; vol ou casse dans
+   la boutique (pas par un client) : Loc'Air paie, sauf faute grave du
+   commerçant.
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).

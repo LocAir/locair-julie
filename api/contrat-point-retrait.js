@@ -3,7 +3,9 @@
 // Pas de table : la demande part par email à Loc'Air (+ notification admin),
 // et le commerçant reçoit un récapitulatif. Loc'Air lui envoie ensuite le
 // contrat à signer. Seules les conditions déjà décidées sont écrites
-// (20 %, virement mensuel, entretien mensuel, sans engagement).
+// (20 %, virement mensuel, entretien mensuel, nombre d'appareils selon la
+// place, hiver au choix, vol ou casse payés par Loc'Air sauf faute grave,
+// sans engagement).
 const { getSupabase } = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
@@ -23,6 +25,7 @@ const CHAMPS = [
   ['horaires', 'Horaires', 160],
   ['appareils', 'Climatiseurs à garder', 3],
   ['debut', 'Démarrage souhaité', 10],
+  ['hiver', 'L’hiver', 20],
 ];
 
 module.exports = async (req, res) => {
@@ -39,6 +42,7 @@ module.exports = async (req, res) => {
   }
   if (!/^\d{1,2}$/.test(d.appareils)) d.appareils = '4';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.debut)) d.debut = '';
+  d.hiver = d.hiver === 'garde' ? 'Il les garde chez lui' : 'Loc’Air les reprend jusqu’au printemps';
 
   const supabase = getSupabase();
   try {
@@ -76,6 +80,7 @@ ${table}
 <li><b>20 %</b> de chaque location, viré chaque mois.</li>
 <li>Le client paie en ligne : rien à encaisser.</li>
 <li>Entretien des climatiseurs une fois par mois (plus souvent en canicule).</li>
+<li>Vol ou casse en boutique : Loc’Air paie, sauf faute grave de votre part.</li>
 <li><b>Sans engagement</b> : vous arrêtez quand vous voulez.</li>
 </ul>
 ${table}
