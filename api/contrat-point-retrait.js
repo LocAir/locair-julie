@@ -92,7 +92,7 @@ ${table}
         ${coche('Entretien des climatiseurs chaque mois, plus souvent en canicule.')}
         ${coche('Vol ou casse en boutique : Loc’Air paie (sauf faute grave).')}
         ${coche('Seul point de votre quartier : le premier qui signe a l’exclusivité.')}
-        ${coche('Parrainage : 50 € pour vous et 50 € pour le commerçant que vous recommandez.')}
+        ${coche('Parrainage : 50 € pour vous et 50 € pour le commerçant que vous recommandez, virés après sa 1re location.')}
       </table>
       <p style="font-size:14px;color:#4B5873;margin:0 0 18px">Ouverture des points de retrait : <b style="color:#0E1726">1er juin 2027</b>.</p>
       <span class="lbl">Votre demande</span>

@@ -265,7 +265,9 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
    parrainage (changé le 22/11/2026) : **50 € au parrain ET 50 € au
    nouveau commerçant**, versés à la main avec le virement qui suit la
-   1re location du nouveau point (le site compte 20 % comme d'habitude). Le lien de parrainage (espace partenaire,
+   1re location du nouveau point — même règle que la signature ait lieu
+   avant ou pendant la saison (décidé le 22/11/2026). Le site compte 20 %
+   comme d'habitude. Le lien de parrainage (espace partenaire,
    « Parrainer un commerçant ») : `locair.fr/parrainage?parrain=<commerce>`,
    une demande de rappel très courte (commerce, nom, téléphone) qui
    déclenche le parrainage ; si le commerçant signe, il est activé.
