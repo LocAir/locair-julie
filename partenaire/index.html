@@ -771,6 +771,17 @@ function renderDashboard(d){
           <div class="qr-img-wrap"><img id="qr-img" src="${escHtml(qrUrl)}" alt="QR code de votre lien" width="88" height="88" loading="lazy"/></div>
           <div class="qr-info"><a class="qr-dl" onclick="downloadQR(event,'${escHtml(qrUrl)}')" href="${escHtml(qrUrl)}" download="locair-qr-${escHtml(STATE.code)}.png" target="_blank">Télécharger le QR code</a></div>
         </div>`)}
+      ${d.point_retrait ? ligne('Parrainer un commerçant', '+50 €', (() => {
+        const lienParrain = 'https://www.locair.fr/contrat-point-retrait?parrain=' + encodeURIComponent(d.point_retrait.nom || STATE.nom || STATE.code || '');
+        const msg = 'Bonjour, je suis point de retrait Loc’Air : mes clients viennent chercher leur climatiseur chez moi et je touche 20 % de chaque location, sans engagement. Inscription en 2 minutes : ' + lienParrain;
+        return `<p style="margin:4px 0 14px;font-size:15px;line-height:1.5;color:#4B5873">Un commerçant d’un <b>autre quartier</b> ? Envoyez-lui ce lien. Quand il signe, <b>50 €</b> sont ajoutés à votre premier virement.</p>
+        <div class="link-copy-row">
+          <input type="text" id="parrain-link" value="${escHtml(lienParrain)}" readonly onclick="this.select()"/>
+          <button class="copy-btn" onclick="(function(){var i=document.getElementById('parrain-link');i.select();try{navigator.clipboard.writeText(i.value);}catch(e){document.execCommand('copy');}var o=document.getElementById('parrain-ok');o.style.display='block';setTimeout(function(){o.style.display='none';},2000);})()">Copier</button>
+        </div>
+        <div class="ok-msg" id="parrain-ok">Lien copié !</div>
+        <a style="display:flex;align-items:center;justify-content:center;min-height:50px;margin-top:12px;border-radius:100px;background:#0F7A3D;color:#fff;font:700 15px \'DM Sans\',sans-serif;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Envoyer sur WhatsApp</a>`;
+      })()) : ''}
       ${ligne('Total versé', euros(d.total_verse_euros||0), `<p class="empty">En ${annee} : ${euros(d.total_annee_euros||0)}</p>`)}
       <button class="dl-l dl-btn" onclick="exportPdf()"><span class="dl-t">Relevé PDF</span>${fleche}</button>
     </div>
