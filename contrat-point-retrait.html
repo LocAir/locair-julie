@@ -64,7 +64,9 @@ input[aria-invalid="true"]{border-color:var(--err)}
         <li><i aria-hidden="true">1</i><span><b>20 %</b> de chaque location, viré chaque mois.</span></li>
         <li><i aria-hidden="true">2</i><span>Le client paie en ligne : <b>rien à encaisser</b>.</span></li>
         <li><i aria-hidden="true">3</i><span>On dépose les climatiseurs et on passe <b>une fois par mois</b> pour l’entretien (plus souvent en canicule).</span></li>
-        <li><i aria-hidden="true">4</i><span><b>Sans engagement</b> : vous arrêtez quand vous voulez.</span></li>
+        <li><i aria-hidden="true">4</i><span><b>Vol ou casse</b> en boutique : Loc’Air paie, sauf faute grave de votre part.</span></li>
+        <li><i aria-hidden="true">5</i><span>Le nombre de climatiseurs <b>selon votre place</b>. L’hiver, ils restent chez vous ou on les reprend : <b>vous choisissez</b>.</span></li>
+        <li><i aria-hidden="true">6</i><span><b>Sans engagement</b> : vous arrêtez quand vous voulez.</span></li>
       </ul>
     </section>
 
@@ -91,6 +93,8 @@ input[aria-invalid="true"]{border-color:var(--err)}
           <select id="appareils" name="appareils"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option><option>10</option></select></div>
         <div><label for="debut">Démarrage</label><input id="debut" name="debut" type="date"></div>
       </div>
+      <label for="hiver">L’hiver</label>
+      <select id="hiver" name="hiver"><option value="reprise">Loc’Air les reprend jusqu’au printemps</option><option value="garde">Je les garde chez moi</option></select>
       <input class="piege" id="site_web" name="site_web" tabindex="-1" autocomplete="off" aria-hidden="true">
       <label class="coche"><input type="checkbox" id="ok"> <span>J’ai lu ces conditions. Loc’Air m’envoie le contrat à signer.</span></label>
       <button class="btn" id="envoyer" type="submit">Créer mon contrat</button>
@@ -113,7 +117,7 @@ input[aria-invalid="true"]{border-color:var(--err)}
   REQUIS.forEach(function(k){ $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); erreur(''); }); });
   $('f').addEventListener('submit', function(ev){
     ev.preventDefault();
-    var d = {}; REQUIS.concat(['appareils','debut','site_web']).forEach(function(k){ d[k] = $(k).value.trim(); });
+    var d = {}; REQUIS.concat(['appareils','debut','hiver','site_web']).forEach(function(k){ d[k] = $(k).value.trim(); });
     for(var i = 0; i < REQUIS.length; i++){ var k = REQUIS[i]; if(!d[k]){ $(k).setAttribute('aria-invalid','true'); $(k).focus(); return erreur('Il manque une information.'); } }
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){ $('email').setAttribute('aria-invalid','true'); $('email').focus(); return erreur('Vérifiez l’email.'); }
     if(d.tel.replace(/\D/g,'').length < 9){ $('tel').setAttribute('aria-invalid','true'); $('tel').focus(); return erreur('Vérifiez le téléphone.'); }
