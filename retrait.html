@@ -54,12 +54,7 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .commercant p{margin:0 0 14px;color:var(--ink-2);font-size:15px;line-height:1.45}
 .client-ret{margin:0}
 .client-ret p{margin:0 0 14px;color:var(--ink-2);font-size:15.5px;line-height:1.5}
-.piece-ok{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:12px;border:2px solid var(--line,#E3E9F4);border-radius:16px;padding:14px 16px;margin:0 0 14px;cursor:pointer;background:#fff}
-.piece-ok input{width:26px;height:26px;accent-color:var(--ok);margin:0}
-.piece-ok .pi-ico{font-size:26px;line-height:1}
-.piece-ok b{display:block;font-size:16.5px;color:var(--ink)}
-.piece-ok small{display:block;color:var(--ink-2);font-size:14px;margin-top:2px}
-.piece-ok:has(input:checked){border-color:var(--ok);background:#E6F4EC}
+
 .signal{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .sig-lien{border:0;background:none;color:var(--ink-2);font:700 15px 'DM Sans',sans-serif;text-decoration:underline;cursor:pointer;padding:10px 0;min-height:44px;text-align:left}
 .sig-form{margin-top:8px}
@@ -144,9 +139,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
       <div class="client-ret" id="f-cli" hidden>
         <h2 class="bloc-t t-ret">✓ <span lang="fr">Retrait</span><span lang="en">Pick-up</span><span lang="es">Recogida</span></h2>
         <p id="c-consigne"></p>
-        <!-- Pièce d'identité vérifiée par le commerçant AVANT la validation : le bouton vert reste bloqué sans elle. -->
-        <label class="piece-ok" id="piece-ok"><input type="checkbox" id="piece-c"><span class="pi-ico" aria-hidden="true">🪪</span><span class="pi-txt"><b><span lang="fr">Pièce d’identité vérifiée</span><span lang="en">ID checked</span><span lang="es">Documento comprobado</span></b><small id="piece-nom"></small></span></label>
-        <button class="btn vert" id="b-cli" type="button" disabled><span lang="fr">Valider mon retrait</span><span lang="en">Confirm my pick-up</span><span lang="es">Confirmar mi recogida</span></button>
+        <button class="btn vert" id="b-cli" type="button"><span lang="fr">Valider mon retrait</span><span lang="en">Confirm my pick-up</span><span lang="es">Confirmar mi recogida</span></button>
         <p class="msg err" id="m-cli" role="alert" hidden></p>
       </div>
       <form class="commercant" id="f-com" novalidate hidden>
@@ -191,6 +184,7 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
         <p class="m-nom" id="f-nom"></p>
         <p class="m-qte" id="f-qte" hidden></p>
         <p class="m-horloge" id="f-horloge" aria-live="off"></p>
+        <p class="m-piece"></p>
       </div>
       <p id="f-texte"></p>
       <div class="avis-retour" id="f-avis" hidden>
@@ -285,9 +279,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
     /* RETRAIT : le client valide lui-même, après avoir montré sa pièce d'identité.
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
     if(r.peut_remettre){
-      $('c-consigne').textContent = (nq > 1 ? L(nq + ' climatiseurs à votre nom. ', nq + ' air conditioners in your name. ', nq + ' aparatos a tu nombre. ') : '') + L('Montrez votre pièce d’identité au commerçant. Il coche, puis vous validez.', 'Show your ID to the shopkeeper. They tick the box, then you confirm.', 'Enseña tu documento de identidad al comerciante. Marca la casilla y luego confirmas.');
-      $('piece-nom').textContent = L('Même nom : ', 'Same name: ', 'Mismo nombre: ') + nom;
-      $('piece-c').checked = false; $('b-cli').disabled = true;
+      $('c-consigne').textContent = (nq > 1 ? L(nq + ' climatiseurs à votre nom. ', nq + ' air conditioners in your name. ', nq + ' aparatos a tu nombre. ') : '') + L('Validez, puis montrez l’écran vert et votre pièce d’identité ou passeport (' + nom + ') au commerçant.', 'Confirm, then show the green screen and your ID or passport (' + nom + ') to the shopkeeper.', 'Confirma y enseña la pantalla verde y tu documento de identidad o pasaporte (' + nom + ') al comerciante.');
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
@@ -369,7 +361,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
     document.querySelector('#e-fini .m-piece').textContent = ech
       ? L('Reprenez son appareil et donnez-en un autre.', 'Take back the unit and hand over another one.', 'Recoge su aparato y entrégale otro.')
       : rtr ? ((etat.resa.quantite || 1) > 1 ? L('Vous pouvez remettre les appareils.', 'You can hand over the units.', 'Ya puedes entregar los aparatos.') : L('Vous pouvez remettre l’appareil.', 'You can hand over the unit.', 'Ya puedes entregar el aparato.'))
-      : L('Même nom que la pièce d’identité.', 'Same name as the ID.', 'Mismo nombre que el documento.');
+      : L('🪪 Même nom que la pièce d’identité ou le passeport.', '🪪 Same name as the ID or passport.', '🪪 Mismo nombre que el documento o el pasaporte.');
     $('f-nom').textContent = ((etat.resa.prenom || '') + ' ' + (etat.resa.nom || '')).trim();
     var nq = Math.max(1, etat.resa.quantite || 1);
     /* toujours le nombre d'appareils : le commerçant sait combien donner ou reprendre */
@@ -397,9 +389,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
       }
     });
   }
-  $('piece-c').addEventListener('change', function(){ $('b-cli').disabled = !this.checked; });
   $('b-cli').addEventListener('click', function(){
-    if(!$('piece-c').checked) return erreur($('m-cli'), L('Le commerçant doit d’abord vérifier votre pièce d’identité.', 'The shopkeeper must check your ID first.', 'El comerciante debe comprobar primero tu documento.'));
     var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
     appel({action:'valider'}).then(function(r){
       b.disabled = false;
