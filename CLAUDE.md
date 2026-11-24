@@ -331,6 +331,18 @@ grave** (décision du propriétaire du 24/11/2026 : l'article 6 de la
 convention, qui met ces vols à la charge du commerçant, est à corriger ; la
 « mise en service …/2026 » aussi, c'est la saison 2027).
 
+**Playbook Cellule 1 (V3, reçu le 24/11/2026).** Axe Nice–Cannes seulement
+(8 à 10 points, 40 climatiseurs, 1 micro-box pour les pannes). Points
+d'exemple hors de l'axe retirés (Grasse, Villefranche, Beausoleil, Menton).
+La livraison à domicile reste proposée à côté (choix du propriétaire).
+Fiche mémo « 3 gestes au comptoir » (espace partenaire + flyer commerçant) :
+✓ retrait = écran vert + pièce d'identité regardée ; ↩ retour = appareil,
+housse et gaine récupérés → code ; ! un souci (accessoire manquant, abîmé,
+sale) → le commerçant reprend l'appareil et prévient tout de suite, avec
+une photo (WhatsApp / email partenaires / 06 63 79 87 56). Admin → Points de
+retrait → « Remplissage · 7 prochains jours » par ville : 85 % = baisser
+la pub, 90 % = pub en pause.
+
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans
 `api/_lib/clickCollect.js`). Ne jamais écrire cette règle

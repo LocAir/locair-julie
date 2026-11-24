@@ -37,6 +37,7 @@
 //             Vide = rien ne change à l'écran.
 const STOCK_PAR_DEFAUT = 4;
 const COMMISSION_POINT_PCT = 20;
+// Cellule 1 (playbook V3, 24/11/2026) : l'axe Nice–Cannes seulement, 8 à 10 points.
 const POINTS_RETRAIT = [
   // POINT DE TEST (propriétaire) : invisible pour les clients, visible
   // seulement sur /click-and-collect?test=1. Sert à faire un vrai paiement
@@ -51,10 +52,6 @@ const POINTS_RETRAIT = [
   { id: 'antibes',          ville: 'Antibes',              nom: 'Antibes',              lat: 43.5804, lng: 7.1251, adresse: 'Adresse à venir, 06600 Antibes',              horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
   { id: 'juan-les-pins',    ville: 'Antibes',              nom: 'Juan-les-Pins',        lat: 43.5684, lng: 7.1110, adresse: 'Adresse à venir, 06160 Juan-les-Pins',        horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
   { id: 'cannes',           ville: 'Cannes',               nom: 'Cannes',               lat: 43.5528, lng: 7.0174, adresse: 'Adresse à venir, 06400 Cannes',               horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
-  { id: 'grasse',           ville: 'Grasse',               nom: 'Grasse',               lat: 43.6584, lng: 6.9225, adresse: 'Adresse à venir, 06130 Grasse',               horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
-  { id: 'villefranche',     ville: 'Villefranche-sur-Mer', nom: 'Villefranche-sur-Mer', lat: 43.7040, lng: 7.3111, adresse: 'Adresse à venir, 06230 Villefranche-sur-Mer', horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
-  { id: 'beausoleil',       ville: 'Beausoleil',           nom: 'Beausoleil (Monaco)',  lat: 43.7429, lng: 7.4236, adresse: 'Adresse à venir, 06240 Beausoleil',           horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
-  { id: 'menton',           ville: 'Menton',               nom: 'Menton',               lat: 43.7747, lng: 7.4975, adresse: 'Adresse à venir, 06500 Menton',               horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
 ];
 
 // Valeurs par défaut posées une seule fois : chaque point a toujours un
