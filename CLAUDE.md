@@ -351,7 +351,11 @@ box 165, agent 700, pub 600). En haut de l'écran : la phase de la saison
 une ligne = une action, la plus urgente en haut : signalements et pannes
 ouverts (remplacer avec la micro-box), retards, 20 % à virer (rouge après le
 5 du mois), passages agent, pub à baisser, à reconditionner, commerçant non
-relié, RIB manquant.
+relié, RIB manquant. Le bloc point mort montre aussi l'occupation de la
+saison (jours-machine / 4 800 possibles = 40 × 120 jours).
+Page `click-and-collect.html` : si le point choisi est complet aux dates
+choisies, bouton « Prendre {point le plus proche libre} · à X km » (cherche
+parmi les 3 points ouverts les plus proches, même calcul que le paiement).
 
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans
