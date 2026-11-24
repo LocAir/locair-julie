@@ -1269,7 +1269,12 @@ module.exports = async (req, res) => {
     if (!colErr) {
       for (const r of avecColonne || []) {
         if ('rendu_at' in r && r.source_channel === 'click_collect' && r.remis_at && !r.rendu_at) continue;
-        if (r.piece_identite_paths && r.piece_identite_paths.length) await supabase.storage.from('missions').remove(r.piece_identite_paths);
+        // Fichier pas effacé (stockage en panne) → on garde le lien pour
+        // réessayer demain, sinon la pièce resterait stockée sans trace.
+        if (r.piece_identite_paths && r.piece_identite_paths.length) {
+          const { error: rmErr } = await supabase.storage.from('missions').remove(r.piece_identite_paths);
+          if (rmErr) { console.error('[Cron pièces d’identité] effacement', r.id, rmErr.message); continue; }
+        }
         await supabase.from('reservations').update({ piece_identite_paths: null }).eq('id', r.id);
         effacees++;
       }
@@ -1278,7 +1283,10 @@ module.exports = async (req, res) => {
       .select('id, instructions_acces').eq('source_channel', 'click_collect').ilike('instructions_acces', '%identites/%').lt('date_fin', limite).limit(200);
     for (const r of enConsigne || []) {
       const chemins = String(r.instructions_acces || '').match(/identites\/[\w-]+\/(?:recto|verso|passeport)\.\w+/g) || [];
-      if (chemins.length) await supabase.storage.from('missions').remove(chemins);
+      if (chemins.length) {
+        const { error: rmErr } = await supabase.storage.from('missions').remove(chemins);
+        if (rmErr) { console.error('[Cron pièces d’identité] effacement', r.id, rmErr.message); continue; }
+      }
       await supabase.from('reservations').update({ instructions_acces: String(r.instructions_acces).replace(/ \| PIÈCE D'IDENTITÉ[\s\S]*$/, ' | Pièce d’identité supprimée (30 j après la location)') }).eq('id', r.id);
       effacees++;
     }
