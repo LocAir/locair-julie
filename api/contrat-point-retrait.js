@@ -97,10 +97,12 @@ ${table}
       <span class="lbl">Votre demande</span>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0">
         ${ligne('Commerce', d.commerce)}${ligne('Adresse', `${d.adresse}, ${d.cp} ${d.ville}`)}${ligne('Horaires', d.horaires)}${ligne('Climatiseurs', d.appareils)}${ligne('Démarrage', debutTxt)}
-      </table>`,
+      </table>
+      <p style="font-size:13px;color:#4B5873;margin:18px 0 0">Une question : 06 63 79 87 56 · <a href="mailto:partenaires.locair@outlook.com" style="color:#1A5EDB">partenaires.locair@outlook.com</a></p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
+    // contact des commerçants (convention) : affiché sous le bouton
   });
-  await sendBrevoEmail({ to: d.email, subject: `${prenom}, votre point de retrait Loc’Air`, html, senderName: "Loc'Air" }).catch(() => {});
+  await sendBrevoEmail({ to: d.email, subject: `${prenom}, votre point de retrait Loc’Air`, html, senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com' }).catch(() => {});
 
   return res.status(200).json({ ok: true });
 };
