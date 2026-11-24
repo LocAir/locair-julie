@@ -276,10 +276,10 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
     $('sig').hidden = !(r.peut_remettre || r.peut_rendre || r.peut_echanger); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
     var nq = Math.max(1, r.quantite || 1);
     if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; return; }
-    /* RETRAIT : le client valide lui-même (numéro de commande tapé = vérification), puis montre l'écran vert.
+    /* RETRAIT : le client valide lui-même, puis montre l'écran vert et sa pièce d'identité (convention, art. 4 : le commerçant la regarde, sans copie).
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
     if(r.peut_remettre){
-      $('c-consigne').textContent = (nq > 1 ? L(nq + ' climatiseurs à votre nom. ', nq + ' air conditioners in your name. ', nq + ' aparatos a tu nombre. ') : '') + L('Validez, puis montrez l’écran vert au commerçant.', 'Confirm, then show the green screen to the shopkeeper.', 'Confirma y enseña la pantalla verde al comerciante.');
+      $('c-consigne').textContent = (nq > 1 ? L(nq + ' climatiseurs à votre nom. ', nq + ' air conditioners in your name. ', nq + ' aparatos a tu nombre. ') : '') + L('Validez, puis montrez l’écran vert et votre pièce d’identité (' + nom + ') au commerçant.', 'Confirm, then show the green screen and your ID (' + nom + ') to the shopkeeper.', 'Confirma y enseña la pantalla verde y tu documento de identidad (' + nom + ') al comerciante.');
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
@@ -365,7 +365,7 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
     document.querySelector('#e-fini .m-piece').textContent = ech
       ? L('Reprenez son appareil et donnez-en un autre.', 'Take back the unit and hand over another one.', 'Recoge su aparato y entrégale otro.')
       : rtr ? ((etat.resa.quantite || 1) > 1 ? L('Vous pouvez remettre les appareils.', 'You can hand over the units.', 'Ya puedes entregar los aparatos.') : L('Vous pouvez remettre l’appareil.', 'You can hand over the unit.', 'Ya puedes entregar el aparato.'))
-      : ((etat.resa.quantite || 1) > 1 ? L('Vous pouvez donner les appareils.', 'You can hand over the units.', 'Ya puedes entregar los aparatos.') : L('Vous pouvez donner l’appareil.', 'You can hand over the unit.', 'Ya puedes entregar el aparato.'));
+      : L('🪪 Même nom que la pièce d’identité.', '🪪 Same name as the ID.', '🪪 Mismo nombre que el documento de identidad.');
     $('f-nom').textContent = ((etat.resa.prenom || '') + ' ' + (etat.resa.nom || '')).trim();
     var nq = Math.max(1, etat.resa.quantite || 1);
     /* toujours le nombre d'appareils : le commerçant sait combien donner ou reprendre */

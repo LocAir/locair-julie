@@ -261,15 +261,15 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    (lien et QR code de la dernière diapo de la présentation, sans
    engagement). Loc'Air reçoit un email + une notification, l'appelle et
    lui envoie le contrat à signer. Entretien des climatiseurs : un passage
-   par mois au point, plus souvent pendant une forte canicule.
+   de l'agent tous les 10 jours (convention).
    Décidé le 22/11/2026 : nombre de climatiseurs selon la place du
-   commerçant (fixé à la signature) ; l'hiver, Loc'Air reprend les climatiseurs
-   et les rapporte au printemps (changé le 22/11/2026 ; une offre de
+   commerçant (fixé à la signature) ; fin septembre, Loc'Air reprend les climatiseurs
+   (dépose du 10 au 15 mai ; une offre de
    stockage hivernal payée au commerçant est à l'étude : ne pas en
    parler par écrit tant qu'elle n'est pas décidée) ; vol ou casse dans
    la boutique (pas par un client) : Loc'Air paie, sauf faute grave du
    commerçant ; un seul point de retrait par quartier (le premier qui
-   signe a l'exclusivité) ; ouverture des points le 1er juin 2027 ;
+   signe a l'exclusivité) ; saison 2027 de fin mai à fin septembre ;
    parrainage (changé le 22/11/2026) : **50 € au parrain ET 50 € au
    nouveau commerçant**, versés à la main avec le virement qui suit la
    1re location du nouveau point — même règle que la signature ait lieu
@@ -311,11 +311,19 @@ au premier geste (page plus rapide). `/retrait` s'ouvre sans réseau
 (`retrait-sw.js`). Apple Pay n'apparaît que si le domaine locair.fr est
 validé dans Stripe.
 
-**Retrait sans pièce d'identité (décidé le 22/11/2026)** : la vérification,
-c'est le numéro de commande tapé par le client. Il valide et montre l'écran
-vert ; le commerçant n'a rien à faire sur un téléphone et ne demande aucune
-pièce d'identité. Ne plus en parler nulle part (site, emails, CGV, Julie,
-présentations).
+**Convention de partenariat (V11, reçue le 24/11/2026) = référence.**
+Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
+septembre** (≈ 120 jours), stock fixe **4 à 5 climatiseurs** par point (selon
+la place, ≈ 40 × 40 cm chacun, sans rotation), rangés contre un mur sous
+**housse bleue unie sans logo**, gaine au-dessus ; retrait et retour **au
+même point** ; agent Loc'Air **tous les 10 jours** ; 20 % virés **entre le
+1er et le 5 du mois suivant** ; résiliation libre par email ou SMS avec
+**7 jours de préavis**. **Retrait : le client montre l'écran vert et sa
+pièce d'identité**, que le commerçant regarde seulement (pas de copie, rien
+à cocher). **Vol ou casse dans la boutique : Loc'Air paie, sauf faute
+grave** (décision du propriétaire du 24/11/2026 : l'article 6 de la
+convention, qui met ces vols à la charge du commerçant, est à corriger ; la
+« mise en service …/2026 » aussi, c'est la saison 2027).
 
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans

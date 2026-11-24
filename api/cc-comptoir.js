@@ -152,8 +152,8 @@ module.exports = async (req, res) => {
     }
 
     // RETRAIT : le client le valide lui-même avec son numéro de commande, puis
-    // montre l'écran vert. Pas de pièce d'identité (décision du propriétaire,
-    // 22/11/2026). Le commerçant n'a rien à taper.
+    // montre l'écran vert et sa pièce d'identité (convention, art. 4 : contrôle
+    // visuel, sans copie). Le commerçant n'a rien à taper.
     if (action === 'valider') {
       const out = await agir(supabase, r, partenaire ? partenaire.id : null, 'valider');
       return res.status(out.status).json(out.body);

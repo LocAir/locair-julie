@@ -84,16 +84,16 @@ ${table}
     bodyHtml: `
       <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">On vous appelle.</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">Pour fixer le dépôt des climatiseurs. Le contrat à signer suit par email.</p></div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0" style="margin:4px 0 18px;border-collapse:separate"><tr>
-        ${chiffre('20&nbsp;%', 'de chaque location, viré chaque mois')}${chiffre('0&nbsp;€', 'à encaisser : le client paie en ligne')}${chiffre('0', 'engagement : vous arrêtez quand vous voulez')}
+        ${chiffre('20&nbsp;%', 'de chaque location, viré entre le 1er et le 5 du mois')}${chiffre('0&nbsp;€', 'à encaisser : le client paie en ligne')}${chiffre('0', 'engagement : vous arrêtez quand vous voulez')}
       </tr></table>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
-        ${coche('Entretien des climatiseurs chaque mois, plus souvent en canicule.')}
-        ${coche('L’hiver, on reprend les climatiseurs et on les rapporte au printemps.')}
+        ${coche('Entretien par notre agent tous les 10 jours.')}
+        ${coche('Dépose des climatiseurs du 10 au 15 mai, reprise fin septembre.')}
         ${coche('Vol ou casse en boutique : Loc’Air paie (sauf faute grave).')}
         ${coche('Seul point de votre quartier : le premier qui signe a l’exclusivité.')}
         ${coche('Parrainage : 50 € pour vous et 50 € pour le commerçant que vous recommandez, virés après sa 1re location.')}
       </table>
-      <p style="font-size:14px;color:#4B5873;margin:0 0 18px">Ouverture des points de retrait : <b style="color:#0E1726">1er juin 2027</b>.</p>
+      <p style="font-size:14px;color:#4B5873;margin:0 0 18px">Saison 2027 : <b style="color:#0E1726">fin mai à fin septembre</b>. Arrêt possible à tout moment, avec 7 jours de préavis.</p>
       <span class="lbl">Votre demande</span>
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0">
         ${ligne('Commerce', d.commerce)}${ligne('Adresse', `${d.adresse}, ${d.cp} ${d.ville}`)}${ligne('Horaires', d.horaires)}${ligne('Climatiseurs', d.appareils)}${ligne('Démarrage', debutTxt)}
