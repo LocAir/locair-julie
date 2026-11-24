@@ -13,7 +13,7 @@
 //      (petit stock fixe par point) ;
 //   4. la commission du commerçant suit le taux du point (commission_pct).
 const { calcTieredPrice } = require('./pricing');
-const { getPointRetrait, pointFermeLe } = require('./pointsRetrait');
+const { getPointRetrait, pointFermeLe, horsSaison } = require('./pointsRetrait');
 const { occupationParPoint, numeroComptoir, JOURS_MAX_CC } = require('./clickCollect');
 const { facteurCC, baseCents } = require('./tarifDynamique');
 
@@ -79,6 +79,9 @@ async function preparerProlongationCC(supabase, { orig, debut, fin, qty, montant
   const coef = await coefPrixPaye(supabase, orig, pricing);
   const amountCents = Math.round(prixJoursAjoutesCC(orig, debut, fin, qty, montantDomicileCents, pricing) * coef / 100) * 100;
   const point = getPointRetrait(orig.point_retrait_id || '');
+  if (point && horsSaison(point, orig.date_debut, fin)) {
+    return { ok: false, status: 400, error: horsSaison(point, orig.date_debut, fin) };
+  }
   if (point) {
     if (pointFermeLe(point, fin)) {
       return { ok: false, status: 400, error: `Le point « ${point.nom} » est fermé ce jour-là : choisissez un autre jour de retour.` };

@@ -22,7 +22,7 @@ const { getPricingConfig, isSiretValide } = require('./_lib/pricing');
 const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
-const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
+const { getPointRetrait, codePostalDuPoint, pointFermeLe, horsSaison } = require('./_lib/pointsRetrait');
 const { prixClickCollect, tientDansLeStock, lienRemise, imageQrRemise, codeIdentite, numeroComptoir, JOURS_MIN_CC } = require('./_lib/clickCollect');
 const { lireDevis } = require('./_lib/tarifDynamique');
 
@@ -95,6 +95,8 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: `Durée : entre ${JOURS_MIN_CC} et ${JOURS_MAX} jours.` });
   }
   const dateFin = addDays(dateDebut, duree);
+  const saison = horsSaison(point, dateDebut, dateFin);
+  if (saison) return res.status(400).json({ error: saison, code: 'hors_saison' });
   if (pointFermeLe(point, dateDebut) || pointFermeLe(point, dateFin)) {
     return res.status(400).json({ error: 'Le point de retrait est fermé ce jour-là. Choisissez une autre date.' });
   }

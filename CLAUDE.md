@@ -380,6 +380,12 @@ sa part, date du virement ou RIB manquant) — `runReleveCommercants`
 d'exploitation (art. 7) : Admin → Points de retrait → « Transfert à la
 société d'exploitation » (aperçu puis envoi email + SMS à chaque commerçant
 d'un point ouvert ; propriétaire seulement ; jamais deux fois).
+**Saison du Click & Collect (playbook)** : une location doit tenir entre
+l'`ouverture` (16 mai) et la `fin_saison` (30 septembre) de la cellule du
+point — `horsSaison()` dans `_lib/pointsRetrait.js`, vérifié au prix
+(`click-collect-prix`, la page affiche « Hors saison »), au paiement et à la
+prolongation. Le point de test est ouvert toute l'année. Écrit aussi dans
+les CGV 10 ter et dans Julie.
 Page `click-and-collect.html` : si le point choisi est complet aux dates
 choisies, bouton « Prendre {point le plus proche libre} · à X km » (cherche
 parmi les 3 points ouverts les plus proches, même calcul que le paiement).
