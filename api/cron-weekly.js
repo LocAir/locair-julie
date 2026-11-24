@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { debutJourParisISO } = require('./_lib/dates'); // minuit à Nice (factures transporteur : mêmes bornes)
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
@@ -41,8 +42,8 @@ async function runWeeklyReport(supabase) {
       .from('livraisons')
       .select('montant_du_cents, type, transporteur_id')
       .eq('statut', 'fait')
-      .gte('fait_at', weekAgoStr + 'T00:00:00Z')
-      .lt('fait_at', todayStr + 'T00:00:00Z');
+      .gte('fait_at', debutJourParisISO(weekAgoStr))
+      .lt('fait_at', debutJourParisISO(todayStr));
 
     const totalCA   = (livDone || []).reduce((s, l) => s + (l.montant_du_cents || 0), 0);
     const nbMissions = (livDone || []).length;
@@ -52,7 +53,7 @@ async function runWeeklyReport(supabase) {
     // Nouvelles réservations
     const { count: newResas } = await supabase
       .from('reservations').select('id', { count: 'exact', head: true })
-      .gte('created_at', weekAgoStr + 'T00:00:00Z').lt('created_at', todayStr + 'T00:00:00Z')
+      .gte('created_at', debutJourParisISO(weekAgoStr)).lt('created_at', debutJourParisISO(todayStr))
       .neq('statut', 'annulee');
 
     // Incidents ouverts

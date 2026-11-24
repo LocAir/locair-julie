@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { debutJourParisISO } = require('./_lib/dates'); // minuit à Nice (factures transporteur : mêmes bornes)
 const { getSupabase }              = require('./_lib/supabase');
 const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
@@ -55,8 +56,8 @@ async function runMonthlyRecap(supabase) {
       .from('livraisons')
       .select('transporteur_id, montant_du_cents, type')
       .eq('statut', 'fait')
-      .gte('fait_at', startStr + 'T00:00:00Z')
-      .lt('fait_at', endStr + 'T00:00:00Z')
+      .gte('fait_at', debutJourParisISO(startStr))
+      .lt('fait_at', debutJourParisISO(endStr))
       .not('transporteur_id', 'is', null)
       .gt('montant_du_cents', 0);
 
