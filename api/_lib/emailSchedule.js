@@ -91,7 +91,7 @@ function scenarioInterditClickCollect(reservation, scenario) {
 // Rappels Click & Collect dus aujourd'hui (fenêtre exacte, comme rappel_j1 :
 // jamais envoyés en retard) :
 //   - cc_rappel_retrait : la veille du retrait, si l'appareil n'est pas déjà remis ;
-//   - cc_rappel_retour  : la veille du retour, si l'appareil n'est pas déjà rendu.
+//   - cc_rappel_retour  : la veille du retour, si l'appareil est sorti et pas rendu.
 // `reservation` : { statut, source_channel, source, date_debut, date_fin,
 // remis_at?, rendu_at? } — date_fin = fin RÉELLE (après prolongations).
 // Les fiches de prolongation sont ignorées : c'est la réservation d'origine
@@ -102,7 +102,9 @@ function rappelsClickCollectDus(reservation, todayISO) {
   if (!reservation.date_debut || !reservation.date_fin) return [];
   const due = [];
   if (daysDiff(todayISO, reservation.date_debut) === 1 && !reservation.remis_at) due.push('cc_rappel_retrait');
-  if (daysDiff(todayISO, reservation.date_fin) === 1 && !reservation.rendu_at) due.push('cc_rappel_retour');
+  // Jamais retiré (client pas venu) : pas de « rapportez-le demain ».
+  const retire = 'remis_at' in reservation ? !!reservation.remis_at : true;
+  if (daysDiff(todayISO, reservation.date_fin) === 1 && !reservation.rendu_at && retire) due.push('cc_rappel_retour');
   return due;
 }
 
