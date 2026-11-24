@@ -96,6 +96,22 @@ module.exports = async (req, res) => {
       };
     });
 
+    // Remplissage des 7 prochains jours, par ville (playbook Cellule 1) :
+    // à 85 % on baisse la pub de la zone, à 90 % on la met en pause.
+    // Seulement les vrais points ouverts (ni exemple, ni test).
+    const jours = Array.from({ length: 7 }, (_, k) => addDays(auj, k));
+    const parVille = {};
+    POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).forEach((p) => {
+      const v = parVille[p.ville] || (parVille[p.ville] = { ville: p.ville, points: 0, places: 0, pris: 0 });
+      v.points += 1; v.places += (p.stock || 0) * jours.length;
+      resas.filter((r) => r.point_retrait_id === p.id && r.source !== 'site_prolongation' && r.statut === 'confirmee' && !r.rendu_at)
+        .forEach((r) => jours.forEach((j) => { if ((r.date_debut <= j && r.date_fin > j) || (r.remis_at && j === auj)) v.pris += qte(r); }));
+    });
+    const remplissage = Object.values(parVille).map((v) => {
+      const pct = v.places ? Math.min(100, Math.round(v.pris / v.places * 100)) : 0;
+      return { ville: v.ville, points: v.points, pct, pub: pct >= 90 ? 'pause' : pct >= 85 ? 'baisser' : 'normale' };
+    }).sort((x, y) => y.pct - x.pct);
+
     const tri = (l) => l.sort((x, y) => x.point.localeCompare(y.point) || x.client.localeCompare(y.client));
     tri(aujourdhui.retraits); tri(aujourdhui.retours); aujourdhui.retards.sort((x, y) => y.jours_retard - x.jours_retard);
 
@@ -109,6 +125,7 @@ module.exports = async (req, res) => {
         a_reconditionner: aReconditionner,
       },
       aujourdhui,
+      remplissage,
       points,
     });
   } catch (e) {
