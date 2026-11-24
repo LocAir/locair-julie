@@ -345,7 +345,13 @@ la pub, 90 % = pub en pause. Même écran : « Passage fait » sur chaque
 point (table `passages_agent`, `supabase/migration_2026-11-24_passages_agent.sql`),
 en rouge au-delà de 10 jours ; et « Saison · point mort » : jours-machine
 loués depuis le 1er mai face aux 313–369 du playbook (charges 1 465 €/mois :
-box 165, agent 700, pub 600).
+box 165, agent 700, pub 600). En haut de l'écran : la phase de la saison
+(avant dépose / dépose / saison / reprise / hors saison), la micro-box
+(40 − climatiseurs déposés dans les vrais points) et **« À faire aujourd'hui »**,
+une ligne = une action, la plus urgente en haut : signalements et pannes
+ouverts (remplacer avec la micro-box), retards, 20 % à virer (rouge après le
+5 du mois), passages agent, pub à baisser, à reconditionner, commerçant non
+relié, RIB manquant.
 
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans

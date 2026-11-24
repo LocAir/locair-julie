@@ -965,6 +965,16 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .pr-col li b{display:block;font-weight:700;color:var(--black)}
 .pr-col li small{color:var(--grey);font-size:12px}
 .pr-col li a{color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap;font-size:12.5px}
+.pr-phase{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--white);border:1px solid var(--rule);border-radius:100px;padding:8px 16px;margin:-4px 0 16px;font-size:13px;color:var(--grey);box-shadow:var(--sh-xs)}
+.pr-phase b{color:var(--black)}
+.pr-faire{margin-bottom:22px}
+.pr-faire li{align-items:center}
+.pr-faire li>i{flex:none;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-weight:900;color:#fff;font-size:13px;margin-right:2px}
+.pr-faire li>span{flex:1}
+.pr-faire .n-urgent>i{background:var(--red)}.pr-faire .n-jour>i{background:var(--amber)}.pr-faire .n-info>i{background:var(--blue)}
+.pr-faire li button{border:1.5px solid var(--rule);background:var(--white);border-radius:100px;padding:7px 14px;font:700 12.5px var(--body);color:var(--black);cursor:pointer;white-space:nowrap}
+.pr-faire li button:hover{border-color:var(--blue);color:var(--blue)}
+.pr-faire .pr-rien{padding:14px 16px;margin:0;color:var(--green);font-weight:700}
 .pr-col .pr-rien{padding:14px 16px;color:var(--grey-soft);font-size:13px}
 .pr-filtres{display:flex;gap:8px;flex-wrap:wrap}
 .pr-filtres button{border:1.5px solid var(--rule);background:var(--white);border-radius:100px;padding:8px 14px;font:700 13px var(--body);color:var(--grey);cursor:pointer;min-height:38px}
@@ -11490,6 +11500,49 @@ async function prPassage(id, bt){
     loadPointsRetrait(true);
   }catch(e){ bt.disabled = false; alert(e.message || 'Échec. Réessaie.'); }
 }
+/* Phase de la saison (playbook Cellule 1) : dépose 10–15 mai, pub 20 €/jour
+   dès la dépose, saison fin mai → 30 septembre, puis reprise des climatiseurs. */
+function prPhase(dateIso){
+  const [y, m, j] = dateIso.split('-').map(Number), md = m*100 + j;
+  const jours = (iso) => Math.round((Date.parse(iso) - Date.parse(dateIso)) / 864e5);
+  if(md < 510) return `<b>Avant la saison</b> · dépose des climatiseurs du 10 au 15 mai (J-${jours(y+'-05-10')}) · pub à lancer dès la dépose (20 €/jour)`;
+  if(md <= 515) return `<b>Dépose des climatiseurs</b> · 4 à 5 par point, sous housse bleue · pub lancée (20 €/jour)`;
+  if(md <= 930) return `<b>Saison en cours</b> · fin le 30 septembre (J-${jours(y+'-09-30')}) · agent tous les 10 jours`;
+  if(md <= 1015) return `<b>Reprise des climatiseurs</b> · passer chez chaque commerçant · couper la pub`;
+  return `<b>Hors saison</b> · signer les points pour mai (dépose du 10 au 15 mai)`;
+}
+/* « À faire aujourd'hui » : une ligne = une action, la plus urgente en haut. */
+function prAFaire(d){
+  const L = [], reels = d.points.filter(p => !p.test && !p.exemple), r = d.resume;
+  const mb = d.micro_box ? Math.max(0, d.micro_box.flotte - d.micro_box.en_points) : 0;
+  const jour = Number(d.date.slice(8, 10));
+  (d.signalements||[]).forEach(x => {
+    const panne = x.type === 'probleme_technique';
+    L.push({n: x.jours >= 1 ? 'urgent' : 'jour', i:'!', t:`${panne?'Panne':'Signalement'} · ${escHtml(x.point)}`,
+      s:`${escHtml(x.client)} · ${escHtml(x.description||'')}${panne?' · remplacer avec la micro-box ('+mb+' dispo)':''}${x.jours?' · depuis '+x.jours+' j':''}`,
+      b:`<button type="button" onclick="switchAdminTab('incidents')">Traiter</button>`});
+  });
+  (d.aujourdhui.retards||[]).forEach(l => L.push({n:'urgent', i:'!', t:`Retard · ${escHtml(l.client)}`, s:`${escHtml(l.point)} · ${l.jours_retard} j de retard`,
+    b: l.tel ? `<button type="button" onclick="location.href='tel:${escHtml(String(l.tel).replace(/\s/g,''))}'">Appeler</button>` : ''}));
+  reels.filter(p => p.a_virer_cents > 0).forEach(p => L.push({n: jour > 5 ? 'urgent' : 'jour', i:'€',
+    t:`Virer ${euros(p.a_virer_cents)} · ${escHtml(p.commercant ? p.commercant.nom : p.nom)}`,
+    s:`20 % du mois dernier · ${jour > 5 ? 'en retard (à virer entre le 1er et le 5)' : 'avant le 5'}${p.commercant && !p.commercant.rib_ok ? ' · RIB manquant' : ''}`,
+    b:`<button type="button" onclick="switchAdminTab('partenaires')">Virer</button>`}));
+  if(d.passages_table) reels.filter(p => p.jours_sans_passage == null || p.jours_sans_passage > d.entretien_jours).forEach(p => L.push({n:'jour', i:'🔧',
+    t:`Passage agent · ${escHtml(p.nom)}`, s: p.jours_sans_passage == null ? 'Jamais passé' : `Dernier passage il y a ${p.jours_sans_passage} j`,
+    b:`<button type="button" onclick="prPassage('${escHtml(p.id)}', this)">Passage fait</button>`}));
+  (d.remplissage||[]).filter(v => v.pub !== 'normale').forEach(v => L.push({n:'jour', i:'📣', t:`Pub · ${escHtml(v.ville)} à ${v.pct} %`,
+    s: v.pub === 'pause' ? 'Mettre la pub de la zone en pause' : 'Baisser la pub de la zone', b:''}));
+  if(r.a_reconditionner) L.push({n:'jour', i:'↩', t:`${r.a_reconditionner} appareil${r.a_reconditionner>1?'s':''} à reconditionner`, s:'Rendus au comptoir, à vérifier',
+    b:`<button type="button" onclick="window.open('/admin/cc-retours','_blank')">Voir</button>`});
+  reels.filter(p => !p.commercant).forEach(p => L.push({n:'info', i:'i', t:`Relier le commerçant · ${escHtml(p.nom)}`, s:'Sans fiche reliée, pas de commission ni d’espace partenaire',
+    b:`<button type="button" onclick="switchAdminTab('partenaires')">Ouvrir</button>`}));
+  reels.filter(p => p.commercant && !p.commercant.rib_ok && !(p.a_virer_cents > 0)).forEach(p => L.push({n:'info', i:'i', t:`RIB manquant · ${escHtml(p.commercant.nom)}`, s:'À demander avant le 1er virement', b:''}));
+  const ordre = {urgent:0, jour:1, info:2};
+  L.sort((a, b) => ordre[a.n] - ordre[b.n]);
+  return `<p class="section-title">À faire aujourd’hui${L.length?' · '+L.length:''}</p>
+    <div class="pr-col pr-faire">${L.length ? `<ul>${L.map(x => `<li class="n-${x.n}"><i aria-hidden="true">${x.i}</i><span><b>${x.t}</b><small>${x.s}</small></span>${x.b}</li>`).join('')}</ul>` : '<p class="pr-rien">✓ Tout est à jour.</p>'}</div>`;
+}
 function setPrFiltre(f){ PR_FILTRE = f; renderPointsRetrait(); }
 /* Parrainages : demandes de rappel venues d'un lien de parrainage. « Signé » active
    le parrainage (50 € au parrain et 50 € au nouveau, versés à la main avec le 1er virement). */
@@ -11515,26 +11568,20 @@ function renderPointsRetrait(){
   const d = PR_DATA, zone = document.getElementById('tab-pointsretrait'); if(!d) return;
   const r = d.resume, j = d.aujourdhui;
   const badge = document.getElementById('badge-pointsretrait');
-  if(badge){ badge.textContent = r.retards || ''; badge.classList.toggle('hidden', !r.retards); }
+  const urg = (r.retards||0) + (d.signalements||[]).length; if(badge){ badge.textContent = urg || ''; badge.classList.toggle('hidden', !urg); }
   const filtres = {tous:p => !p.test, ouverts:p => !p.test && !p.exemple, exemples:p => !p.test && p.exemple, test:p => p.test};
   const liste = d.points.filter(filtres[PR_FILTRE] || filtres.tous);
   const jour = new Date(d.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   zone.innerHTML = `
     <div class="pr-tete"><div><h2>Points de retrait</h2><p>Click &amp; Collect · ${escHtml(jour)}</p></div></div>
+    <div class="pr-phase">${prPhase(d.date)}${d.micro_box && r.ouverts ? ` · <b>Micro-box : ${Math.max(0, d.micro_box.flotte - d.micro_box.en_points)}</b> de secours (${d.micro_box.en_points}/${d.micro_box.flotte} en points)` : ''}</div>
+    ${prAFaire(d)}
     <div class="pr-tuiles">
       <div class="pr-tuile"><b>${r.ouverts}</b><span>point${r.ouverts>1?'s':''} ouvert${r.ouverts>1?'s':''}${r.exemples?' · '+r.exemples+' en exemple':''}</span></div>
       <div class="pr-tuile"><b>${r.dehors}</b><span>appareil${r.dehors>1?'s':''} chez des clients</span></div>
       <div class="pr-tuile${r.retards?' alerte':''}"><b>${r.retards}</b><span>retard${r.retards>1?'s':''}</span></div>
       <div class="pr-tuile${r.a_reconditionner?' a-faire':''}"><b>${r.a_reconditionner}</b><span>à reconditionner</span></div>
-      ${r.entretien_en_retard?`<div class="pr-tuile alerte"><b>${r.entretien_en_retard}</b><span>passage${r.entretien_en_retard>1?'s':''} agent en retard (+${d.entretien_jours} j)</span></div>`:''}
     </div>
-    ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
-    ${r.ouverts && d.saison ? (() => { const s = d.saison, pm = s.point_mort, pct = Math.min(100, Math.round(s.jours_machine / pm.max * 100)), ok = s.jours_machine >= pm.max, presque = s.jours_machine >= pm.min;
-      return `<p class="section-title">Saison · point mort</p><div class="pr-col" style="margin-bottom:8px;padding:16px 18px"><b style="font:900 26px var(--disp)">${s.jours_machine} <small style="font-size:14px;font-weight:600;color:var(--grey)">jours-machine loués</small></b>
-      <div class="stock-gauge" style="margin:10px 0 8px"><div class="stock-gauge-fill" style="width:${pct}%;${ok?'background:var(--green)':''}"></div></div>
-      <small style="color:var(--grey);font-weight:600">${ok?'Charges de la saison couvertes ✓':presque?'Presque : charges couvertes si le prix moyen reste haut':'Charges couvertes entre '+pm.min+' et '+pm.max+' jours-machine'} · charges 1 465 €/mois (box, agent, pub)</small></div>`; })() : ''}
-    ${(d.remplissage||[]).length ? `<p class="section-title">Remplissage · 7 prochains jours</p>
-    <div class="pr-col" style="margin-bottom:8px"><ul>${d.remplissage.map(v => `<li><span><b>${escHtml(v.ville)} · ${v.pct} %</b><small>${v.points} point${v.points>1?'s':''}</small></span><span class="pr-etat ${v.pub==='normale'?'ouvert':v.pub==='baisser'?'exemple':'ferme'}">${v.pub==='normale'?'Pub normale':v.pub==='baisser'?'Baisser la pub':'Pub en pause'}</span></li>`).join('')}</ul></div>` : ''}
     <p class="section-title">Aujourd’hui</p>
     <div class="pr-jour">
       ${prListe('Retraits','✓','vert',j.retraits,'Aucun retrait prévu.')}
@@ -11545,6 +11592,13 @@ function renderPointsRetrait(){
       <div class="pr-filtres">${[['tous','Tous'],['ouverts','Ouverts'],['exemples','Exemples'],['test','Test']].map(([k,t]) => `<button type="button" class="${PR_FILTRE===k?'on':''}" onclick="setPrFiltre('${k}')">${t}</button>`).join('')}</div>
     </div>
     ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
+    ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
+    ${r.ouverts && d.saison ? (() => { const s = d.saison, pm = s.point_mort, pct = Math.min(100, Math.round(s.jours_machine / pm.max * 100)), ok = s.jours_machine >= pm.max, presque = s.jours_machine >= pm.min;
+      return `<p class="section-title">Pilotage · point mort de la saison</p><div class="pr-col" style="margin-bottom:8px;padding:16px 18px"><b style="font:900 26px var(--disp)">${s.jours_machine} <small style="font-size:14px;font-weight:600;color:var(--grey)">jours-machine loués</small></b>
+      <div class="stock-gauge" style="margin:10px 0 8px"><div class="stock-gauge-fill" style="width:${pct}%;${ok?'background:var(--green)':''}"></div></div>
+      <small style="color:var(--grey);font-weight:600">${ok?'Charges de la saison couvertes ✓':presque?'Presque : charges couvertes si le prix moyen reste haut':'Charges couvertes entre '+pm.min+' et '+pm.max+' jours-machine'} · charges 1 465 €/mois (box, agent, pub)</small></div>`; })() : ''}
+    ${(d.remplissage||[]).length ? `<p class="section-title">Remplissage · 7 prochains jours</p>
+    <div class="pr-col" style="margin-bottom:8px"><ul>${d.remplissage.map(v => `<li><span><b>${escHtml(v.ville)} · ${v.pct} %</b><small>${v.points} point${v.points>1?'s':''}</small></span><span class="pr-etat ${v.pub==='normale'?'ouvert':v.pub==='baisser'?'exemple':'ferme'}">${v.pub==='normale'?'Pub normale':v.pub==='baisser'?'Baisser la pub':'Pub en pause'}</span></li>`).join('')}</ul></div>` : ''}
     ${prParrainages(d)}
     <p class="section-title">Outils</p>
     <div class="pr-outils">
@@ -11554,11 +11608,13 @@ function renderPointsRetrait(){
       <a class="pr-outil" href="/affiche-retrait" target="_blank" rel="noopener"><b>Toutes les affiches</b><span>QR code du comptoir</span></a>
     </div>
     <details class="pr-ouvrir"><summary>Ouvrir un nouveau point</summary><ol>
+      <li>Démo (QR code, numéro 0000), puis la convention signée sur papier, en 2 exemplaires : SIRET, RIB, horaires. Axe Nice–Cannes, un seul point par quartier.</li>
       <li>Ajouter le point dans <code>api/_lib/pointsRetrait.js</code> : adresse, horaires, téléphone, code partenaire, <code>exemple: false</code>.</li>
       <li>Créer le commerçant dans l’onglet Ambassadeurs, avec le même code partenaire.</li>
       <li>Imprimer l’affiche du comptoir (bouton « Affiche » de sa carte).</li>
       <li>Imprimer le flyer et le remettre en main propre (bouton « Flyer »).</li>
-      <li>Faire un essai complet : un retrait, puis un retour.</li>
+      <li>Déposer 4 à 5 climatiseurs (du 10 au 15 mai), sous housse bleue, gaine au-dessus.</li>
+      <li>Faire un essai complet : un retrait, puis un retour. Puis « Passage fait ».</li>
     </ol></details>`;
 }
 
