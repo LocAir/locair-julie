@@ -1098,48 +1098,65 @@ tr.bulk-selected td{background:var(--blue-lt)}
       <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" onclick="toggleMobileMenu(false)"></div>
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg> Accueil</button>
-        <!-- Groupé par intention (fréquence réelle d'usage), pas par table de
-             base de données : Piloter = ce qu'on regarde tous les jours,
-             Gérer = ce qu'on touche occasionnellement, Suivre = consultation,
-             rarement une action. Chaque groupe est un accordéon replié par
-             défaut (gain de place) — loadAlerts() le déplie tout seul et
-             pose un point rouge sur son titre dès qu'une alerte s'y trouve,
-             pour qu'une notification ne soit jamais cachée derrière un clic. -->
-        <details class="tabs-group" data-group="piloter">
-          <summary>Piloter<span class="tabs-group-dot hidden" id="group-dot-piloter"></span></summary>
+        <!-- Rangé par sujet (25/11/2026, « mettre de l'ordre ») : en haut ce
+             qu'on regarde tous les jours (ouvert par défaut), puis un groupe
+             par sujet. loadAlerts() ouvre le groupe et pose un point rouge
+             sur son titre dès qu'une alerte s'y trouve. -->
+        <details class="tabs-group" data-group="jour" open>
+          <summary>Aujourd’hui<span class="tabs-group-dot hidden" id="group-dot-jour"></span></summary>
           <div class="tabs-group-body">
             <button data-tab="livraisons" onclick="switchAdminTab('livraisons')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg> Missions<span class="tab-badge hidden" id="badge-livraisons"></span></button>
             <button data-tab="reservations" onclick="switchAdminTab('reservations')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg> Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
-            <button data-tab="pointsretrait" onclick="switchAdminTab('pointsretrait')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg> Points de retrait<span class="tab-badge hidden" id="badge-pointsretrait"></span></button>
+            <button data-tab="incidents" onclick="switchAdminTab('incidents')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Incidents<span class="tab-badge hidden" id="badge-incidents"></span></button>
             <button data-tab="communications" onclick="switchAdminTab('communications')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Communications<span class="tab-badge hidden" id="badge-communications"></span></button>
-            <button data-tab="julie" onclick="switchAdminTab('julie')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg> Julie</button>
-            <button data-tab="devis" onclick="switchAdminTab('devis')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><polyline points="14 2 14 8 20 8"/></svg> Devis</button>
           </div>
         </details>
-        <details class="tabs-group" data-group="gerer">
-          <summary>Gérer<span class="tabs-group-dot hidden" id="group-dot-gerer"></span></summary>
+        <details class="tabs-group" data-group="cc" open>
+          <summary>Click &amp; Collect<span class="tabs-group-dot hidden" id="group-dot-cc"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="pointsretrait" onclick="switchAdminTab('pointsretrait')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg> Points de retrait<span class="tab-badge hidden" id="badge-pointsretrait"></span></button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="clients">
+          <summary>Clients &amp; ventes<span class="tabs-group-dot hidden" id="group-dot-clients"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="clients" onclick="switchAdminTab('clients')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Clients</button>
+            <button data-tab="devis" onclick="switchAdminTab('devis')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><polyline points="14 2 14 8 20 8"/></svg> Devis</button>
+            <button data-tab="promotions" onclick="switchAdminTab('promotions')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8"/><path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg> Offres</button>
+            <button data-tab="vente" onclick="switchAdminTab('vente')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"/><circle cx="8" cy="8.5" r="1.5" fill="currentColor" stroke="none"/></svg> Vente</button>
+            <button data-tab="julie" onclick="switchAdminTab('julie')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg> Julie</button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="argent">
+          <summary>Argent<span class="tabs-group-dot hidden" id="group-dot-argent"></span></summary>
           <div class="tabs-group-body">
             <button data-tab="virements" onclick="switchAdminTab('virements')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M19 5a8.5 8.5 0 1 0 0 14"/><line x1="4" y1="10" x2="15" y2="10"/><line x1="4" y1="14" x2="13" y2="14"/></svg> Virements<span class="tab-badge hidden" id="badge-virements_total"></span></button>
-            <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg> Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
-            <button data-tab="partenaires" onclick="switchAdminTab('partenaires')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Ambassadeurs<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
-            <button data-tab="villes" onclick="switchAdminTab('villes')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20Z"/></svg> Villes</button>
             <button data-tab="tarifs" onclick="switchAdminTab('tarifs')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M19 5a8.5 8.5 0 1 0 0 14"/><line x1="4" y1="10" x2="15" y2="10"/><line x1="4" y1="14" x2="13" y2="14"/></svg> Tarifs</button>
-            <button data-tab="vente" onclick="switchAdminTab('vente')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"/><circle cx="8" cy="8.5" r="1.5" fill="currentColor" stroke="none"/></svg> Vente</button>
-            <button data-tab="promotions" onclick="switchAdminTab('promotions')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8"/><path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg> Offres</button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="equipe">
+          <summary>Équipe &amp; partenaires<span class="tabs-group-dot hidden" id="group-dot-equipe"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg> Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
+            <button data-tab="partenaires" onclick="switchAdminTab('partenaires')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
             <button data-tab="equipe" onclick="switchAdminTab('equipe')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.85"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="22" x2="9" y2="18"/><line x1="15" y1="22" x2="15" y2="18"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="14" x2="20" y2="14"/></svg> Équipe</button>
-            <button data-tab="clients" onclick="switchAdminTab('clients')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Clients</button>
             <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.4a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.72a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg> Tutoriels</button>
-            <button data-tab="emails" onclick="switchAdminTab('emails')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg> Emails</button>
-            <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg> Espace client</button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="materiel">
+          <summary>Matériel<span class="tabs-group-dot hidden" id="group-dot-materiel"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="stock" onclick="switchAdminTab('stock')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg> Stock</button>
+            <button data-tab="checklist" onclick="switchAdminTab('checklist')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Checklist du box</button>
             <button data-tab="checklistitems" onclick="switchAdminTab('checklistitems')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.9"><circle cx="12" cy="12" r="9.5"/><polyline points="8 12.5 10.8 15.3 16 9.5"/></svg> Checklists mission</button>
           </div>
         </details>
-        <details class="tabs-group" data-group="suivre">
-          <summary>Suivre<span class="tabs-group-dot hidden" id="group-dot-suivre"></span></summary>
+        <details class="tabs-group" data-group="reglages">
+          <summary>Réglages<span class="tabs-group-dot hidden" id="group-dot-reglages"></span></summary>
           <div class="tabs-group-body">
-            <button data-tab="stock" onclick="switchAdminTab('stock')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg> Stock</button>
-            <button data-tab="checklist" onclick="switchAdminTab('checklist')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Checklist box</button>
-            <button data-tab="incidents" onclick="switchAdminTab('incidents')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Incidents<span class="tab-badge hidden" id="badge-incidents"></span></button>
+            <button data-tab="villes" onclick="switchAdminTab('villes')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20Z"/></svg> Villes</button>
+            <button data-tab="emails" onclick="switchAdminTab('emails')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg> Emails</button>
+            <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg> Espace client</button>
           </div>
         </details>
       </div>
@@ -1175,14 +1192,14 @@ tr.bulk-selected td{background:var(--blue-lt)}
 
 <!-- Navigation mobile en bas d'écran (invisible sur desktop, où .tabs reste
      la barre latérale) — les 4 destinations les plus utilisées au quotidien
-     (mêmes libellés que le groupe "Piloter" + Accueil), "Plus" ouvre le
+     (Accueil, Missions, Réservations, Points de retrait), "Plus" ouvre le
      tiroir complet existant (toggleMobileMenu), tous les autres onglets y
      restent accessibles sans être dupliqués ici. -->
 <nav class="bottom-nav" id="bottom-nav">
   <button class="bn-item on" data-tab="accueil" onclick="switchAdminTab('accueil')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg></span>Accueil</button>
   <button class="bn-item" data-tab="livraisons" onclick="switchAdminTab('livraisons')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg></span>Missions</button>
   <button class="bn-item" data-tab="reservations" onclick="switchAdminTab('reservations')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg></span>Résa.</button>
-  <button class="bn-item" data-tab="stock" onclick="switchAdminTab('stock')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg></span>Stock</button>
+  <button class="bn-item" data-tab="pointsretrait" onclick="switchAdminTab('pointsretrait')"><span class="bn-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg></span>Points</button>
   <button class="bn-item" onclick="toggleMobileMenu()"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span>Plus<span class="bn-dot hidden" id="bn-plus-dot"></span></button>
 </nav>
 
@@ -2419,9 +2436,7 @@ async function loadAlerts(){
     // fermé passerait inaperçue. On déplie automatiquement le groupe
     // concerné et on pose un point rouge sur son titre, même logique que
     // le point sur le bouton ☰ juste en dessous.
-    updateGroupAlert('piloter', _groupTotal('piloter', d));
-    updateGroupAlert('gerer',   _groupTotal('gerer', d));
-    updateGroupAlert('suivre',  _groupTotal('suivre', d));
+    ['jour', 'argent', 'equipe'].forEach(g => updateGroupAlert(g, _groupTotal(g, d)));
     renderAlertsBanner(d);
     renderVirementMondayBanner();
     // Point rouge sur le bouton ☰ (mobile) : sur la barre horizontale
@@ -2561,21 +2576,24 @@ const _TAB_BADGE_MAP = {
   incidents: ['incidents'],
   communications: ['communications'],
 };
-// Onglet → groupe (accordéon Piloter/Gérer/Suivre) auquel il appartient —
+// Onglet → groupe (accordéon par sujet) auquel il appartient —
 // ouvrir un onglet doit aussi faire disparaître le point rouge du groupe
 // parent (ex. ouvrir "Virements" efface le point sur "Gérer"), qui jusqu'ici
 // restait affiché même après avoir consulté tout ce qu'il y avait à voir
 // à l'intérieur.
 const _TAB_GROUP_MAP = {
-  livraisons: 'piloter', reservations: 'piloter', communications: 'piloter',
-  virements: 'gerer', transporteurs: 'gerer', partenaires: 'gerer', villes: 'gerer', tarifs: 'gerer', promotions: 'gerer', equipe: 'gerer',
-  clients: 'gerer', tutoriels: 'gerer', emails: 'gerer', espaceclient: 'gerer', checklistitems: 'gerer',
-  stock: 'suivre', checklist: 'suivre', incidents: 'suivre',
+  livraisons: 'jour', reservations: 'jour', incidents: 'jour', communications: 'jour',
+  pointsretrait: 'cc',
+  clients: 'clients', devis: 'clients', promotions: 'clients', vente: 'clients', julie: 'clients',
+  virements: 'argent', tarifs: 'argent',
+  transporteurs: 'equipe', partenaires: 'equipe', equipe: 'equipe', tutoriels: 'equipe',
+  stock: 'materiel', checklist: 'materiel', checklistitems: 'materiel',
+  villes: 'reglages', emails: 'reglages', espaceclient: 'reglages',
 };
 function _groupTotal(group, d){
-  if(group==='piloter') return (d.reservations||0) + (d.livraisons||0) + (d.communications||0);
-  if(group==='gerer')   return (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0);
-  if(group==='suivre')  return (d.incidents||0);
+  if(group==='jour')   return (d.reservations||0) + (d.livraisons||0) + (d.communications||0) + (d.incidents||0);
+  if(group==='argent') return (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0);
+  if(group==='equipe') return (d.virements||0) + (d.partenaire_virements||0);
   return 0;
 }
 function _dismissTabBadges(tab){
