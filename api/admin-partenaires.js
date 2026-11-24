@@ -85,36 +85,43 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'create') {
-      const nom = (body.nom || '').trim();
+      const nom = String(body.nom || '').trim();
       if (!nom) return res.status(400).json({ error: 'Nom requis' });
       const taux = Math.min(100, Math.max(0, parseInt(body.taux_commission_pct) || 10));
-      const base = (body.code || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') || slugifyNom(nom);
-      const pinProvided = (body.pin || '').trim();
+      const codeDemande = String(body.code || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const base = codeDemande || slugifyNom(nom);
+      const pinProvided = String(body.pin || '').trim();
+      // Code secret choisi à la main : 4 à 8 chiffres (sinon trop facile à deviner).
+      if (pinProvided && !/^\d{4,8}$/.test(pinProvided)) return res.status(400).json({ error: 'Le code secret doit faire 4 à 8 chiffres.' });
 
       for (let attempt = 0; attempt < 5; attempt++) {
         const code     = attempt === 0 ? base : `${base}${crypto.randomInt(10, 100)}`;
         const pinPlain = pinProvided || String(crypto.randomInt(100000, 1000000));
         const { data: created, error } = await supabase.from('partenaires').insert({
           nom,
-          contact_nom:         (body.contact_nom || '').trim() || null,
-          email:               (body.email || '').trim().toLowerCase() || null,
-          telephone:           (body.telephone || '').trim() || null,
+          contact_nom:         String(body.contact_nom || '').trim() || null,
+          email:               String(body.email || '').trim().toLowerCase() || null,
+          telephone:           String(body.telephone || '').trim() || null,
           code,
           pin:        hashPin(pinPlain),
           pin_hashed: true,
           taux_commission_pct: taux,
-          titulaire_compte:    (body.titulaire_compte || '').trim() || null,
+          titulaire_compte:    String(body.titulaire_compte || '').trim() || null,
           iban:                normalizeIban(body.iban),
           bic:                 normalizeBic(body.bic),
         }).select('id, code').single();
         if (!error) {
-          await notifyPartenaireCredentials(supabase, { nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: pinPlain });
+          await notifyPartenaireCredentials(supabase, { nom, email: String(body.email || '').trim().toLowerCase(), code: created.code, pin: pinPlain });
           // Fiche créée : un parrainage en attente lui correspond ? (même
           // téléphone ou même commerce) → signé + notifications.
           const parrainage = await detecterParrainage(supabase, { id: created.id, nom, telephone: body.telephone });
           return res.status(200).json({ ok: true, code: created.code, pin: pinPlain, parrainage });
         }
         if (error.code !== '23505') throw error;
+        // Code choisi à la main (ex. celui de son point de retrait) déjà pris :
+        // on ne le change pas en silence, sinon le commerçant n'est plus relié
+        // à son point (ni commission, ni code retour dans son espace).
+        if (codeDemande) return res.status(409).json({ error: `Le code « ${codeDemande} » est déjà utilisé par un autre partenaire.` });
       }
       return res.status(500).json({ error: 'Impossible de générer un code unique, réessaie' });
     }
@@ -123,13 +130,13 @@ module.exports = async (req, res) => {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const patch = {};
-      if (body.nom != null)         patch.nom         = body.nom.trim();
-      if (body.contact_nom != null) patch.contact_nom = body.contact_nom.trim() || null;
-      if (body.email != null)       patch.email       = body.email.trim().toLowerCase() || null;
-      if (body.telephone != null)   patch.telephone   = body.telephone.trim() || null;
+      if (body.nom != null)         patch.nom         = String(body.nom).trim();
+      if (body.contact_nom != null) patch.contact_nom = String(body.contact_nom).trim() || null;
+      if (body.email != null)       patch.email       = String(body.email).trim().toLowerCase() || null;
+      if (body.telephone != null)   patch.telephone   = String(body.telephone).trim() || null;
       if (body.actif != null)       patch.actif       = Boolean(body.actif);
       if (body.taux_commission_pct != null) patch.taux_commission_pct = Math.min(100, Math.max(0, parseInt(body.taux_commission_pct) || 0));
-      if (body.code != null && body.code.trim()) patch.code = body.code.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (body.code != null && String(body.code).trim()) patch.code = String(body.code).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       let newPinPlain = null;
       if (body.pin != null && body.pin.trim()) {
         newPinPlain     = body.pin.trim();
