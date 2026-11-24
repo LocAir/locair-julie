@@ -55,8 +55,8 @@ Structure (24/11/2026, « démonstration du fonctionnement », 8 diapos) :
 mission → 1 · Le client réserve (le site) → 2 · Au comptoir (retrait :
 écran vert + pièce d'identité ; retour : code commerçant) → 3 · Ce que vous
 recevez (affiche QR, flyer, climatiseurs, espace partenaire) → 4 · Ce que
-vous gagnez (20 %) → 5 · L'essentiel (6 règles de la convention) → On
-démarre → **la démo en dernier**. Les autres diapos restent dans les
+vous gagnez (20 %) → 5 · L'essentiel (6 règles de la convention) → **la
+démo (test du QR code) → puis la signature** (« On démarre ? », en dernier). Les autres diapos restent dans les
 fichiers, hors de l'ordre. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
 le numéro **0000** sur ce point lance un mode démo dans le téléphone
 (`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
