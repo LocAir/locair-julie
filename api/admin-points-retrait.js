@@ -12,7 +12,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { POINTS_RETRAIT, pointFermeLe } = require('./_lib/pointsRetrait');
 const { codeRetour, numeroComptoir } = require('./_lib/clickCollect');
-const { todayParis, addDays } = require('./_lib/dates');
+const { todayParis, addDays, debutJourParisISO } = require('./_lib/dates');
 
 // Point mort de la saison (playbook Cellule 1 V3) : 1 465 €/mois de charges
 // (box, agent, pub) sur 4 mois = 313 à 369 jours-machine loués, selon le prix.
@@ -42,6 +42,7 @@ module.exports = async (req, res) => {
     }
     const auj = todayParis();
     const debutMois = auj.slice(0, 8) + '01';
+    const debutMoisISO = debutJourParisISO(debutMois); // minuit à Paris, comme l'espace partenaire
     const depuis = addDays(auj, -200); // couvre toute la saison (fin mai → fin septembre)
 
     // Réservations Click & Collect récentes ou en cours. Si une colonne
@@ -124,14 +125,14 @@ module.exports = async (req, res) => {
       });
 
       // Chiffre du mois : locations payées ce mois-ci (prolongations comprises).
-      const duMois = lesSiennes.concat(sesProlongations).filter((r) => String(r.created_at || '').slice(0, 10) >= debutMois);
+      const duMois = lesSiennes.concat(sesProlongations).filter((r) => String(r.created_at || '') >= debutMoisISO);
       const caMois = duMois.reduce((s, r) => s + (r.prix_total_cents || 0), 0);
       const comMois = duMois.reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
 
       const part = partenaires.find((x) => String(x.code || '').toLowerCase() === String(p.partenaire_code || '').toLowerCase()) || null;
       // 20 % des mois passés pas encore virés (à virer entre le 1er et le 5).
       const aVirer = lesSiennes.concat(sesProlongations)
-        .filter((r) => !r.partenaire_commission_payee && String(r.created_at || '').slice(0, 10) < debutMois)
+        .filter((r) => !r.partenaire_commission_payee && String(r.created_at || '') < debutMoisISO)
         .reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
       return {
         a_virer_cents: p.test || p.exemple ? 0 : aVirer,
