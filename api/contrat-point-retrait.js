@@ -2,7 +2,7 @@
 // retrait (lien de la dernière diapo de la présentation commerçants).
 // Pas de table : la demande part par email à Loc'Air (+ notification admin),
 // et le commerçant reçoit un récapitulatif. Loc'Air lui envoie ensuite le
-// contrat à signer. Seules les conditions déjà décidées sont écrites
+// convention à signer (sur papier, en rendez-vous). Seules les conditions déjà décidées sont écrites
 // (20 %, virement mensuel, entretien mensuel, nombre d'appareils selon la
 // place, reprise des appareils l'hiver, vol ou casse payés par Loc'Air sauf faute grave,
 // sans engagement).
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
     subject: `Nouveau point de retrait — ${d.commerce} (${d.ville})`,
     html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 8px">Contrat point de retrait à envoyer</h2>
-<p>${esc(d.gerant)} veut ouvrir un point de retrait. À faire : l’appeler, envoyer le contrat à signer, puis suivre « Ouvrir un nouveau point » (admin → Points de retrait).</p>
+<p>${esc(d.gerant)} veut ouvrir un point de retrait. À faire : l’appeler, passer signer la convention (papier, 2 exemplaires), puis suivre « Ouvrir un nouveau point » (admin → Points de retrait).</p>
 ${table}
 <p style="color:#4B5873;font-size:13px">Reçu le ${new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })} · locair.fr/contrat-point-retrait</p></div>`,
     senderName: "Loc'Air Site",
@@ -82,7 +82,7 @@ ${table}
     title: `Merci ${esc(prenom)} !`,
     intro: 'Votre demande de point de retrait est bien reçue.',
     bodyHtml: `
-      <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">On vous appelle.</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">Pour fixer le dépôt des climatiseurs. Le contrat à signer suit par email.</p></div>
+      <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">On vous appelle.</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">On passe chez vous signer la convention, sur papier. Prévoyez votre SIRET et votre RIB.</p></div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0" style="margin:4px 0 18px;border-collapse:separate"><tr>
         ${chiffre('20&nbsp;%', 'de chaque location, viré entre le 1er et le 5 du mois')}${chiffre('0&nbsp;€', 'à encaisser : le client paie en ligne')}${chiffre('0', 'engagement : vous arrêtez quand vous voulez')}
       </tr></table>

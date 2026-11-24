@@ -56,7 +56,12 @@ mission → 1 · Le client réserve (le site) → 2 · Au comptoir (retrait :
 écran vert + pièce d'identité ; retour : code commerçant) → 3 · Ce que vous
 recevez (affiche QR, flyer, climatiseurs, espace partenaire) → 4 · Ce que
 vous gagnez (20 %) → 5 · L'essentiel (6 règles de la convention) → **la
-démo (test du QR code) → puis la signature** (« On démarre ? », en dernier). Les autres diapos restent dans les
+démo (test du QR code) → puis la signature** (« On signe ensemble ? », en
+dernier). **Signature sur papier pour l'instant** (24/11/2026) : la convention
+imprimée en 2 exemplaires, signée en rendez-vous ; prévoir SIRET, RIB, horaires.
+Pas de signature électronique ni de QR code « Créer mon contrat » dans les
+présentations ; la page `/contrat-point-retrait` reste une simple demande de
+rappel. Les autres diapos restent dans les
 fichiers, hors de l'ordre. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
 le numéro **0000** sur ce point lance un mode démo dans le téléphone
 (`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
@@ -256,10 +261,10 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
 À rappeler au propriétaire à chaque nouveau commerçant (il l'a demandé le
 20/11/2026) :
 
-0. Le commerçant crée sa demande de contrat sur `locair.fr/contrat-point-retrait`
-   (lien et QR code de la dernière diapo de la présentation, sans
-   engagement). Loc'Air reçoit un email + une notification, l'appelle et
-   lui envoie le contrat à signer. Entretien des climatiseurs : un passage
+0. Le commerçant signe la convention **sur papier** (2 exemplaires), en
+   rendez-vous, après la démo. Il peut aussi laisser une demande sur
+   `locair.fr/contrat-point-retrait` : Loc'Air reçoit un email + une
+   notification, l'appelle et passe signer. Entretien des climatiseurs : un passage
    de l'agent tous les 10 jours (convention).
    Décidé le 22/11/2026 : nombre de climatiseurs selon la place du
    commerçant (fixé à la signature) ; fin septembre, Loc'Air reprend les climatiseurs
