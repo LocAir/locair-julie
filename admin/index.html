@@ -5162,12 +5162,31 @@ function nrCalcTotal(){
   const qte = Math.max(1, parseInt(document.getElementById('nr-qte')?.value) || 1);
   const isTech = (document.getElementById('nr-installation')?.value || '').startsWith('Technicien');
   const baseCents = Math.round(prCalcBase(days) * qte * 100);
+  // Remise pro selon la quantité (offre B2B, même barème que le site :
+  // _lib/pricing.js remiseQuantitePct) : entreprise + SIRET valide, sur la
+  // location seule. 10 appareils et plus (commande par téléphone) : −20 %.
+  const estPro = document.getElementById('nr-type')?.value === 'entreprise' && nrSiretValide(document.getElementById('nr-siret')?.value);
+  const remisePct = estPro ? (qte >= 10 ? 20 : qte >= 5 ? 15 : qte >= 3 ? 10 : 0) : 0;
+  const remiseProCents = Math.round(baseCents * remisePct / 100);
   const installCents = isTech ? 8000 : 0;
   const { cents: livraisonCents, label: livraisonLabel, horsZone } = nrLivraisonCents();
   // +60€, même montant que EXPRESS_FEE côté site (index.html) et api/checkout.js.
   const expressCents = _nrExpress ? 6000 : 0;
-  return { days, qte, isTech, baseCents, installCents, livraisonCents, livraisonLabel, horsZone, expressCents, totalCents: baseCents + installCents + livraisonCents + expressCents };
+  return { days, qte, isTech, baseCents, remisePct, remiseProCents, installCents, livraisonCents, livraisonLabel, horsZone, expressCents, totalCents: baseCents - remiseProCents + installCents + livraisonCents + expressCents };
 }
+// SIRET valide (14 chiffres, clé de Luhn ; exception La Poste) — même règle
+// que isSiretValide dans api/_lib/pricing.js.
+function nrSiretValide(v){
+  const s = String(v||'').replace(/\s/g,'');
+  if(!/^\d{14}$/.test(s)) return false;
+  if(s.startsWith('356000000')) return s.split('').reduce((a,c)=>a+Number(c),0) % 5 === 0;
+  let sum = 0;
+  for(let i=0;i<14;i++){ let d = Number(s[13-i]); if(i%2===1){ d*=2; if(d>9) d-=9; } sum += d; }
+  return sum % 10 === 0;
+}
+// La remise pro dépend du type de client et du SIRET : recalcul quand ils changent.
+document.addEventListener('input', e => { if(e.target && (e.target.id==='nr-siret' || e.target.id==='nr-type')) nrRecalcPrice(); });
+document.addEventListener('change', e => { if(e.target && e.target.id==='nr-type') nrRecalcPrice(); });
 function nrRecalcPrice(){
   const r = nrCalcTotal();
   const summary = document.getElementById('nr-cart-summary');
@@ -5191,7 +5210,7 @@ function nrRecalcPrice(){
   if(summary){
     summary.style.display = 'flex';
     const locEl = document.getElementById('nr-sum-location');
-    if(locEl) locEl.textContent = `${(r.baseCents/100).toFixed(2).replace('.', ',')} € (${r.days} j${r.qte>1?' × '+r.qte:''})`;
+    if(locEl) locEl.textContent = `${(r.baseCents/100).toFixed(2).replace('.', ',')} € (${r.days} j${r.qte>1?' × '+r.qte:''})` + (r.remisePct ? ` − ${r.remisePct} % pro = ${((r.baseCents - r.remiseProCents)/100).toFixed(2).replace('.', ',')} €` : '');
     const installEl = document.getElementById('nr-sum-install');
     if(installEl) installEl.textContent = r.isTech ? `${(r.installCents/100).toFixed(2).replace('.', ',')} €` : 'Incluse';
     const livrEl = document.getElementById('nr-sum-livraison');
