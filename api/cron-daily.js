@@ -1339,11 +1339,40 @@ async function annulerPanierClickCollect(supabase, stripe, resa) {
 }
 
 // ── Pièces d'identité orphelines ──────────────────────────────────────────
-// Pas encore automatisé : la liste des fichiers du stockage ne donne pas de
-// date fiable par dossier. À faire à la main depuis Supabase si besoin.
-// On ne supprime rien plutôt que de risquer d'effacer une pièce utile.
-async function effacerIdentitesOrphelines() {
-  return 'non automatisé';
+// Envoyées depuis la page Click & Collect, puis paiement abandonné : aucune
+// réservation n'y renvoie. La date d'envoi est dans le nom du dossier
+// (identites/<millisecondes>-<hasard>, voir upload-identite.js). Effacées
+// 48 h après l'envoi. Prudence : au moindre doute (liste illisible, requête
+// en erreur, nom inattendu), on n'efface RIEN.
+async function effacerIdentitesOrphelines(supabase) {
+  const bucket = supabase.storage.from('missions');
+  const { data: dossiers, error } = await bucket.list('identites', { limit: 1000 });
+  if (error || !Array.isArray(dossiers)) return 'liste illisible';
+  const limite = Date.now() - 48 * 3600000;
+  const vieux = dossiers.map((d) => d && d.name).filter((n) => {
+    const m = /^(\d{13})-[a-f0-9]{18}$/.exec(n || '');
+    return m && Number(m[1]) < limite;
+  });
+  if (!vieux.length) return 0;
+  // Dossiers encore rattachés à une réservation (colonne ou note de consigne) : on garde.
+  const gardes = new Set();
+  const a = await supabase.from('reservations').select('piece_identite_paths').not('piece_identite_paths', 'is', null);
+  if (a.error && !(a.error.code === '42703' || /does not exist/i.test(a.error.message || ''))) return 'réservations illisibles';
+  for (const r of a.data || []) for (const c of r.piece_identite_paths || []) gardes.add(String(c).split('/')[1]);
+  const b = await supabase.from('reservations').select('instructions_acces').ilike('instructions_acces', '%identites/%');
+  if (b.error) return 'réservations illisibles';
+  for (const r of b.data || []) for (const m of String(r.instructions_acces || '').matchAll(/identites\/([\w-]+)\//g)) gardes.add(m[1]);
+  let effaces = 0;
+  for (const nom of vieux.slice(0, 100)) {
+    if (gardes.has(nom)) continue;
+    const { data: fichiers, error: e2 } = await bucket.list(`identites/${nom}`, { limit: 10 });
+    if (e2 || !Array.isArray(fichiers)) continue;
+    const chemins = fichiers.map((f) => f && f.name).filter((n) => /^(recto|verso|passeport)\.\w+$/.test(n || '')).map((n) => `identites/${nom}/${n}`);
+    if (!chemins.length) continue;
+    const { error: e3 } = await bucket.remove(chemins);
+    if (!e3) effaces++;
+  }
+  return effaces;
 }
 
 // ── Click & Collect : rappels la veille du retrait et la veille du retour ─
@@ -1483,3 +1512,4 @@ async function rappelerFiltreClickCollect(supabase, todayStr) {
   }
   return n;
 }
+module.exports.effacerIdentitesOrphelines = effacerIdentitesOrphelines; // pour les tests
