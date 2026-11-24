@@ -35,6 +35,33 @@
 //             '/points/nice-port-2.webp']). Prises par le propriétaire ou le
 //             commerçant, AVEC SON ACCORD — jamais de photo Google Maps.
 //             Vide = rien ne change à l'écran.
+// ── CELLULES (playbook Cellule 1 V3 + présentation investisseurs V2) ──
+// Une cellule = un blueprint reproductible : une flotte (40 climatiseurs),
+// 8 à 10 commerces, 1 micro-box (stock de secours), sa pub et son agent.
+// Ouvrir une nouvelle cellule = ajouter UNE ligne ici, puis donner son id
+// (champ « cellule ») aux points qui en font partie. L'admin (Points de
+// retrait) affiche alors une carte par cellule et se filtre dessus.
+//   flotte          climatiseurs de la cellule (points + micro-box)
+//   charges         €/mois pendant la saison : box, agent d'entretien, pub
+//   mois_saison     durée de la saison active (fin mai → fin septembre ≈ 4)
+//   jours_saison    jours actifs (120) → capacité = flotte × jours_saison
+//   depose          [début, fin] de la dépose chez les commerçants (MM-JJ)
+//   fin_saison      dernier jour de la saison (MM-JJ)
+//   prix_jour       prix moyen repère par jour (haut / bas) pour le point mort
+//   pub_jour        budget pub par jour, lancé à la dépose
+const CELLULES = [
+  { id: 'c1', nom: 'Cellule 1 · Nice–Cannes', flotte: 40, charges: { box: 165, agent: 700, pub: 600 }, mois_saison: 4, jours_saison: 120,
+    depose: ['05-10', '05-15'], fin_saison: '09-30', prix_jour: { haut: 23.43, bas: 19.86 }, pub_jour: 20 },
+];
+// Point mort d'une cellule en jours-machine : charges de la saison ÷ marge
+// par jour après les 20 % du commerçant (playbook : 313 à 369 pour la Cellule 1).
+function pointMortCellule(c, commissionPct) {
+  const charges = (c.charges.box + c.charges.agent + c.charges.pub) * c.mois_saison;
+  const net = (p) => p * (1 - (commissionPct == null ? 20 : commissionPct) / 100);
+  return { charges_saison: charges, min: Math.round(charges / net(c.prix_jour.haut)), max: Math.round(charges / net(c.prix_jour.bas)) };
+}
+function getCellule(id) { return CELLULES.find((c) => c.id === id) || CELLULES[0]; }
+
 const STOCK_PAR_DEFAUT = 4;
 const COMMISSION_POINT_PCT = 20;
 // Cellule 1 (playbook V3, 24/11/2026) : l'axe Nice–Cannes seulement, 8 à 10 points.
@@ -60,6 +87,7 @@ POINTS_RETRAIT.forEach((p) => {
   if (!Number.isFinite(p.stock)) p.stock = STOCK_PAR_DEFAUT;
   if (!Number.isFinite(p.commission_pct)) p.commission_pct = COMMISSION_POINT_PCT;
   if (!p.zone) p.zone = 'cote-azur';
+  if (!p.cellule) p.cellule = 'c1'; // tous les points actuels : Cellule 1 (Nice–Cannes)
   if (!Array.isArray(p.ouverture)) p.ouverture = [9, 19];
   if (!('partenaire_code' in p)) p.partenaire_code = null;
   if (!Array.isArray(p.photos)) p.photos = [];
@@ -104,4 +132,4 @@ function tauxAffiche(partenaire) {
   return pt ? pt.commission_pct : (partenaire ? partenaire.taux_commission_pct ?? null : null);
 }
 
-module.exports = { pointDuPartenaire, tauxAffiche, POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };
+module.exports = { CELLULES, getCellule, pointMortCellule, pointDuPartenaire, tauxAffiche, POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };
