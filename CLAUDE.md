@@ -164,8 +164,9 @@ Comptée sur le nombre d'appareils d'**une même commande** :
   valide** (le site vérifie le numéro). Sans SIRET valide, prix normal.
 - **Climatiseur : programmée sur le site** (`reserver.html` pour le total
   affiché, `api/checkout.js` pour le montant payé, barème dans
-  `api/_lib/pricing.js` → `remiseQuantitePct`). Les trois doivent rester
-  identiques. En ligne, on peut prendre 5 appareils au maximum ; 10 et
+  `api/_lib/pricing.js` → `remiseQuantitePct`) et prix proposé dans l'admin
+  pour une commande par téléphone (`admin/index.html` → `nrCalcTotal`,
+  jusqu'à 20 appareils, −20 % dès 10). Tous doivent rester identiques. En ligne, on peut prendre 5 appareils au maximum ; 10 et
   plus passe par un devis.
 - **PortaSplit : sur devis** (téléphone ou WhatsApp). Le paiement en ligne
   du PortaSplit ne gère qu'un appareil à la fois.
