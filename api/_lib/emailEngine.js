@@ -18,6 +18,7 @@ function fmtDate(iso, lang) {
     return `${d.getUTCFullYear()}年${months[d.getUTCMonth()]}${d.getUTCDate()}日（${days[d.getUTCDay()]}）`;
   }
   if (lang === 'ru') return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (lang === 'es') return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
