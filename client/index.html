@@ -1545,6 +1545,8 @@ function renderDashboard(d){
   // Récupération
   const todayIso = todayParisStr();
   const recupEarlyPickerShown = d.recuperation && !['fait','en_route','arrivee'].includes(d.recuperation.statut) && d.recuperation.date_prevue > todayIso;
+  // Au plus tôt : demain (après 20h, après-demain), et après la livraison — même règle que le serveur.
+  const recupMinDate = (()=>{const h=parseInt(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Paris',hour:'2-digit',hourCycle:'h23'}).format(new Date()),10);const dt=new Date(todayIso+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()+(h<20?1:2));let m=dt.toISOString().slice(0,10);if(d.livraison&&d.livraison.date_prevue&&d.livraison.date_prevue>=m){const l=new Date(d.livraison.date_prevue+'T12:00:00Z');l.setUTCDate(l.getUTCDate()+1);m=l.toISOString().slice(0,10);}return m;})();
   const recupMaxDate = recupEarlyPickerShown ? (()=>{const dt=new Date(d.recuperation.date_prevue+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()-1);return dt.toISOString().slice(0,10);})() : '';
 
   const recupFaite = d.recuperation && d.recuperation.statut === 'fait';
@@ -1624,7 +1626,7 @@ function renderDashboard(d){
       </div>
     </div>
   </div>` : '';
-  const earlyRecupHtml = recupEarlyPickerShown ? `<div class="action-card action-card--recup">
+  const earlyRecupHtml = recupEarlyPickerShown && recupMinDate <= recupMaxDate ? `<div class="action-card action-card--recup">
     <button class="action-toggle" onclick="toggleAction('recup')">
       <div class="action-toggle-left">
         <div class="action-ico-wrap">${_ICO.package}</div>
@@ -1642,7 +1644,7 @@ function renderDashboard(d){
           Récupération prévue le <strong style="color:var(--black2)">${escHtml(fmtDate(d.recuperation.date_prevue))}</strong>
         </div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date souhaitée</div>
-        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" oninput="updateEarlyRecupBtnState()" onchange="updateEarlyRecupBtnState()" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);outline:none;transition:border-color .15s"/>
+        <input type="date" id="early-recup-date" min="${escHtml(recupMinDate)}" max="${escHtml(recupMaxDate)}" oninput="updateEarlyRecupBtnState()" onchange="updateEarlyRecupBtnState()" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);outline:none;transition:border-color .15s"/>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:9px">Créneau</div>
         <div class="creneau-btns">
           <div id="lbl-creneau-1" class="creneau-opt" onclick="selectCreneau('8h – 10h')">8h – 10h</div>
