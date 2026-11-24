@@ -20,7 +20,7 @@ const PRODUITS = `### Climatiseur mobile
 - Frais de livraison et installation : 60 € (aller + retour inclus)
 - Puissance : 9 000 – 12 000 BTU · jusqu'à 15 m²
 - Zéro perçage, zéro travaux · kit fenêtre inclus · installé en moins de 20 minutes
-- Livraison J+1 ou Express 2 h selon dispo · Durée minimum : 7 jours
+- Livraison le lendemain (commande avant 20h) ou Express 2 h le jour même (commande avant 18h, +60 €), selon dispo · Durée minimum : 7 jours
 - Réservation : https://locair.fr/reservation-climatiseur
 
 ### Click & Collect (climatiseur mobile à retirer soi-même)

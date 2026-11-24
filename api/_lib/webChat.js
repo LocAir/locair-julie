@@ -9,6 +9,8 @@
 
 const { getSupabase } = require('./supabase');
 const { callClaude }  = require('./anthropic');
+const { pushToAdmin } = require('./push');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./ratelimit');
 
 const MAX_MESSAGES = 20;
 const MAX_MSG_LENGTH = 1000;
@@ -43,10 +45,15 @@ function makeChatHandler({ systemPrompt, sessionPrefix, logTag }) {
 
       const history  = data?.messages || [];
 
-      // Limiter les abus : 100 messages max par session
-      if (history.length >= 100) {
-        return res.json({ reply: 'Cette session a atteint sa limite. Écrivez-nous directement sur WhatsApp ou appelez le 06 63 79 87 56. 🙏' });
-      }
+      // Limiter les abus (chaque message coûte un appel à l'IA). L'historique
+      // est coupé à 20 messages, donc on compte à part : 100 messages par
+      // conversation et par jour, 60 par heure et par adresse IP.
+      const LIMITE = 'Cette conversation a atteint sa limite. Écrivez-nous sur WhatsApp ou appelez le 06 63 79 87 56. 🙏';
+      try {
+        const ip = getClientIp(req);
+        if (await isRateLimited(supabase, `chat-s:${key}`, 100, 1440) || await isRateLimited(supabase, `chat-ip:${ip}`, 60, 60)) return res.json({ reply: LIMITE });
+        await Promise.all([recordFailedAttempt(supabase, `chat-s:${key}`), recordFailedAttempt(supabase, `chat-ip:${ip}`)]);
+      } catch (_e) { /* ne jamais couper le chat pour un souci de limitation */ }
 
       const messages = [...history, { role: 'user', content: text }];
       const result = await callClaude({ system: systemPrompt, messages, maxTokens: 400, model: 'claude-haiku-4-5' });
@@ -62,6 +69,11 @@ function makeChatHandler({ systemPrompt, sessionPrefix, logTag }) {
       const reply  = raw
         ? (idx !== -1 ? raw.slice(0, idx).trimEnd() : raw)
         : 'Je rencontre un souci technique. Contactez Aly au 06 63 79 87 56. 🙏';
+
+      // Julie a promis « je transmets à Aly » : on le prévient vraiment.
+      if (idx !== -1) {
+        pushToAdmin(supabase, { title: `💬 Julie a besoin de toi (${logTag})`, body: text.slice(0, 150), tag: `escalade-${key}` }).catch(() => {});
+      }
 
       const trimmed = [...messages, { role: 'assistant', content: reply }].slice(-MAX_MESSAGES);
       await supabase.from('whatsapp_conversations').upsert({
