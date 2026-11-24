@@ -1,3 +1,4 @@
+const { debutJourParisISO } = require('./dates');
 const crypto = require('crypto');
 const { generateFactureTransporteurPdf, fmtDate, eur } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
@@ -35,8 +36,10 @@ function periodeBounds(periodeDebut, periodeFin) {
   const finExclusive = new Date(periodeFin + 'T00:00:00Z');
   finExclusive.setUTCDate(finExclusive.getUTCDate() + 1);
   return {
-    gte: `${periodeDebut}T00:00:00+02:00`,
-    lt:  finExclusive.toISOString().slice(0, 10) + 'T00:00:00+02:00',
+    // Minuit à Nice, été comme hiver (avant : +02:00 fixe, une mission du
+    // dimanche 23h en hiver tombait dans la facture de la semaine suivante).
+    gte: debutJourParisISO(periodeDebut),
+    lt:  debutJourParisISO(finExclusive.toISOString().slice(0, 10)),
   };
 }
 
