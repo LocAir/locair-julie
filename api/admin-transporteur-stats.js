@@ -2,7 +2,7 @@ const { getSupabase }    = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
-const { todayParis } = require('./_lib/dates');
+const { todayParis, heureParis } = require('./_lib/dates');
 
 // ── Performance score (100 pts) ────────────────────────────────────────────
 // 5 critères pondérés : acceptation (25), complétion (30), notif client (20),
@@ -54,43 +54,43 @@ const FR_M = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov
 const FR_D = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 
 function buildChart(missions, period) {
-  const now = new Date();
+  const now = new Date(todayParis() + 'T12:00:00Z'); // aujourd'hui à Nice, calculs en UTC
 
   if (period === 'hour') {
     const b = Array.from({length:24}, (_,h) => ({ label:`${String(h).padStart(2,'0')}h`, total:0 }));
-    missions.forEach(m => { if (m.fait_at) b[new Date(m.fait_at).getHours()].total++; });
+    missions.forEach(m => { if (m.fait_at) b[heureParis(m.fait_at)].total++; });
     return b;
   }
   if (period === 'day') {
     const map = {};
-    for (let i=6;i>=0;i--){ const d=new Date(now);d.setDate(d.getDate()-i);d.setHours(0,0,0,0);const k=d.toISOString().slice(0,10);map[k]={label:`${FR_D[d.getDay()]} ${d.getDate()}`,total:0}; }
+    for (let i=6;i>=0;i--){ const d=new Date(now);d.setUTCDate(d.getUTCDate()-i);d.setUTCHours(0,0,0,0);const k=d.toISOString().slice(0,10);map[k]={label:`${FR_D[d.getUTCDay()]} ${d.getUTCDate()}`,total:0}; }
     missions.forEach(m => { if (map[m.date_prevue]) map[m.date_prevue].total++; });
     return Object.values(map);
   }
   if (period === 'week') {
     const map = {};
     for (let i=3;i>=0;i--){
-      const d=new Date(now);d.setDate(d.getDate()-i*7);
-      const dy=d.getDay()||7;d.setDate(d.getDate()-dy+1);d.setHours(0,0,0,0);
+      const d=new Date(now);d.setUTCDate(d.getUTCDate()-i*7);
+      const dy=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()-dy+1);d.setUTCHours(0,0,0,0);
       const k=d.toISOString().slice(0,10);
-      const wn=Math.ceil(((d-new Date(d.getFullYear(),0,1))/86400000+new Date(d.getFullYear(),0,1).getDay()+1)/7);
+      const wn=Math.ceil(((d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/86400000+new Date(Date.UTC(d.getUTCFullYear(),0,1)).getUTCDay()+1)/7);
       map[k]={label:`S.${wn}`,total:0};
     }
     missions.forEach(m => {
-      const md=new Date(m.date_prevue);const dy=md.getDay()||7;
-      md.setDate(md.getDate()-dy+1);md.setHours(0,0,0,0);
+      const md=new Date(m.date_prevue);const dy=md.getUTCDay()||7;
+      md.setUTCDate(md.getUTCDate()-dy+1);md.setUTCHours(0,0,0,0);
       const k=md.toISOString().slice(0,10);if(map[k])map[k].total++;
     });
     return Object.values(map);
   }
   if (period === 'month') {
     const map = {};
-    for (let i=11;i>=0;i--){ const d=new Date(now);d.setDate(1);d.setMonth(d.getMonth()-i);const k=d.toISOString().slice(0,7);map[k]={label:FR_M[d.getMonth()],total:0}; }
+    for (let i=11;i>=0;i--){ const d=new Date(now);d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-i);const k=d.toISOString().slice(0,7);map[k]={label:FR_M[d.getUTCMonth()],total:0}; }
     missions.forEach(m => { const k=m.date_prevue.slice(0,7);if(map[k])map[k].total++; });
     return Object.values(map);
   }
   // year
-  const y=now.getFullYear(),map={};
+  const y=now.getUTCFullYear(),map={};
   for (let i=4;i>=0;i--){ const yr=y-i;map[yr]={label:String(yr),total:0}; }
   missions.forEach(m => { const yr=parseInt(m.date_prevue.slice(0,4));if(map[yr])map[yr].total++; });
   return Object.values(map);
@@ -98,23 +98,23 @@ function buildChart(missions, period) {
 
 // ── Plages de dates pour la période + période précédente ──────────────────
 function periodRange(period) {
-  const now = new Date();
+  const now = new Date(todayParis() + 'T12:00:00Z'); // aujourd'hui à Nice, calculs en UTC
   let start, prevStart;
   if (period === 'hour') {
-    start=new Date(now);start.setHours(0,0,0,0);
-    prevStart=new Date(start);prevStart.setDate(prevStart.getDate()-1);
+    start=new Date(now);start.setUTCHours(0,0,0,0);
+    prevStart=new Date(start);prevStart.setUTCDate(prevStart.getUTCDate()-1);
   } else if (period === 'day') {
-    start=new Date(now);start.setDate(now.getDate()-6);start.setHours(0,0,0,0);
-    prevStart=new Date(start);prevStart.setDate(prevStart.getDate()-7);
+    start=new Date(now);start.setUTCDate(now.getUTCDate()-6);start.setUTCHours(0,0,0,0);
+    prevStart=new Date(start);prevStart.setUTCDate(prevStart.getUTCDate()-7);
   } else if (period === 'week') {
-    start=new Date(now);start.setDate(now.getDate()-27);start.setHours(0,0,0,0);
-    prevStart=new Date(start);prevStart.setDate(prevStart.getDate()-28);
+    start=new Date(now);start.setUTCDate(now.getUTCDate()-27);start.setUTCHours(0,0,0,0);
+    prevStart=new Date(start);prevStart.setUTCDate(prevStart.getUTCDate()-28);
   } else if (period === 'year') {
-    start=new Date(now);start.setFullYear(now.getFullYear()-4);start.setMonth(0);start.setDate(1);start.setHours(0,0,0,0);
-    prevStart=new Date(start);prevStart.setFullYear(prevStart.getFullYear()-5);
+    start=new Date(now);start.setUTCFullYear(now.getUTCFullYear()-4);start.setUTCMonth(0);start.setUTCDate(1);start.setUTCHours(0,0,0,0);
+    prevStart=new Date(start);prevStart.setUTCFullYear(prevStart.getUTCFullYear()-5);
   } else { // month (default)
-    start=new Date(now);start.setMonth(now.getMonth()-11);start.setDate(1);start.setHours(0,0,0,0);
-    prevStart=new Date(start);prevStart.setMonth(prevStart.getMonth()-12);
+    start=new Date(now);start.setUTCMonth(now.getUTCMonth()-11);start.setUTCDate(1);start.setUTCHours(0,0,0,0);
+    prevStart=new Date(start);prevStart.setUTCMonth(prevStart.getUTCMonth()-12);
   }
   return { start: start.toISOString().slice(0,10), prevStart: prevStart.toISOString().slice(0,10) };
 }
