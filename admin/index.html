@@ -1565,6 +1565,8 @@ async function adminTeamLogin(){
     const r = await fetch(API('admin-user-login'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Code incorrect');
+    // Compte « prospecteur » : il n'ouvre que l'appli terrain, pas l'admin.
+    if(d.role === 'prospecteur'){ try{ localStorage.setItem('prosp_token', d.token); }catch(e){} location.href = '/prospection'; return; }
     onAdminLoginSuccess(d.token, d.role, d.nom);
   }catch(e){
     errEl.textContent = e.message;
