@@ -35,6 +35,45 @@ module.exports = async (req, res) => {
       if (e) return res.status(500).json({ error: /passages_agent|42P01/.test(e.message + (e.code || '')) ? 'Table passages_agent à créer dans Supabase' : e.message });
       return res.status(200).json({ ok: true });
     }
+    // Convention, art. 7 : transfert de plein droit à la société d'exploitation.
+    // Notification écrite (email + SMS) à chaque commerçant des points ouverts :
+    // dénomination, SIRET/RCS et date d'effet. « apercu » montre le texte et les
+    // destinataires sans rien envoyer ; « envoyer » envoie (une fois par commerçant).
+    if (b.action === 'transfert') {
+      if (a.role !== 'administrateur') return res.status(403).json({ error: 'Réservé au propriétaire.' });
+      const nom = String(b.denomination || '').trim().slice(0, 120);
+      const siret = String(b.siret || '').replace(/\s/g, '').slice(0, 20);
+      const date = String(b.date_effet || '').slice(0, 10);
+      if (nom.length < 2 || !/^\d{9}(\d{5})?$/.test(siret) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return res.status(400).json({ error: 'Dénomination, SIRET (ou SIREN) et date d’effet requis.' });
+      }
+      const codes = POINTS_RETRAIT.filter((p) => !p.test && !p.exemple && p.partenaire_code).map((p) => String(p.partenaire_code).toLowerCase());
+      const { data: parts } = codes.length ? await supabase.from('partenaires').select('id, nom, email, telephone, actif').in('code', codes) : { data: [] };
+      const dest = (parts || []).filter((p) => p.actif !== false && (p.email || p.telephone));
+      const dateFr = new Date(date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      const sirFmt = siret.length === 14 ? `${siret.slice(0, 3)} ${siret.slice(3, 6)} ${siret.slice(6, 9)} ${siret.slice(9)}` : siret.replace(/(\d{3})(?=\d)/g, '$1 ');
+      const sms = `Loc'Air : comme prévu à l'article 7 de notre convention, elle est transférée à ${nom} (SIRET ${sirFmt}) à partir du ${dateFr}. Rien ne change pour vous : mêmes règles, mêmes 20 %, mêmes contacts. Une question ? 06 63 79 87 56`;
+      const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
+<h2 style="color:#1A5EDB;margin:0 0 12px">Loc’Air devient ${nom.replace(/[<>&]/g, '')}</h2>
+<p>Comme prévu à l’<b>article 7</b> de notre convention de partenariat, la convention, le matériel et vos virements sont transférés à :</p>
+<p style="margin:14px 0;padding:14px 16px;background:#EFF4FD;border-radius:12px"><b>${nom.replace(/[<>&]/g, '')}</b><br>SIRET / RCS : ${sirFmt}<br>À partir du <b>${dateFr}</b></p>
+<p><b>Rien ne change pour vous</b> : mêmes règles, mêmes 20 %, mêmes contacts, même espace partenaire. Vos relevés et vos virements viendront de ${nom.replace(/[<>&]/g, '')}.</p>
+<p style="color:#4B5873;font-size:13px">Loc’Air · 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`;
+      if (b.etape !== 'envoyer') return res.status(200).json({ apercu: true, destinataires: dest.map((p) => p.nom), sms, html });
+      const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
+      const cle = `transfert_${siret}`;
+      let envoyes = 0;
+      for (const p of dest) {
+        const { data: deja } = await supabase.from('email_log').select('id').eq('scenario', cle).eq('destinataire', String(p.id)).limit(1);
+        if (deja && deja.length) continue;
+        let okEnvoi = false;
+        if (p.email) okEnvoi = !!(await sendBrevoEmail({ to: p.email, subject: `Votre convention Loc’Air : transfert à ${nom}`, html, senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com' }).catch(() => ({}))).ok || okEnvoi;
+        if (p.telephone) okEnvoi = !!(await sendBrevoSms({ to: p.telephone, content: sms }).catch(() => ({}))).ok || okEnvoi;
+        await supabase.from('email_log').insert({ scenario: cle, canal: 'email', destinataire: String(p.id), modele: 'transfert_societe', statut: okEnvoi ? 'envoye' : 'erreur', contenu: sms }).then(() => {}, () => {});
+        if (okEnvoi) envoyes++;
+      }
+      return res.status(200).json({ ok: true, envoyes, total: dest.length });
+    }
     const auj = todayParis();
     const debutMois = auj.slice(0, 8) + '01';
     const debutMoisISO = debutJourParisISO(debutMois); // minuit à Paris, comme l'espace partenaire

@@ -306,6 +306,60 @@ async function runRecapPartenaires(supabase) {
   return { partenaires: entries.length, total_cents: grandTotal, sans_rib: sansRib };
 }
 
+// Relevé récapitulatif envoyé à CHAQUE commerçant le 1er du mois
+// (convention, art. 2 : « versées par virement entre le 1er et le 5 du mois
+// suivant sur relevé récapitulatif » ; les encaissements de mai figurent sur
+// le relevé de juin). Locations payées le mois précédent (heure de Paris),
+// annulées et remboursées exclues. Une seule fois par commerçant et par mois.
+async function runReleveCommercants(supabase) {
+  const { debutJourParisISO, todayParis } = require('./_lib/dates');
+  const auj = todayParis();
+  const [y, m] = auj.split('-').map(Number);
+  const pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
+  const debut = debutJourParisISO(`${py}-${String(pm).padStart(2, '0')}-01`);
+  const fin = debutJourParisISO(`${y}-${String(m).padStart(2, '0')}-01`);
+  const mois = MOIS_FR[pm - 1], moisVirement = MOIS_FR[m - 1];
+  const cle = `releve_partenaire_${py}-${String(pm).padStart(2, '0')}`;
+
+  const { data: resas, error } = await supabase.from('reservations')
+    .select('partenaire_id, prix_total_cents, partenaire_commission_cents, source, created_at')
+    .not('partenaire_id', 'is', null).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
+    .gte('created_at', debut).lt('created_at', fin);
+  if (error) throw error;
+  const par = {};
+  for (const r of resas || []) {
+    if (!(r.partenaire_commission_cents > 0)) continue;
+    const x = par[r.partenaire_id] || (par[r.partenaire_id] = { locations: 0, ca: 0, com: 0 });
+    if (r.source !== 'site_prolongation') x.locations++;
+    x.ca += r.prix_total_cents || 0; x.com += r.partenaire_commission_cents || 0;
+  }
+  const ids = Object.keys(par).map(Number);
+  if (!ids.length) return { envoyes: 0 };
+  const { data: partenaires } = await supabase.from('partenaires').select('id, nom, email, iban, actif').in('id', ids);
+  const eur = (c) => (c / 100).toFixed(2).replace('.', ',') + ' €';
+  let envoyes = 0;
+  for (const p of partenaires || []) {
+    if (!p.email || p.actif === false) continue;
+    const { data: deja } = await supabase.from('email_log').select('id').eq('scenario', cle).eq('destinataire', p.email).limit(1);
+    if (deja && deja.length) continue;
+    const x = par[p.id], ribOk = !!(p.iban && String(p.iban).trim());
+    const ligne = (k, v, fort) => `<tr><td style="padding:10px 0;border-bottom:1px solid #E3E9F4;color:#4B5873">${k}</td><td style="padding:10px 0;border-bottom:1px solid #E3E9F4;text-align:right${fort ? ';font-size:18px' : ''}"><b>${v}</b></td></tr>`;
+    const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
+<h2 style="color:#1A5EDB;margin:0 0 6px">Votre relevé de ${escHtml(mois)}</h2>
+<p style="margin:0 0 14px;color:#4B5873">${escHtml(p.nom || '')}</p>
+<table style="width:100%;border-collapse:collapse;font-size:15px">
+${ligne('Locations', String(x.locations))}${ligne('Encaissé par Loc’Air', eur(x.ca))}${ligne('Votre part', eur(x.com), true)}
+</table>
+<p style="margin:16px 0">${ribOk ? `Virement entre le 1<sup>er</sup> et le 5 ${escHtml(moisVirement)}.` : `<b style="color:#B42318">Il nous manque votre RIB.</b> Répondez à cet email avec votre RIB : on vous vire aussitôt.`}</p>
+<p style="margin:16px 0"><a href="https://www.locair.fr/partenaire" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:100px">Mon espace</a></p>
+<p style="color:#4B5873;font-size:13px">Loc’Air · 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`;
+    const r = await sendBrevoEmail({ to: p.email, subject: `Votre relevé Loc’Air de ${mois} : ${eur(x.com)}`, html, senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com' }).catch((e) => ({ ok: false, error: e.message }));
+    await supabase.from('email_log').insert({ scenario: cle, canal: 'email', destinataire: p.email, modele: 'releve_partenaire', statut: r && r.ok ? 'envoye' : 'erreur', sent_at: new Date().toISOString() }).then(() => {}, () => {});
+    if (r && r.ok) envoyes++;
+  }
+  return { envoyes };
+}
+
 // Conservé comme endpoint indépendant (déclenchable manuellement avec
 // CRON_SECRET) même si non planifié directement — voir cron-daily.js qui
 // l'appelle le 1er de chaque mois.
@@ -323,3 +377,4 @@ module.exports = async (req, res) => {
 module.exports.runMonthlyRecap = runMonthlyRecap;
 module.exports.runDormantClientsWinback = runDormantClientsWinback;
 module.exports.runRecapPartenaires = runRecapPartenaires;
+module.exports.runReleveCommercants = runReleveCommercants;

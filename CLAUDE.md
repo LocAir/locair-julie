@@ -371,6 +371,13 @@ retrait : une carte par cellule (occupation vs point mort, remplissage
 20 % commerçants, micro-box) ; un clic filtre tout l'écran sur la cellule.
 Ouvrir une cellule = une ligne dans `CELLULES` + `cellule: 'c2'` sur ses
 points. Point mort calculé : charges × mois ÷ (prix repère × 0,8).
+Relevé récapitulatif (convention art. 2) : le 1er du mois, chaque
+commerçant reçoit par email son relevé du mois précédent (locations, encaissé,
+sa part, date du virement ou RIB manquant) — `runReleveCommercants`
+(`api/cron-monthly.js`, lancé par `cron-daily.js`). Transfert à la société
+d'exploitation (art. 7) : Admin → Points de retrait → « Transfert à la
+société d'exploitation » (aperçu puis envoi email + SMS à chaque commerçant
+d'un point ouvert ; propriétaire seulement ; jamais deux fois).
 Page `click-and-collect.html` : si le point choisi est complet aux dates
 choisies, bouton « Prendre {point le plus proche libre} · à X km » (cherche
 parmi les 3 points ouverts les plus proches, même calcul que le paiement).
