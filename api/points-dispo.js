@@ -5,7 +5,7 @@
 // Jamais le nombre exact d'appareils : seulement ces 3 états.
 // Un point d'exemple n'a pas d'état (il n'est pas encore ouvert).
 const { getSupabase } = require('./_lib/supabase');
-const { POINTS_RETRAIT } = require('./_lib/pointsRetrait');
+const { POINTS_RETRAIT, horsSaison, getCellule } = require('./_lib/pointsRetrait');
 const { occupationParPoint } = require('./_lib/clickCollect');
 
 function demainParis() {
@@ -13,6 +13,16 @@ function demainParis() {
   const d = new Date(auj + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
+}
+// Hors saison (ex. novembre), « demain » n'est pas réservable : l'état
+// affiché est celui de la 1re semaine de la saison (retrait le jour de
+// l'ouverture), la date que le calendrier de la page propose.
+function fenetre(p, debut, fin) {
+  if (!horsSaison(p, debut, fin)) return [debut, fin];
+  const c = getCellule(p.cellule), y = Number(debut.slice(0, 4));
+  const finS = `${y}-${c.fin_saison || '09-30'}`;
+  const d = `${debut > finS || plus(debut, 7) > finS ? y + 1 : y}-${c.ouverture || '05-16'}`;
+  return [d, plus(d, 7)];
 }
 function plus(iso, n) { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 
@@ -26,10 +36,15 @@ module.exports = async (req, res) => {
   const etats = {};
   if (ouverts.length) {
     try {
-      const occ = await occupationParPoint(getSupabase(), ouverts, debut, fin, { avecAttente: true });
-      for (const p of ouverts) {
-        const libres = Math.max(0, (p.stock || 0) - (occ[p.id] || 0));
-        etats[p.id] = libres >= 2 ? 'dispo' : libres === 1 ? 'dernier' : 'complet';
+      const groupes = {};
+      for (const p of ouverts) { const [d, f] = fenetre(p, debut, fin); (groupes[d + '|' + f] = groupes[d + '|' + f] || []).push(p); }
+      for (const [cle, pts] of Object.entries(groupes)) {
+        const [d, f] = cle.split('|');
+        const occ = await occupationParPoint(getSupabase(), pts, d, f, { avecAttente: true });
+        for (const p of pts) {
+          const libres = Math.max(0, (p.stock || 0) - (occ[p.id] || 0));
+          etats[p.id] = libres >= 2 ? 'dispo' : libres === 1 ? 'dernier' : 'complet';
+        }
       }
     } catch (e) {
       // lecture impossible : pas d'état plutôt qu'un faux « complet »
