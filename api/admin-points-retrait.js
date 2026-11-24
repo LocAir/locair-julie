@@ -18,8 +18,12 @@ const { todayParis, addDays } = require('./_lib/dates');
 // (box, agent, pub) sur 4 mois = 313 à 369 jours-machine loués, selon le prix.
 const POINT_MORT = { min: 313, max: 369 };
 const ENTRETIEN_JOURS = 10;
+// Cellule 1 : 40 climatiseurs. Ce qui n'est pas déposé dans un point reste
+// dans la micro-box (stock de secours pour remplacer une panne).
+const FLOTTE_CELLULE = 40;
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
-const CHAMPS = 'id, ref, prenom, nom, tel, point_retrait_id, date_debut, date_fin, quantite, statut, remis_at, rendu_at, prix_total_cents, partenaire_commission_cents, created_at, source';
+const CHAMPS = 'id, ref, prenom, nom, tel, point_retrait_id, date_debut, date_fin, quantite, statut, remis_at, rendu_at, prix_total_cents, partenaire_commission_cents, partenaire_commission_payee, created_at, source';
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -83,6 +87,21 @@ module.exports = async (req, res) => {
       (pas || []).forEach((x) => { if (!dernierPassage[x.point_id]) dernierPassage[x.point_id] = x.fait_le; });
     }
 
+    // Signalements ouverts (casse, panne, manque…) sur des locations Click & Collect.
+    const resaPoint = new Map(resas.map((r) => [r.id, r]));
+    let signalements = [];
+    {
+      const { data: inc } = await supabase.from('incidents').select('id, reservation_id, type, description, created_at, statut')
+        .in('statut', INCIDENT_OPEN_STATUSES).order('created_at', { ascending: true }).limit(300);
+      signalements = (inc || []).filter((i) => resaPoint.has(i.reservation_id)).map((i) => {
+        const r = resaPoint.get(i.reservation_id);
+        const pt = POINTS_RETRAIT.find((x) => x.id === r.point_retrait_id);
+        return { id: i.id, type: i.type, ref: r.ref, client: client(r), point: pt ? pt.nom : '', test: !!(pt && pt.test),
+          description: String(i.description || '').replace(/^\[[^\]]*\]\s*/, '').slice(0, 140),
+          jours: Math.max(0, Math.round((Date.parse(auj) - Date.parse(String(i.created_at).slice(0, 10))) / 864e5)) };
+      }).filter((x) => !x.test);
+    }
+
     const points = POINTS_RETRAIT.map((p) => {
       // Les lignes « prolongation » ne sont pas des appareils en plus : la
       // location d'origine porte déjà la nouvelle date de fin (webhook.js).
@@ -110,7 +129,12 @@ module.exports = async (req, res) => {
       const comMois = duMois.reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
 
       const part = partenaires.find((x) => String(x.code || '').toLowerCase() === String(p.partenaire_code || '').toLowerCase()) || null;
+      // 20 % des mois passés pas encore virés (à virer entre le 1er et le 5).
+      const aVirer = lesSiennes.concat(sesProlongations)
+        .filter((r) => !r.partenaire_commission_payee && String(r.created_at || '').slice(0, 10) < debutMois)
+        .reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
       return {
+        a_virer_cents: p.test || p.exemple ? 0 : aVirer,
         id: p.id, nom: p.nom, ville: p.ville, adresse: p.adresse, horaires: p.horaires,
         exemple: !!p.exemple, test: !!p.test, ferme_aujourdhui: pointFermeLe(p, auj),
         stock: p.stock || 0, libres: Math.max(0, (p.stock || 0) - occupe), dehors, a_venir: aVenir, a_reconditionner: recond,
@@ -161,6 +185,8 @@ module.exports = async (req, res) => {
         entretien_en_retard: passagesTable ? entretienEnRetard : 0,
       },
       saison: { jours_machine: joursMachine, point_mort: POINT_MORT },
+      micro_box: { flotte: FLOTTE_CELLULE, en_points: POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).reduce((s, p) => s + (p.stock || 0), 0) },
+      signalements,
       passages_table: passagesTable,
       entretien_jours: ENTRETIEN_JOURS,
       aujourdhui,
