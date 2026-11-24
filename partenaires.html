@@ -90,7 +90,9 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
         <button type="button" data-n="4" aria-pressed="false">4<span>CLIMS</span></button>
         <button type="button" data-n="5" aria-pressed="false">5<span>CLIMS</span></button>
       </div>
-      <p class="aide">Stock fixe, sans rotation. Environ 40 × 40 cm par appareil.</p>
+      <button type="button" class="lien" id="a-autre" style="background:none;border:0;width:100%;cursor:pointer;font:700 15px 'DM Sans',sans-serif">Un autre nombre ?</button>
+      <div id="a-autre-box" hidden><label for="a-n">Nombre de climatiseurs</label><input id="a-n" type="number" inputmode="numeric" min="1" max="20" placeholder="Ex. 2 ou 6"></div>
+      <p class="aide">Stock fixe, sans rotation, environ 40 × 40 cm par appareil. Il peut évoluer ensuite, d’un commun accord.</p>
       <label for="a-email">E-mail <span style="font-weight:500;color:var(--ink-2)">(facultatif — pour recevoir la convention)</span></label>
       <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="vous@commerce.fr">
       <button class="btn" id="a-ok" type="button" disabled>OK — J’accepte</button>
@@ -176,7 +178,7 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
   function erreur(el, t){ el.textContent = t || ''; el.hidden = !t; }
   function montrer(f){
     fiche = f;
-    if (f.signe){ $('f-capa').textContent = (f.capacite || '—') + ' climatiseurs'; $('f-pdf').href = '/api/prospection?s=' + S; if (f.email) $('f-texte').textContent = 'Une copie part sur ' + f.email + '.'; return ecran('e-fini'); }
+    if (f.signe){ $('f-capa').textContent = (f.capacite || '—') + ' climatiseur' + (f.capacite > 1 ? 's' : ''); $('f-pdf').href = '/api/prospection?s=' + S; if (f.email) $('f-texte').textContent = 'Une copie part sur ' + f.email + '.'; return ecran('e-fini'); }
     if (f.enseigne) $('a-enseigne').textContent = f.enseigne + ' · climatiseurs en Click & Collect.';
     if (f.capacite){ capa = f.capacite; preparerSignature(); return ecran('e-signer'); }
     ecran('e-accord');
@@ -206,6 +208,12 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
       if (navigator.vibrate) navigator.vibrate(10);
     });
   });
+  $('a-autre').addEventListener('click', function(){ $('a-autre-box').hidden = false; $('a-n').focus(); });
+  $('a-n').addEventListener('input', function(){
+    var n = parseInt(this.value, 10);
+    document.querySelectorAll('.capa button').forEach(function(x){ x.setAttribute('aria-pressed', String(Number(x.dataset.n) === n)); });
+    capa = n >= 1 && n <= 20 ? n : 0; $('a-ok').disabled = !capa;
+  });
   $('a-ok').addEventListener('click', function(){
     var b = this; b.disabled = true; erreur($('a-err'));
     api({action:'accepter', s:S, capacite:capa, email:$('a-email').value})
@@ -217,7 +225,7 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
   var toile = $('s-toile'), ctx, trace = false, encre = false;
   function preparerSignature(){
     $('s-enseigne').textContent = (fiche && fiche.enseigne) || 'Votre commerce';
-    $('s-capa').textContent = capa + ' climatiseurs';
+    $('s-capa').textContent = capa + ' climatiseur' + (capa > 1 ? 's' : '');
     $('s-lire').href = '/api/prospection?s=' + S;
     setTimeout(dimensionner, 0);
   }

@@ -100,6 +100,7 @@ const POINTS_RETRAIT = [
 // stock, une commission et une zone, même si la ligne ne les écrit pas.
 POINTS_RETRAIT.forEach((p) => {
   if (!Number.isFinite(p.stock)) p.stock = STOCK_PAR_DEFAUT;
+  p.stock_code = p.stock; // valeur de départ ; l'admin peut la changer (_lib/stockPoints.js)
   if (!Number.isFinite(p.commission_pct)) p.commission_pct = COMMISSION_POINT_PCT;
   if (!p.zone) p.zone = 'cote-azur';
   if (!p.cellule) p.cellule = 'c1'; // tous les points actuels : Cellule 1 (Nice–Cannes)

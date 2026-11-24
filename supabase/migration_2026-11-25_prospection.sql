@@ -16,7 +16,7 @@ create table if not exists prospection_points (
   tel             text,
   email           text,
   adresse         text,
-  capacite        int check (capacite between 3 and 5),
+  capacite        int check (capacite between 1 and 20),
   accepte_at      timestamptz,
   photo_path      text,
   lat             double precision,

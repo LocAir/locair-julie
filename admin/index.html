@@ -11510,7 +11510,7 @@ function prCarte(p){
   const c = p.commercant;
   return `<div class="pr-carte${p.exemple?' exemple':''}">
     <div class="pr-c-haut"><div><b>${escHtml(p.nom)}</b><small>${escHtml(p.adresse)}<br>${escHtml(p.horaires||'')}</small></div><span class="pr-etat ${etat[0]}">${etat[1]}</span></div>
-    <div class="pr-stock"><span class="pr-pts" aria-hidden="true">${pts}</span><span>${p.libres} libre${p.libres>1?'s':''} <small>sur ${p.stock}${p.dehors?' · '+p.dehors+' chez des clients':''}${p.a_venir?' · '+p.a_venir+' réservé'+(p.a_venir>1?'s':''):''}</small></span></div>
+    <div class="pr-stock"><span class="pr-pts" aria-hidden="true">${pts}</span><span>${p.libres} libre${p.libres>1?'s':''} <small>sur ${p.stock}${p.stock_modifie?' (changé, au départ '+p.stock_code+')':''}${p.dehors?' · '+p.dehors+' chez des clients':''}${p.a_venir?' · '+p.a_venir+' réservé'+(p.a_venir>1?'s':''):''}${p.surbooke?' · <b style="color:var(--red,#B42318)">'+p.pic_60j+' loués en même temps à venir</b>':''}</small></span></div>
     <dl class="pr-infos">
       <div><dt>Commerçant</dt><dd class="${c?'':'manque'}">${c ? escHtml(c.nom) + (c.rib_ok?'':' · RIB manquant') : 'Aucun relié'}</dd></div>
       ${p.mois.locations?`<div><dt>Ce mois</dt><dd>${p.mois.locations} location${p.mois.locations>1?'s':''}${p.mois.commission_cents==null?'':' · '+euros(p.mois.commission_cents)+' pour lui ('+p.commission_pct+' %)'}</dd></div>`:''}
@@ -11523,6 +11523,7 @@ function prCarte(p){
       <a href="/admin/flyers-commercants?p=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Flyer</a>
       <a href="/retrait?p=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Comptoir</a>
       ${!p.exemple && PR_DATA.passages_table ? `<button type="button" onclick="prPassage('${escHtml(p.id)}', this)">Passage fait</button>` : ''}
+      ${!p.exemple && PR_DATA.stock_table ? `<button type="button" onclick="prStock(${escAttr(JSON.stringify(p.id))}, ${p.stock}, ${escAttr(JSON.stringify(p.nom))})">Stock</button>` : ''}
     </div>
   </div>`;
 }
@@ -11628,6 +11629,11 @@ function prAFaireListe(d){
     s: v.pub === 'pause' ? 'Mettre la pub de la zone en pause' : 'Baisser la pub de la zone', b:''}));
   if(r.a_reconditionner) L.push({n:'jour', i:'↩', t:`${r.a_reconditionner} appareil${r.a_reconditionner>1?'s':''} à reconditionner`, s:'Rendus au comptoir, à vérifier',
     b:`<button type="button" onclick="window.open('/admin/cc-retours','_blank')">Voir</button>`});
+  reels.filter(p => p.surbooke).forEach(p => L.push({n:'urgent', i:'!', t:`Stock dépassé · ${escHtml(p.nom)}`,
+    s:`${p.pic_60j} climatiseurs loués en même temps à venir pour ${p.stock} au point : ajouter un appareil (accord du gérant) ou déplacer des clients`,
+    b:`<button type="button" onclick="prStock(${escAttr(JSON.stringify(p.id))}, ${p.stock}, ${escAttr(JSON.stringify(p.nom))})">Stock</button>`}));
+  (d.cellules||[]).filter(c => c.flotte_depassee).forEach(c => L.push({n:'urgent', i:'!', t:`Flotte dépassée · ${escHtml(c.nom)}`,
+    s:`${c.en_points} climatiseurs annoncés dans les points pour ${c.flotte} dans la flotte : baisser un stock ou ajouter des appareils à la flotte`, b:''}));
   reels.filter(p => !p.commercant).forEach(p => L.push({n:'info', i:'i', t:`Relier le commerçant · ${escHtml(p.nom)}`, s:'Sans fiche reliée, pas de commission ni d’espace partenaire',
     b:`<button type="button" onclick="switchAdminTab('partenaires')">Ouvrir</button>`}));
   reels.filter(p => p.commercant && !p.commercant.rib_ok && !(p.a_virer_cents > 0)).forEach(p => L.push({n:'info', i:'i', t:`RIB manquant · ${escHtml(p.commercant.nom)}`, s:'À demander avant le 1er virement', b:''}));
@@ -11714,6 +11720,8 @@ function renderPointsRetrait(){
     </div>
     ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
     ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
+    ${(PR_DATA.stock_historique||[]).length ? `<p class="section-title">Changements de stock</p><div class="pr-col" style="margin-bottom:8px"><ul>${PR_DATA.stock_historique.map(h => `<li><span><b>${escHtml(h.point)} · ${h.ancien ?? '—'} → ${h.nouveau}</b><small>${escHtml(h.raison||'')} · ${h.accord_gerant?'gérant d’accord':''} · ${escHtml(h.par||'')} · ${new Date(h.created_at).toLocaleDateString('fr-FR')}</small></span></li>`).join('')}</ul></div>` : ''}
+    ${PR_DATA.stock_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Stock modifiable : table à créer dans Supabase (SQL du 25/11).</p>':''}
 `;
   else if(PR_ONGLET === 'terrain') corps = '<div id="pr-terrain"><p class="empty">Chargement…</p></div>';
   else if(PR_ONGLET === 'pilotage') corps = `
@@ -11816,6 +11824,28 @@ async function prTerrain(){
       <p style="margin:0;font-size:13.5px;color:var(--grey)">« Merci ! » + la convention signée en pièce jointe + la prochaine étape (dépose du 10 au 15 mai). Copie à contact@locair.fr.</p>
     </details>`;
 }
+// Stock d'un point : modifiable avec l'accord du gérant (trace + e-mail au commerçant).
+async function prStock(id, actuel, nom){
+  const v = prompt(`Stock de ${nom} : combien de climatiseurs ? (actuellement ${actuel})`, String(actuel));
+  if(v === null) return;
+  const stock = Number(String(v).trim());
+  if(!Number.isInteger(stock) || stock < 0 || stock > 30){ showToast('Un nombre entre 0 et 30.', 'error'); return; }
+  const raison = prompt('Pourquoi ? (ex. place en plus dans la réserve)', '');
+  if(raison === null) return;
+  if(!confirm(`Le gérant de ${nom} est d’accord pour passer de ${actuel} à ${stock} climatiseurs ?`)) return;
+  const envoyer = async (forcer) => {
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'stock', point_id:id, stock, raison, accord:true, forcer})});
+    const j = await r.json().catch(() => ({}));
+    if(r.status === 409 && j.confirmer && !forcer){
+      if(confirm(j.error + '\n\nChanger quand même ? (il faudra déplacer ces clients)')) return envoyer(true);
+      return;
+    }
+    if(!r.ok) throw new Error(j.error || 'Erreur');
+    showToast(`Stock : ${j.ancien} → ${j.nouveau} ✓${j.commercant_prevenu ? ' · commerçant prévenu par e-mail' : ''}`, 'success');
+    loadPointsRetrait(true);
+  };
+  try{ await envoyer(false); }catch(e){ showToast(e.message, 'error'); }
+}
 async function ptEnvoyer(id, email){
   const e = prompt('E-mail du commerçant :', email || '');
   if(e === null) return;
@@ -11826,7 +11856,7 @@ async function ptStatut(id, statut, capaActuelle){
   let signataire = '', capacite = capaActuelle || null;
   if(statut === 'signe'){
     signataire = prompt('Signée sur papier par (nom & qualité) :', ''); if(signataire === null) return;
-    if(!capacite){ const c = prompt('Combien de climatiseurs ? (3, 4 ou 5)', '4'); if(c === null) return; capacite = Number(c); }
+    if(!capacite){ const c = prompt('Combien de climatiseurs ?', '4'); if(c === null) return; capacite = Number(c); }
   }
   try{ await ptApi({action:'statut', id, statut, signataire, capacite}); showToast('Fiche mise à jour ✓', 'success'); prTerrain(); }
   catch(x){ showToast(x.message, 'error'); }

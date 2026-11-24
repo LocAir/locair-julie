@@ -72,6 +72,8 @@ function picDeJours(lignes, debut, fin) {
 // cours (moins de 30 min). false = seulement le confirmé (signal de prix).
 const CHAMPS_OCC = 'id, point_retrait_id, quantite, statut, source, created_at, date_debut, date_fin';
 async function occupationParPoint(supabase, points, debut, fin, options = {}) {
+  // Stock modifiable depuis l'admin : relu ici, avant toute comparaison au stock.
+  await require('./stockPoints').chargerStocks(supabase).catch(() => {});
   const avecAttente = options.avecAttente !== false;
   const limiteAttente = new Date(Date.now() - ATTENTE_MAX_MIN * 60000).toISOString();
   const res = {};
@@ -105,6 +107,7 @@ async function occupationParPoint(supabase, points, debut, fin, options = {}) {
 // → true si la réservation `id` tient dans le stock, chaque jour.
 // En cas de doute (lecture impossible), on la garde : le webhook revérifie.
 async function tientDansLeStock(supabase, point, debut, fin, id, avecAttente = true) {
+  await require('./stockPoints').chargerStocks(supabase).catch(() => {});
   const limiteAttente = new Date(Date.now() - ATTENTE_MAX_MIN * 60000).toISOString();
   let q = supabase.from('reservations').select('id, quantite, statut, source, created_at, date_debut, date_fin')
     .eq('point_retrait_id', point.id).in('statut', ['confirmee', 'en_attente']);

@@ -332,7 +332,17 @@ validé dans Stripe.
 Contact des commerçants : **partenaires.locair@outlook.com** (pages et emails
 partenaires, réponses des emails envoyés aux commerçants ; les notifications
 internes restent sur contact@locair.fr). Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
-septembre** (≈ 120 jours), stock fixe **3 à 5 climatiseurs** par point (3, 4 ou 5 choisi par le commerçant à la signature, 25/11/2026 ; selon
+septembre** (≈ 120 jours), stock fixe par point (souvent 3, 4 ou 5, mais
+**pas rigide**, décidé le 25/11/2026 : nombre fixé à la signature, de 1 à
+20, puis **modifiable à tout moment depuis l'admin avec l'accord du gérant** :
+bouton « Stock » de la carte du point, raison obligatoire, historique gardé
+(`stock_points`, `stock_points_historique`,
+`supabase/migration_2026-11-25_stock_points.sql`, `api/_lib/stockPoints.js` ;
+le chiffre de `pointsRetrait.js` n'est que la valeur de départ), e-mail de
+confirmation au commerçant. Contrôle quotidien (« À faire ») : « Stock
+dépassé » quand les locations prévues sur 60 jours dépassent le stock d'un
+point, « Flotte dépassée » quand les points annoncent plus de climatiseurs
+que la flotte de la cellule ; selon
 la place, ≈ 40 × 40 cm chacun, sans rotation), rangés contre un mur sous
 **housse bleue unie sans logo**, gaine au-dessus ; retrait et retour **au
 même point** ; agent Loc'Air **tous les 10 jours** ; 20 % virés **entre le
@@ -405,7 +415,8 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
    Cannes) et touche « Nouvelle visite » : QR code de session.
 2. **3 · 4 · 5 + OK** : le commerçant scanne avec son téléphone
    (`/partenaires?s=…`), lit les règles, choisit **3, 4 ou 5
-   climatiseurs** (stock fixe), met son e-mail s'il veut, touche
+   climatiseurs** (gros boutons ; « Un autre nombre ? » de 1 à 20 ; stock
+   modifiable ensuite dans l'admin), met son e-mail s'il veut, touche
    « OK — J'accepte ». Le prospecteur le voit tout de suite.
 3. **1 photo + GPS** (emplacement contre le mur, ou devanture) : la fiche
    est créée, sans saisie obligatoire. Pas de « OK » (gérant absent) :
