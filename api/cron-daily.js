@@ -1374,13 +1374,22 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
         const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
         const nomPoint = pt ? pt.nom : T('votre point de retrait', 'your pick-up point', 'tu punto de recogida');
         const n = Math.max(1, r.quantite || 1);
-        const sms = n > 1
-          ? T(`Loc'Air : votre location se termine demain. Rapportez les ${n} climatiseurs au point ${nomPoint}, en scannant le QR code du comptoir. Envie de les garder ? Prolongez : ${lien}`,
-            `Loc'Air: your rental ends tomorrow. Bring the ${n} air conditioners back to ${nomPoint} and scan the QR code at the counter. Want to keep them? Extend: ${lien}`,
-            `Loc'Air: tu alquiler termina mañana. Devuelve los ${n} aparatos en ${nomPoint} y escanea el código QR del mostrador. ¿Quieres quedártelos? Amplía: ${lien}`)
-          : T(`Loc'Air : votre location se termine demain. Rapportez le climatiseur au point ${nomPoint}, en scannant le QR code du comptoir. Envie de le garder ? Prolongez : ${lien}`,
-            `Loc'Air: your rental ends tomorrow. Bring the air conditioner back to ${nomPoint} and scan the QR code at the counter. Want to keep it? Extend: ${lien}`,
-            `Loc'Air: tu alquiler termina mañana. Devuelve el aire acondicionado en ${nomPoint} y escanea el código QR del mostrador. ¿Quieres quedártelo? Amplía: ${lien}`);
+        // heure de fermeture du point : après, le jour de retard est compté
+        const h = pt && pt.ouverture ? pt.ouverture[1] : 19;
+        const avant = T(` avant ${h}h`, ` before ${h > 12 ? h - 12 + 'pm' : h + 'am'}`, ` antes de las ${h}:00`);
+        // fin de saison : plus de prolongation possible, on ne la propose pas
+        const lendemain = require('./_lib/dates').addDays(r.date_fin, 1);
+        const prolongeable = !(pt && require('./_lib/pointsRetrait').horsSaison(pt, r.date_debut, lendemain));
+        const garder = !prolongeable ? '' : n > 1
+          ? T(` Envie de les garder ? Prolongez : ${lien}`, ` Want to keep them? Extend: ${lien}`, ` ¿Quieres quedártelos? Amplía: ${lien}`)
+          : T(` Envie de le garder ? Prolongez : ${lien}`, ` Want to keep it? Extend: ${lien}`, ` ¿Quieres quedártelo? Amplía: ${lien}`);
+        const sms = (n > 1
+          ? T(`Loc'Air : votre location se termine demain. Rapportez les ${n} climatiseurs au point ${nomPoint}${avant}, en scannant le QR code du comptoir.`,
+            `Loc'Air: your rental ends tomorrow. Bring the ${n} air conditioners back to ${nomPoint}${avant} and scan the QR code at the counter.`,
+            `Loc'Air: tu alquiler termina mañana. Devuelve los ${n} aparatos en ${nomPoint}${avant} y escanea el código QR del mostrador.`)
+          : T(`Loc'Air : votre location se termine demain. Rapportez le climatiseur au point ${nomPoint}${avant}, en scannant le QR code du comptoir.`,
+            `Loc'Air: your rental ends tomorrow. Bring the air conditioner back to ${nomPoint}${avant} and scan the QR code at the counter.`,
+            `Loc'Air: tu alquiler termina mañana. Devuelve el aire acondicionado en ${nomPoint}${avant} y escanea el código QR del mostrador.`)) + garder;
         const rs = await sendBrevoSms({ to: r.tel, content: sms }).catch((e) => ({ ok: false, error: e.message }));
         if (!rs || !rs.ok) {
           await supabase.from('email_sent').delete().eq('reservation_id', r.id).eq('scenario', scenario).then(() => {}, () => {});
