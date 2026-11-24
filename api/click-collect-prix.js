@@ -63,6 +63,11 @@ module.exports = async (req, res) => {
     const pricing = await getPricingConfig(supabase);
     const p = await prixClickCollect(supabase, point, debut, jours, pricing);
     res.setHeader('Cache-Control', 'no-store');
+    // Hors saison (climatiseurs pas encore déposés, ou déjà repris) : la page
+    // l'affiche à la place du prix et bloque « Continuer », comme un point complet.
+    const finLoc = require('./_lib/dates').addDays(debut, jours);
+    const horsSaisonMsg = require('./_lib/pointsRetrait').horsSaison(point, debut, finLoc);
+    if (horsSaisonMsg) return res.status(200).json({ totalCents: p.totalCents, normalCents: p.normalCents, complet: true, hors_saison: horsSaisonMsg, raisons: [] });
     return res.status(200).json({
       totalCents: p.totalCents, normalCents: p.normalCents, majore: p.majore,
       majorationPct: p.majorationPct, complet: p.libresAuPoint < 1,

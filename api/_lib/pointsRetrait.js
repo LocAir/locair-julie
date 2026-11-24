@@ -46,12 +46,13 @@
 //   mois_saison     durée de la saison active (fin mai → fin septembre ≈ 4)
 //   jours_saison    jours actifs (120) → capacité = flotte × jours_saison
 //   depose          [début, fin] de la dépose chez les commerçants (MM-JJ)
-//   fin_saison      dernier jour de la saison (MM-JJ)
+//   ouverture       1er jour où un client peut retirer (lendemain de la dépose)
+//   fin_saison      dernier jour de la saison (MM-JJ) : retour au plus tard ce jour-là
 //   prix_jour       prix moyen repère par jour (haut / bas) pour le point mort
 //   pub_jour        budget pub par jour, lancé à la dépose
 const CELLULES = [
   { id: 'c1', nom: 'Cellule 1 · Nice–Cannes', flotte: 40, charges: { box: 165, agent: 700, pub: 600 }, mois_saison: 4, jours_saison: 120,
-    depose: ['05-10', '05-15'], fin_saison: '09-30', prix_jour: { haut: 23.43, bas: 19.86 }, pub_jour: 20 },
+    depose: ['05-10', '05-15'], ouverture: '05-16', fin_saison: '09-30', prix_jour: { haut: 23.43, bas: 19.86 }, pub_jour: 20 },
 ];
 // Point mort d'une cellule en jours-machine : charges de la saison ÷ marge
 // par jour après les 20 % du commerçant (playbook : 313 à 369 pour la Cellule 1).
@@ -61,6 +62,20 @@ function pointMortCellule(c, commissionPct) {
   return { charges_saison: charges, min: Math.round(charges / net(c.prix_jour.haut)), max: Math.round(charges / net(c.prix_jour.bas)) };
 }
 function getCellule(id) { return CELLULES.find((c) => c.id === id) || CELLULES[0]; }
+// Saison du point (playbook : climatiseurs déposés du 10 au 15 mai, repris
+// fin septembre) : une location Click & Collect doit tenir entre l'ouverture
+// et la fin de saison de SA cellule, la même année. Le point de test est
+// ouvert toute l'année (essais du propriétaire). Renvoie null si c'est bon,
+// sinon un message pour le client.
+const MOIS_TXT = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const jourTxt = (mmjj) => { const [m, j] = mmjj.split('-').map(Number); return `${j === 1 ? '1er' : j} ${MOIS_TXT[m - 1]}`; };
+function horsSaison(point, debut, fin) {
+  if (!point || point.test) return null;
+  const c = getCellule(point.cellule), y = String(debut || '').slice(0, 4);
+  const ouv = c.ouverture || '05-16', finS = c.fin_saison || '09-30';
+  if (debut >= `${y}-${ouv}` && (!fin || fin <= `${y}-${finS}`)) return null;
+  return `Le Click & Collect est ouvert du ${jourTxt(ouv)} au ${jourTxt(finS)} (retour au plus tard le ${jourTxt(finS)}).`;
+}
 
 const STOCK_PAR_DEFAUT = 4;
 const COMMISSION_POINT_PCT = 20;
@@ -132,4 +147,4 @@ function tauxAffiche(partenaire) {
   return pt ? pt.commission_pct : (partenaire ? partenaire.taux_commission_pct ?? null : null);
 }
 
-module.exports = { CELLULES, getCellule, pointMortCellule, pointDuPartenaire, tauxAffiche, POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };
+module.exports = { CELLULES, getCellule, pointMortCellule, horsSaison, pointDuPartenaire, tauxAffiche, POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };

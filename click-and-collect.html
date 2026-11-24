@@ -2605,10 +2605,12 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       if(complet){
         /* playbook : un point complet → on oriente vers le point libre le plus proche */
         var alt = (ALT.cle === clePrix() && ALT.p) ? ALT : null;
+        if(pr && pr.hors_saison){ t.innerHTML = L('<b>Hors saison</b>', '<b>Out of season</b>', '<b>Fuera de temporada</b>') + esc(L(pr.hors_saison, 'Click & Collect runs from 16 May to 30 September (return by 30 September).', 'El Click & Collect funciona del 16 de mayo al 30 de septiembre (devolución hasta el 30 de septiembre).')); }
+        else
         t.innerHTML = L('<b>Point complet à ces dates</b>', '<b>Point fully booked on these dates</b>', '<b>Punto completo en estas fechas</b>') +
           (alt ? '<button type="button" class="alt-point" data-alt="' + esc(alt.p.id) + '">' + L('Prendre ', 'Take ', 'Elegir ') + esc(alt.p.nom) + ' · ' + dist(alt.km) + '</button>'
                : L('Changez de dates ou de point de retrait', 'Change dates or pick-up point', 'Cambia de fechas o de punto de recogida'));
-        if(!alt) chercherAutrePoint();
+        if(!alt && !(pr && pr.hors_saison)) chercherAutrePoint();
       }
       else t.innerHTML = '<b>' + n + L(' jours · ', ' days · ') + euros(tot) + (qte() > 1 ? ' · ' + qte() + L(' appareils', ' units', ' aparatos') : '') + (pr && pr.majore ? ' <s class="prix-normal">' + euros(pr.normalCents * qte() / 100) + '</s>' : '') + '</b>' +
         (pr && (pr.majore || pr.remise) ? '<span class="forte' + (pr.remise ? ' baisse' : '') + '">' + L('Tarif dynamique : ', 'Dynamic pricing: ') + (pr.variationPct > 0 ? '+' : '−') + Math.abs(pr.variationPct || pr.majorationPct) + ' %' + raisonsTexte(pr.raisons) + L(' · prix garanti 30 min', ' · price held 30 min') + '</span>' : esc(court(etat.debut) + ' → ' + court(etat.fin)) + L(' · soit ', ' · ') + euros(Math.round(totalUnit() / n * 100) / 100) + L('/jour', '/day') + (qte() > 1 ? L(' par appareil', ' per unit', ' por aparato') : ''));
