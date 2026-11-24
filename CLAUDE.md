@@ -51,14 +51,19 @@ concernées (vrais écrans, client d'exemple) et corriger le texte des diapos.
 Le propriétaire l'a demandé le 21/11/2026 : le site et la présentation
 disent toujours la même chose.
 
-Version courte « façon Musk » (22/11/2026) : 7 diapos (mission, démo, au
-comptoir, 20 %, 0 €, plan en 3 étapes, on démarre) + annexes (tarifs, pour
-qui, FAQ). La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
+Structure (22/11/2026, « tournée opérationnel ») : mission, sommaire, puis
+4 parties numérotées — **1 · Le site** (le client fait tout en ligne,
+tarifs), **2 · Le point** (au comptoir, ce que vous recevez : affiche QR,
+flyer, climatiseurs, espace partenaire ; vos règles, 20 %, 0 €,
+parrainage), **3 · Les climatiseurs** (côté pratique : 70 cm de haut,
+30 × 32 cm au sol, 24 kg sur roulettes, modèle type Domo CoolMax ; la
+saison), **4 · La publicité** (Google → locair.fr → comptoir ; qui
+réserve) — puis plan, FAQ, on démarre, et **la démo en dernier**. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
 le numéro **0000** sur ce point lance un mode démo dans le téléphone
 (`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
 
 Version à envoyer par email (22/11/2026), à tenir à jour en même temps :
-https://claude.ai/artifact/JLju4FoAqkFuP36kpFTi1M — 8 diapos qui se lisent
+https://claude.ai/artifact/JLju4FoAqkFuP36kpFTi1M — mêmes 4 parties, diapos qui se lisent
 seules (liens cliquables, aucune note interne), envoyée en PDF.
 
 ## Déploiement
