@@ -11492,7 +11492,7 @@ function prCarte(p){
     <div class="pr-stock"><span class="pr-pts" aria-hidden="true">${pts}</span><span>${p.libres} libre${p.libres>1?'s':''} <small>sur ${p.stock}${p.dehors?' · '+p.dehors+' chez des clients':''}${p.a_venir?' · '+p.a_venir+' réservé'+(p.a_venir>1?'s':''):''}</small></span></div>
     <dl class="pr-infos">
       <div><dt>Commerçant</dt><dd class="${c?'':'manque'}">${c ? escHtml(c.nom) + (c.rib_ok?'':' · RIB manquant') : 'Aucun relié'}</dd></div>
-      ${p.mois.locations?`<div><dt>Ce mois</dt><dd>${p.mois.locations} location${p.mois.locations>1?'s':''} · ${euros(p.mois.commission_cents)} pour lui (${p.commission_pct} %)</dd></div>`:''}
+      ${p.mois.locations?`<div><dt>Ce mois</dt><dd>${p.mois.locations} location${p.mois.locations>1?'s':''}${p.mois.commission_cents==null?'':' · '+euros(p.mois.commission_cents)+' pour lui ('+p.commission_pct+' %)'}</dd></div>`:''}
       <div><dt>Code retour</dt><dd>${p.code_retour ? `<button class="pr-code" type="button" onclick="this.textContent=this.textContent==='••••'?this.dataset.c:'••••'" data-c="${escHtml(p.code_retour)}">••••</button>` : '<span class="manque">—</span>'}</dd></div>
       ${!p.test && !p.exemple && PR_DATA.passages_table ? `<div><dt>Passage agent</dt><dd class="${p.jours_sans_passage==null||p.jours_sans_passage>PR_DATA.entretien_jours?'manque':''}">${p.jours_sans_passage==null?'Jamais':p.jours_sans_passage===0?'Aujourd’hui':'Il y a '+p.jours_sans_passage+' j'}</dd></div>` : ''}
       ${p.a_reconditionner?`<div><dt>À reconditionner</dt><dd class="manque">${p.a_reconditionner}</dd></div>`:''}
@@ -11569,7 +11569,7 @@ function prCellules(d){
       <span class="pr-cel-g">
         <span><b>${c.remplissage_pct == null ? '—' : c.remplissage_pct + ' %'}</b><small>${c.pub==null?'7 jours':c.pub==='normale'?'7 j · pub normale':c.pub==='baisser'?'7 j · baisser la pub':'7 j · pub en pause'}</small></span>
         <span class="${nb ? (urg ? 'rouge' : 'ambre') : 'vert'}"><b>${nb || '✓'}</b><small>${nb ? 'à faire' : 'à jour'}</small></span>
-        <span><b>${eurosMilliers(c.ca_saison_cents/100)}</b><small>saison · ${eurosMilliers(c.commissions_saison_cents/100)} aux commerçants</small></span>
+        ${c.ca_saison_cents==null ? '' : `<span><b>${eurosMilliers(c.ca_saison_cents/100)}</b><small>saison · ${eurosMilliers(c.commissions_saison_cents/100)} aux commerçants</small></span>`}
       </span>
       <span class="pr-cel-p">${c.points_ouverts} point${c.points_ouverts>1?'s':''} · ${c.en_points}/${c.flotte} déposés · micro-box ${c.micro_box} · ${c.charges_mois.toLocaleString('fr-FR')} €/mois</span>
     </button>`;

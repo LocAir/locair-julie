@@ -5,6 +5,7 @@
 // POST { action: 'liste' } | { action: 'statut', id, statut }
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -14,6 +15,8 @@ module.exports = async (req, res) => {
   const b = req.body || {};
   try {
     if (b.action === 'statut') {
+      // Valider un parrainage = 50 € + 50 € à verser : rôles « partenaires » seulement.
+      if (!roleHasAccess(a.role, 'partenaires')) return res.status(403).json({ error: 'Ton compte n’a pas accès aux parrainages.' });
       const id = parseInt(b.id, 10);
       const statut = ['en_attente', 'signe', 'refuse'].includes(b.statut) ? b.statut : null;
       if (!id || !statut) return res.status(400).json({ error: 'Demande invalide' });

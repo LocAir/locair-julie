@@ -10,6 +10,7 @@
 // La liste des points vit dans _lib/pointsRetrait.js.
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { POINTS_RETRAIT, pointFermeLe, CELLULES, getCellule, pointMortCellule, COMMISSION_POINT_PCT } = require('./_lib/pointsRetrait');
 const { codeRetour, numeroComptoir } = require('./_lib/clickCollect');
 const { todayParis, addDays, debutJourParisISO } = require('./_lib/dates');
@@ -237,7 +238,16 @@ module.exports = async (req, res) => {
     const tri = (l) => l.sort((x, y) => x.point.localeCompare(y.point) || x.client.localeCompare(y.client));
     tri(aujourdhui.retraits); tri(aujourdhui.retours); aujourdhui.retards.sort((x, y) => y.jours_retard - x.jours_retard);
 
+    // Les montants (20 % à virer, chiffre du mois et de la saison,
+    // commissions) sont réservés aux rôles qui ont accès aux finances
+    // (administrateur, comptabilité) — comme le reste de l'admin.
+    const finances = roleHasAccess(a.role, 'finances');
+    if (!finances) {
+      points.forEach((p) => { p.a_virer_cents = 0; p.mois = { locations: p.mois.locations, ca_cents: null, commission_cents: null }; p.saison = { jours_machine: p.saison.jours_machine, ca_cents: null, commission_cents: null }; });
+      cellules.forEach((c) => { c.ca_saison_cents = null; c.commissions_saison_cents = null; });
+    }
     return res.status(200).json({
+      finances,
       date: auj,
       resume: {
         ouverts: points.filter((p) => !p.test && !p.exemple).length,
