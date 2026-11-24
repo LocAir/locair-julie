@@ -10,17 +10,12 @@
 // La liste des points vit dans _lib/pointsRetrait.js.
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
-const { POINTS_RETRAIT, pointFermeLe } = require('./_lib/pointsRetrait');
+const { POINTS_RETRAIT, pointFermeLe, CELLULES, getCellule, pointMortCellule, COMMISSION_POINT_PCT } = require('./_lib/pointsRetrait');
 const { codeRetour, numeroComptoir } = require('./_lib/clickCollect');
 const { todayParis, addDays, debutJourParisISO } = require('./_lib/dates');
 
-// Point mort de la saison (playbook Cellule 1 V3) : 1 465 €/mois de charges
-// (box, agent, pub) sur 4 mois = 313 à 369 jours-machine loués, selon le prix.
-const POINT_MORT = { min: 313, max: 369 };
+// Flotte, charges, saison et point mort : par cellule (_lib/pointsRetrait.js → CELLULES).
 const ENTRETIEN_JOURS = 10;
-// Cellule 1 : 40 climatiseurs. Ce qui n'est pas déposé dans un point reste
-// dans la micro-box (stock de secours pour remplacer une panne).
-const FLOTTE_CELLULE = 40;
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 const CHAMPS = 'id, ref, prenom, nom, tel, point_retrait_id, date_debut, date_fin, quantite, statut, remis_at, rendu_at, prix_total_cents, partenaire_commission_cents, partenaire_commission_payee, created_at, source';
@@ -43,7 +38,8 @@ module.exports = async (req, res) => {
     const auj = todayParis();
     const debutMois = auj.slice(0, 8) + '01';
     const debutMoisISO = debutJourParisISO(debutMois); // minuit à Paris, comme l'espace partenaire
-    const depuis = addDays(auj, -200); // couvre toute la saison (fin mai → fin septembre)
+    const depuis = addDays(auj, -200);
+    const debutSaison = auj.slice(0, 4) + '-05-01'; // la saison de l'année (dépose en mai)
 
     // Réservations Click & Collect récentes ou en cours. Si une colonne
     // récente manque encore dans la vraie base (migration pas passée), on
@@ -73,7 +69,7 @@ module.exports = async (req, res) => {
     const client = (r) => `${r.prenom || ''} ${r.nom || ''}`.trim() || '—';
     const qte = (r) => Math.max(1, r.quantite || 1);
     const ligne = (r, p) => ({ id: r.id, ref: r.ref, numero: numeroComptoir(r.ref), client: client(r), tel: r.tel || null,
-      point: p ? p.nom : '', quantite: qte(r), date_debut: r.date_debut, date_fin: r.date_fin });
+      point: p ? p.nom : '', cellule: p ? p.cellule : null, quantite: qte(r), date_debut: r.date_debut, date_fin: r.date_fin });
 
     const aujourdhui = { retraits: [], retours: [], retards: [] };
     let dehorsTotal = 0, aReconditionner = 0;
@@ -97,7 +93,7 @@ module.exports = async (req, res) => {
       signalements = (inc || []).filter((i) => resaPoint.has(i.reservation_id)).map((i) => {
         const r = resaPoint.get(i.reservation_id);
         const pt = POINTS_RETRAIT.find((x) => x.id === r.point_retrait_id);
-        return { id: i.id, type: i.type, ref: r.ref, client: client(r), point: pt ? pt.nom : '', test: !!(pt && pt.test),
+        return { id: i.id, type: i.type, ref: r.ref, client: client(r), point: pt ? pt.nom : '', cellule: pt ? pt.cellule : null, test: !!(pt && pt.test),
           description: String(i.description || '').replace(/^\[[^\]]*\]\s*/, '').slice(0, 140),
           jours: Math.max(0, Math.round((Date.parse(auj) - Date.parse(String(i.created_at).slice(0, 10))) / 864e5)) };
       }).filter((x) => !x.test);
@@ -134,7 +130,15 @@ module.exports = async (req, res) => {
       const aVirer = lesSiennes.concat(sesProlongations)
         .filter((r) => !r.partenaire_commission_payee && String(r.created_at || '') < debutMoisISO)
         .reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
+      // Saison en cours (depuis le 1er mai) : jours-machine, chiffre et 20 %.
+      const deSaison = lesSiennes.filter((r) => r.date_debut >= debutSaison);
+      const saisonJM = deSaison.reduce((s, r) => s + qte(r) * Math.max(0, Math.round((Date.parse(r.date_fin) - Date.parse(r.date_debut)) / 864e5)), 0);
+      const saisonTout = deSaison.concat(sesProlongations.filter((r) => r.date_debut >= debutSaison));
+      const saisonCA = saisonTout.reduce((s, r) => s + (r.prix_total_cents || 0), 0);
+      const saisonCom = saisonTout.reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
       return {
+        cellule: p.cellule,
+        saison: { jours_machine: saisonJM, ca_cents: saisonCA, commission_cents: saisonCom },
         a_virer_cents: p.test || p.exemple ? 0 : aVirer,
         id: p.id, nom: p.nom, ville: p.ville, adresse: p.adresse, horaires: p.horaires,
         exemple: !!p.exemple, test: !!p.test, ferme_aujourdhui: pointFermeLe(p, auj),
@@ -155,22 +159,41 @@ module.exports = async (req, res) => {
     const jours = Array.from({ length: 7 }, (_, k) => addDays(auj, k));
     const parVille = {};
     POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).forEach((p) => {
-      const v = parVille[p.ville] || (parVille[p.ville] = { ville: p.ville, points: 0, places: 0, pris: 0 });
+      const v = parVille[p.ville] || (parVille[p.ville] = { ville: p.ville, cellule: p.cellule, points: 0, places: 0, pris: 0 });
       v.points += 1; v.places += (p.stock || 0) * jours.length;
       resas.filter((r) => r.point_retrait_id === p.id && r.source !== 'site_prolongation' && r.statut === 'confirmee' && !r.rendu_at)
         .forEach((r) => jours.forEach((j) => { if ((r.date_debut <= j && r.date_fin > j) || (r.remis_at && j === auj)) v.pris += qte(r); }));
     });
     const remplissage = Object.values(parVille).map((v) => {
       const pct = v.places ? Math.min(100, Math.round(v.pris / v.places * 100)) : 0;
-      return { ville: v.ville, points: v.points, pct, pub: pct >= 90 ? 'pause' : pct >= 85 ? 'baisser' : 'normale' };
+      return { ville: v.ville, cellule: v.cellule, points: v.points, pct, pub: pct >= 90 ? 'pause' : pct >= 85 ? 'baisser' : 'normale' };
     }).sort((x, y) => y.pct - x.pct);
 
     // Saison en cours : jours-machine loués (appareils × jours), points réels.
     const reels = new Set(POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).map((p) => p.id));
-    const debutSaison = auj.slice(0, 4) + '-05-01';
     const joursMachine = resas.filter((r) => reels.has(r.point_retrait_id) && r.source !== 'site_prolongation' && r.date_debut >= debutSaison)
       .reduce((s, r) => s + qte(r) * Math.max(0, Math.round((Date.parse(r.date_fin) - Date.parse(r.date_debut)) / 864e5)), 0);
     const entretienEnRetard = points.filter((p) => !p.test && !p.exemple && (p.jours_sans_passage == null || p.jours_sans_passage > ENTRETIEN_JOURS)).length;
+
+    // Une carte par cellule : le tableau global de l'admin.
+    const cellules = CELLULES.map((c) => {
+      const pts = points.filter((p) => p.cellule === c.id && !p.test && !p.exemple);
+      const enPoints = pts.reduce((s, p) => s + (p.stock || 0), 0);
+      const jm = pts.reduce((s, p) => s + p.saison.jours_machine, 0);
+      const capacite = c.flotte * c.jours_saison;
+      const rem = remplissage.filter((v) => v.cellule === c.id);
+      const remPct = rem.length ? Math.round(rem.reduce((s, v) => s + v.pct * v.points, 0) / rem.reduce((s, v) => s + v.points, 0)) : null;
+      return {
+        id: c.id, nom: c.nom, flotte: c.flotte, depose: c.depose, fin_saison: c.fin_saison, pub_jour: c.pub_jour,
+        charges_mois: c.charges.box + c.charges.agent + c.charges.pub,
+        points_ouverts: pts.length, en_points: enPoints, micro_box: Math.max(0, c.flotte - enPoints),
+        jours_machine: jm, capacite, occupation_pct: capacite ? Math.round(jm / capacite * 1000) / 10 : 0,
+        point_mort: pointMortCellule(c, COMMISSION_POINT_PCT),
+        remplissage_pct: remPct, pub: remPct == null ? null : remPct >= 90 ? 'pause' : remPct >= 85 ? 'baisser' : 'normale',
+        ca_saison_cents: pts.reduce((s, p) => s + p.saison.ca_cents, 0),
+        commissions_saison_cents: pts.reduce((s, p) => s + p.saison.commission_cents, 0),
+      };
+    });
 
     const tri = (l) => l.sort((x, y) => x.point.localeCompare(y.point) || x.client.localeCompare(y.client));
     tri(aujourdhui.retraits); tri(aujourdhui.retours); aujourdhui.retards.sort((x, y) => y.jours_retard - x.jours_retard);
@@ -185,8 +208,9 @@ module.exports = async (req, res) => {
         a_reconditionner: aReconditionner,
         entretien_en_retard: passagesTable ? entretienEnRetard : 0,
       },
-      saison: { jours_machine: joursMachine, point_mort: POINT_MORT },
-      micro_box: { flotte: FLOTTE_CELLULE, en_points: POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).reduce((s, p) => s + (p.stock || 0), 0) },
+      cellules,
+      saison: { jours_machine: joursMachine, point_mort: pointMortCellule(getCellule('c1'), COMMISSION_POINT_PCT) },
+      micro_box: { flotte: CELLULES.reduce((s, c) => s + c.flotte, 0), en_points: POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).reduce((s, p) => s + (p.stock || 0), 0) },
       signalements,
       passages_table: passagesTable,
       entretien_jours: ENTRETIEN_JOURS,

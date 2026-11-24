@@ -965,6 +965,16 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .pr-col li b{display:block;font-weight:700;color:var(--black)}
 .pr-col li small{color:var(--grey);font-size:12px}
 .pr-col li a{color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap;font-size:12.5px}
+.pr-cels{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:18px}
+.pr-cel{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:10px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--sh-xs);font-family:var(--body)}
+.pr-cel:hover,.pr-cel.on{border-color:var(--blue)}.pr-cel.on{box-shadow:0 0 0 3px rgba(26,94,219,.15)}
+.pr-cel-h{display:flex;justify-content:space-between;align-items:center;gap:8px}.pr-cel-h b{font:800 15px var(--body);color:var(--black)}
+.pr-cel-n b{display:block;font:900 30px var(--disp);letter-spacing:-.03em;color:var(--black);line-height:1}.pr-cel-n small,.pr-cel-g small,.pr-cel-tous small{display:block;font-size:12px;color:var(--grey);font-weight:600;margin-top:3px}
+.pr-cel .stock-gauge{display:block}
+.pr-cel-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pr-cel-g b{font:800 16px var(--body);color:var(--black)}
+.pr-cel-g .rouge b{color:var(--red)}.pr-cel-g .ambre b{color:var(--amber)}.pr-cel-g .vert b{color:var(--green)}
+.pr-cel-p{font-size:12px;color:var(--grey);border-top:1px solid var(--rule);padding-top:8px}
+.pr-cel-tous{justify-content:center;align-items:flex-start}.pr-cel-tous b{font:800 16px var(--body);color:var(--black)}
 .pr-phase{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--white);border:1px solid var(--rule);border-radius:100px;padding:8px 16px;margin:-4px 0 16px;font-size:13px;color:var(--grey);box-shadow:var(--sh-xs)}
 .pr-phase b{color:var(--black)}
 .pr-faire{margin-bottom:22px}
@@ -11449,7 +11459,7 @@ const FR_VILLES = [
   {nom:'Chelles',dep:'77',cps:['77500']},
 ];
 /* ── POINTS DE RETRAIT : un écran pour piloter les points Click & Collect ── */
-let PR_DATA = null, PR_FILTRE = 'tous';
+let PR_DATA = null, PR_FILTRE = 'tous', PR_CELLULE = 'toutes';
 async function loadPointsRetrait(silent){
   const zone = document.getElementById('tab-pointsretrait');
   if(!silent) zone.innerHTML = loading();
@@ -11502,22 +11512,80 @@ async function prPassage(id, bt){
 }
 /* Phase de la saison (playbook Cellule 1) : dépose 10–15 mai, pub 20 €/jour
    dès la dépose, saison fin mai → 30 septembre, puis reprise des climatiseurs. */
-function prPhase(dateIso){
+function prPhaseCle(dateIso, c){
   const [y, m, j] = dateIso.split('-').map(Number), md = m*100 + j;
-  const jours = (iso) => Math.round((Date.parse(iso) - Date.parse(dateIso)) / 864e5);
-  if(md < 510) return `<b>Avant la saison</b> · dépose des climatiseurs du 10 au 15 mai (J-${jours(y+'-05-10')}) · pub à lancer dès la dépose (20 €/jour)`;
-  if(md <= 515) return `<b>Dépose des climatiseurs</b> · 4 à 5 par point, sous housse bleue · pub lancée (20 €/jour)`;
-  if(md <= 930) return `<b>Saison en cours</b> · fin le 30 septembre (J-${jours(y+'-09-30')}) · agent tous les 10 jours`;
-  if(md <= 1015) return `<b>Reprise des climatiseurs</b> · passer chez chaque commerçant · couper la pub`;
-  return `<b>Hors saison</b> · signer les points pour mai (dépose du 10 au 15 mai)`;
+  const n = (mmjj) => Number(mmjj.replace('-', ''));
+  const dep = (c && c.depose) || ['05-10','05-15'], fin = (c && c.fin_saison) || '09-30';
+  if(md < n(dep[0])) return 'avant';
+  if(md <= n(dep[1])) return 'depose';
+  if(md <= n(fin)) return 'saison';
+  if(md <= n(fin) + 15) return 'reprise';
+  return 'hors';
+}
+function prPhase(dateIso, c){
+  const y = dateIso.slice(0, 4), jours = (iso) => Math.round((Date.parse(iso) - Date.parse(dateIso)) / 864e5);
+  const dep = (c && c.depose) || ['05-10','05-15'], fin = (c && c.fin_saison) || '09-30', pub = (c && c.pub_jour) || 20;
+  const jm = (mmjj) => new Date(y + '-' + mmjj + 'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const k = prPhaseCle(dateIso, c);
+  if(k === 'avant') return `<b>Avant la saison</b> · dépose des climatiseurs du ${jm(dep[0])} au ${jm(dep[1])} (J-${jours(y+'-'+dep[0])}) · pub à lancer dès la dépose (${pub} €/jour)`;
+  if(k === 'depose') return `<b>Dépose des climatiseurs</b> · 4 à 5 par point, sous housse bleue · pub lancée (${pub} €/jour)`;
+  if(k === 'saison') return `<b>Saison en cours</b> · fin le ${jm(fin)} (J-${jours(y+'-'+fin)}) · agent tous les 10 jours`;
+  if(k === 'reprise') return `<b>Reprise des climatiseurs</b> · passer chez chaque commerçant · couper la pub`;
+  return `<b>Hors saison</b> · signer les points pour mai (dépose du ${jm(dep[0])} au ${jm(dep[1])})`;
+}
+/* Vue d'une cellule : mêmes données, filtrées sur ses points. */
+function prVue(d, id){
+  const cel = (d.cellules||[]).find(c => c.id === id);
+  if(!cel) return d;
+  const f = x => x.cellule === id, points = d.points.filter(f);
+  const aj = {retraits:d.aujourdhui.retraits.filter(f), retours:d.aujourdhui.retours.filter(f), retards:d.aujourdhui.retards.filter(f)};
+  return Object.assign({}, d, {points, aujourdhui:aj, cellule:cel,
+    signalements:(d.signalements||[]).filter(f), remplissage:(d.remplissage||[]).filter(f),
+    resume:Object.assign({}, d.resume, {ouverts:points.filter(p => !p.test && !p.exemple).length, exemples:points.filter(p => !p.test && p.exemple).length,
+      dehors:points.filter(p => !p.test).reduce((s, p) => s + (p.dehors||0), 0), retards:aj.retards.length,
+      a_reconditionner:points.filter(p => !p.test).reduce((s, p) => s + (p.a_reconditionner||0), 0)}),
+    saison:{jours_machine:cel.jours_machine, point_mort:cel.point_mort}, micro_box:{flotte:cel.flotte, en_points:cel.en_points}});
+}
+function setPrCellule(id){ PR_CELLULE = id; renderPointsRetrait(); window.scrollTo({top:0, behavior:'smooth'}); }
+/* Tableau global : une carte par cellule (playbook : blueprint reproductible). */
+function prCellules(d){
+  const L = d.cellules || [];
+  if(!L.length) return '';
+  const pc = (v) => String(v).replace('.', ',');
+  const carte = (c) => {
+    const v = prVue(d, c.id), nb = prAFaireListe(v).length, cap = c.capacite || 1;
+    const pmMin = c.point_mort.min / cap * 100, pmMax = c.point_mort.max / cap * 100;
+    const ok = c.jours_machine >= c.point_mort.max, presque = c.jours_machine >= c.point_mort.min;
+    const larg = Math.min(100, c.jours_machine / Math.max(1, c.point_mort.max) * 100);
+    const urg = prAFaireListe(v).some(x => x.n === 'urgent');
+    return `<button type="button" class="pr-cel${PR_CELLULE===c.id?' on':''}" onclick="setPrCellule('${escHtml(c.id)}')">
+      <span class="pr-cel-h"><b>${escHtml(c.nom)}</b><span class="pr-etat ${prPhaseCle(d.date, c)==='saison'?'ouvert':'exemple'}">${{avant:'Avant saison',depose:'Dépose',saison:'En saison',reprise:'Reprise',hors:'Hors saison'}[prPhaseCle(d.date, c)]}</span></span>
+      <span class="pr-cel-n"><b>${pc(c.occupation_pct)} %</b><small>occupation · point mort ${pc(pmMin.toFixed(1))}–${pc(pmMax.toFixed(1))} %</small></span>
+      <span class="stock-gauge"><span class="stock-gauge-fill" style="display:block;width:${larg}%;${ok?'background:var(--green)':presque?'background:var(--amber)':''}"></span></span>
+      <span class="pr-cel-g">
+        <span><b>${c.remplissage_pct == null ? '—' : c.remplissage_pct + ' %'}</b><small>${c.pub==null?'7 jours':c.pub==='normale'?'7 j · pub normale':c.pub==='baisser'?'7 j · baisser la pub':'7 j · pub en pause'}</small></span>
+        <span class="${nb ? (urg ? 'rouge' : 'ambre') : 'vert'}"><b>${nb || '✓'}</b><small>${nb ? 'à faire' : 'à jour'}</small></span>
+        <span><b>${eurosMilliers(c.ca_saison_cents/100)}</b><small>saison · ${eurosMilliers(c.commissions_saison_cents/100)} aux commerçants</small></span>
+      </span>
+      <span class="pr-cel-p">${c.points_ouverts} point${c.points_ouverts>1?'s':''} · ${c.en_points}/${c.flotte} déposés · micro-box ${c.micro_box} · ${c.charges_mois.toLocaleString('fr-FR')} €/mois</span>
+    </button>`;
+  };
+  const tous = L.length > 1 ? `<button type="button" class="pr-cel pr-cel-tous${PR_CELLULE==='toutes'?' on':''}" onclick="setPrCellule('toutes')"><b>Tout le réseau</b><small>${L.length} cellules · ${L.reduce((s, c) => s + c.flotte, 0)} climatiseurs</small></button>` : '';
+  return `<p class="section-title">Cellules</p><div class="pr-cels">${L.map(carte).join('')}${tous}</div>`;
 }
 /* « À faire aujourd'hui » : une ligne = une action, la plus urgente en haut. */
 function prAFaire(d){
+  const L = prAFaireListe(d);
+  return `<p class="section-title">À faire aujourd’hui${L.length?' · '+L.length:''}${d.cellule?' · '+escHtml(d.cellule.nom):''}</p>
+    <div class="pr-col pr-faire">${L.length ? `<ul>${L.map(x => `<li class="n-${x.n}"><i aria-hidden="true">${x.i}</i><span><b>${x.t}</b><small>${x.s}</small></span>${x.b}</li>`).join('')}</ul>` : '<p class="pr-rien">✓ Tout est à jour.</p>'}</div>`;
+}
+function prAFaireListe(d){
   const L = [], reels = d.points.filter(p => !p.test && !p.exemple), r = d.resume;
-  const mb = d.micro_box ? Math.max(0, d.micro_box.flotte - d.micro_box.en_points) : 0;
+  const mbReseau = d.micro_box ? Math.max(0, d.micro_box.flotte - d.micro_box.en_points) : 0;
   const jour = Number(d.date.slice(8, 10));
   (d.signalements||[]).forEach(x => {
     const panne = x.type === 'probleme_technique';
+    const cx = (d.cellules||[]).find(c => c.id === x.cellule), mb = cx ? cx.micro_box : mbReseau;
     L.push({n: x.jours >= 1 ? 'urgent' : 'jour', i:'!', t:`${panne?'Panne':'Signalement'} · ${escHtml(x.point)}`,
       s:`${escHtml(x.client)} · ${escHtml(x.description||'')}${panne?' · remplacer avec la micro-box ('+mb+' dispo)':''}${x.jours?' · depuis '+x.jours+' j':''}`,
       b:`<button type="button" onclick="switchAdminTab('incidents')">Traiter</button>`});
@@ -11540,8 +11608,7 @@ function prAFaire(d){
   reels.filter(p => p.commercant && !p.commercant.rib_ok && !(p.a_virer_cents > 0)).forEach(p => L.push({n:'info', i:'i', t:`RIB manquant · ${escHtml(p.commercant.nom)}`, s:'À demander avant le 1er virement', b:''}));
   const ordre = {urgent:0, jour:1, info:2};
   L.sort((a, b) => ordre[a.n] - ordre[b.n]);
-  return `<p class="section-title">À faire aujourd’hui${L.length?' · '+L.length:''}</p>
-    <div class="pr-col pr-faire">${L.length ? `<ul>${L.map(x => `<li class="n-${x.n}"><i aria-hidden="true">${x.i}</i><span><b>${x.t}</b><small>${x.s}</small></span>${x.b}</li>`).join('')}</ul>` : '<p class="pr-rien">✓ Tout est à jour.</p>'}</div>`;
+  return L;
 }
 function setPrFiltre(f){ PR_FILTRE = f; renderPointsRetrait(); }
 /* Parrainages : demandes de rappel venues d'un lien de parrainage. « Signé » active
@@ -11565,16 +11632,20 @@ async function setParrainage(id, statut){
   }catch(e){ alert('Échec. Réessaie.'); }
 }
 function renderPointsRetrait(){
-  const d = PR_DATA, zone = document.getElementById('tab-pointsretrait'); if(!d) return;
+  const D = PR_DATA, zone = document.getElementById('tab-pointsretrait'); if(!D) return;
+  if(PR_CELLULE !== 'toutes' && !(D.cellules||[]).some(c => c.id === PR_CELLULE)) PR_CELLULE = 'toutes';
+  // une seule cellule : sa vue est celle du réseau ; sinon, la cellule choisie
+  const d = (D.cellules||[]).length === 1 ? prVue(D, D.cellules[0].id) : PR_CELLULE === 'toutes' ? D : prVue(D, PR_CELLULE);
   const r = d.resume, j = d.aujourdhui;
   const badge = document.getElementById('badge-pointsretrait');
-  const urg = (r.retards||0) + (d.signalements||[]).length; if(badge){ badge.textContent = urg || ''; badge.classList.toggle('hidden', !urg); }
+  const urg = (D.resume.retards||0) + (D.signalements||[]).length; if(badge){ badge.textContent = urg || ''; badge.classList.toggle('hidden', !urg); }
   const filtres = {tous:p => !p.test, ouverts:p => !p.test && !p.exemple, exemples:p => !p.test && p.exemple, test:p => p.test};
   const liste = d.points.filter(filtres[PR_FILTRE] || filtres.tous);
   const jour = new Date(d.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   zone.innerHTML = `
     <div class="pr-tete"><div><h2>Points de retrait</h2><p>Click &amp; Collect · ${escHtml(jour)}</p></div></div>
-    <div class="pr-phase">${prPhase(d.date)}${d.micro_box && r.ouverts ? ` · <b>Micro-box : ${Math.max(0, d.micro_box.flotte - d.micro_box.en_points)}</b> de secours (${d.micro_box.en_points}/${d.micro_box.flotte} en points)` : ''}</div>
+    ${prCellules(D)}
+    <div class="pr-phase">${d.cellule ? '<b>'+escHtml(d.cellule.nom)+'</b> · ' : ''}${prPhase(d.date, d.cellule)}${d.micro_box && r.ouverts ? ` · <b>Micro-box : ${Math.max(0, d.micro_box.flotte - d.micro_box.en_points)}</b> de secours (${d.micro_box.en_points}/${d.micro_box.flotte} en points)` : ''}</div>
     ${prAFaire(d)}
     <div class="pr-tuiles">
       <div class="pr-tuile"><b>${r.ouverts}</b><span>point${r.ouverts>1?'s':''} ouvert${r.ouverts>1?'s':''}${r.exemples?' · '+r.exemples+' en exemple':''}</span></div>
@@ -11594,9 +11665,9 @@ function renderPointsRetrait(){
     ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
     ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
     ${r.ouverts && d.saison ? (() => { const s = d.saison, pm = s.point_mort, pct = Math.min(100, Math.round(s.jours_machine / pm.max * 100)), ok = s.jours_machine >= pm.max, presque = s.jours_machine >= pm.min;
-      return `<p class="section-title">Pilotage · point mort de la saison</p><div class="pr-col" style="margin-bottom:8px;padding:16px 18px"><b style="font:900 26px var(--disp)">${s.jours_machine} <small style="font-size:14px;font-weight:600;color:var(--grey)">jours-machine loués · ${(s.jours_machine / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')} % d’occupation (sur ${(d.micro_box?d.micro_box.flotte:40) * 120} possibles ; point mort ≈ 6,5–7,7 %)</small></b>
+      return `<p class="section-title">Pilotage · point mort de la saison</p><div class="pr-col" style="margin-bottom:8px;padding:16px 18px"><b style="font:900 26px var(--disp)">${s.jours_machine} <small style="font-size:14px;font-weight:600;color:var(--grey)">jours-machine loués · ${(s.jours_machine / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')} % d’occupation (sur ${(d.micro_box?d.micro_box.flotte:40) * 120} possibles ; point mort ≈ ${(pm.min / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')}–${(pm.max / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')} %)</small></b>
       <div class="stock-gauge" style="margin:10px 0 8px"><div class="stock-gauge-fill" style="width:${pct}%;${ok?'background:var(--green)':''}"></div></div>
-      <small style="color:var(--grey);font-weight:600">${ok?'Charges de la saison couvertes ✓':presque?'Presque : charges couvertes si le prix moyen reste haut':'Charges couvertes entre '+pm.min+' et '+pm.max+' jours-machine'} · charges 1 465 €/mois (box, agent, pub)</small></div>`; })() : ''}
+      <small style="color:var(--grey);font-weight:600">${ok?'Charges de la saison couvertes ✓':presque?'Presque : charges couvertes si le prix moyen reste haut':'Charges couvertes entre '+pm.min+' et '+pm.max+' jours-machine'} · charges ${d.cellule ? d.cellule.charges_mois.toLocaleString('fr-FR') : '1 465'} €/mois (box, agent, pub)</small></div>`; })() : ''}
     ${(d.remplissage||[]).length ? `<p class="section-title">Remplissage · 7 prochains jours</p>
     <div class="pr-col" style="margin-bottom:8px"><ul>${d.remplissage.map(v => `<li><span><b>${escHtml(v.ville)} · ${v.pct} %</b><small>${v.points} point${v.points>1?'s':''}</small></span><span class="pr-etat ${v.pub==='normale'?'ouvert':v.pub==='baisser'?'exemple':'ferme'}">${v.pub==='normale'?'Pub normale':v.pub==='baisser'?'Baisser la pub':'Pub en pause'}</span></li>`).join('')}</ul></div>` : ''}
     ${prParrainages(d)}

@@ -4,6 +4,16 @@
 
 Toujours expliquer les choses simplement, comme si le propriétaire était un adolescent qui n'y connaît rien en technique. Pas de jargon, pas de termes complexes — des phrases courtes, concrètes, qui vont droit au but. Cette règle s'applique à toutes les réponses, synthèses et résumés, sur l'ensemble du projet Loc'Air (site, app admin, app transporteur).
 
+## Les documents Loc'Air = la ligne directrice (décidé le 24/11/2026)
+
+La convention de partenariat (V11), le playbook Cellule 1 (V3), la to-do
+list Cellule 1 et la présentation investisseurs & partenaires (V2) sont la
+référence pour tout ce qu'on construit. Ce qui y est écrit et qui manque
+au site, à l'admin, à l'espace partenaire ou aux emails est à créer, sans
+attendre une demande précise (le propriétaire l'a demandé le 24/11/2026).
+Une décision du propriétaire écrite dans ce fichier passe avant un
+document (ex. vol/casse payés par Loc'Air, livraison à domicile gardée).
+
 ## L'ADN de Loc'Air : simplicité et clarté
 
 Tout ce qu'on fabrique (site, emails, flyers, présentations, écrans du
@@ -353,6 +363,14 @@ ouverts (remplacer avec la micro-box), retards, 20 % à virer (rouge après le
 5 du mois), passages agent, pub à baisser, à reconditionner, commerçant non
 relié, RIB manquant. Le bloc point mort montre aussi l'occupation de la
 saison (jours-machine / 4 800 possibles = 40 × 120 jours).
+**Cellules (24/11/2026)** : `CELLULES` dans `api/_lib/pointsRetrait.js`
+(flotte, charges box/agent/pub, saison, dépose, prix repères, pub/jour) ;
+chaque point a un champ `cellule` (`c1` par défaut). Admin → Points de
+retrait : une carte par cellule (occupation vs point mort, remplissage
+7 jours + consigne pub, nombre de choses à faire, chiffre de la saison et
+20 % commerçants, micro-box) ; un clic filtre tout l'écran sur la cellule.
+Ouvrir une cellule = une ligne dans `CELLULES` + `cellule: 'c2'` sur ses
+points. Point mort calculé : charges × mois ÷ (prix repère × 0,8).
 Page `click-and-collect.html` : si le point choisi est complet aux dates
 choisies, bouton « Prendre {point le plus proche libre} · à X km » (cherche
 parmi les 3 points ouverts les plus proches, même calcul que le paiement).
