@@ -244,7 +244,9 @@ module.exports = async (req, res) => {
         d.setUTCDate(d.getUTCDate() + 7);
         dateFin = d.toISOString().slice(0, 10);
       }
-      const quantite   = Math.min(5, Math.max(1, parseInt(body.quantite) || 1));
+      // Commande par téléphone : jusqu'à 20 appareils (les pros à 10+ passent
+      // justement par l'admin ; le site, lui, s'arrête à 5).
+      const quantite   = Math.min(20, Math.max(1, parseInt(body.quantite) || 1));
       const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       const logement    = (body.logement     || '').trim().slice(0, 100);
       const parrainCode     = (body.parrain_code    || '').trim().slice(0, 50);
@@ -815,7 +817,7 @@ module.exports = async (req, res) => {
         return res.status(403).json({ error: "Seul un compte finances peut marquer manuellement une réservation remboursée — utilise l'action de remboursement Stripe." });
       }
       if (body.statut != null && STATUTS_VALIDES.includes(body.statut)) patch.statut = body.statut;
-      if (body.quantite != null) patch.quantite = Math.max(1, parseInt(body.quantite) || 1);
+      if (body.quantite != null) patch.quantite = Math.min(20, Math.max(1, parseInt(body.quantite) || 1));
       if (body.prix_total_cents != null) {
         patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);
         // Audit 2026-08-06 I6 : la commission partenaire n'était pas

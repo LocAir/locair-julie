@@ -4628,7 +4628,7 @@ function openEditReservationModal(id){
       <label for="er-adresse" style="margin-top:14px">Adresse</label>
       <input type="text" id="er-adresse" value="${escHtml(r.adresse||'')}"/>
       <div class="inline-form" style="margin-top:8px">
-        <div><label for="er-qte">Quantité</label><input type="number" id="er-qte" min="1" max="5" value="${r.quantite||1}"/></div>
+        <div><label for="er-qte">Quantité</label><input type="number" id="er-qte" min="1" max="20" value="${r.quantite||1}"/></div>
         <div><label for="er-prix">Prix total (€)</label><input type="number" id="er-prix" min="0" step="0.5" value="${((r.prix_total_cents||0)/100)}"/></div>
       </div>
       ${logisticsFieldsHtml('er', r)}
@@ -5135,7 +5135,7 @@ function nrClampQte(){
   if(!el) return;
   const v = parseInt(el.value);
   if(Number.isFinite(v)){
-    const clamped = Math.min(5, Math.max(1, v));
+    const clamped = Math.min(20, Math.max(1, v));
     if(clamped !== v) el.value = clamped;
   }
   const disp = document.getElementById('nr-qte-val');
@@ -5145,11 +5145,11 @@ function nrClampQte(){
 // #nr-qte que toujours (nrClampQte/nrCalcTotal/createReservation
 // inchangés), juste un habillage visuel différent du <input type=number>
 // natif — un seul appareil "de moins" que le max n'a jamais de sens
-// négatif, donc bornes 1/5 déjà appliquées par nrClampQte.
+// négatif, donc bornes 1/20 déjà appliquées par nrClampQte.
 function nrQtyStep(delta){
   const el = document.getElementById('nr-qte');
   if(!el) return;
-  el.value = Math.max(1, Math.min(5, (parseInt(el.value)||1) + delta));
+  el.value = Math.max(1, Math.min(20, (parseInt(el.value)||1) + delta));
   nrClampQte();
   nrRecalcPrice();
 }
@@ -5320,7 +5320,7 @@ function reservationCreerHtml(){
           <span class="qty-val" id="nr-qte-val">1</span>
           <button type="button" class="qty-btn qty-btn-plus" onclick="nrQtyStep(1)" aria-label="Ajouter un climatiseur">+</button>
         </div>
-        <input type="number" id="nr-qte" min="1" max="5" value="1" class="hidden" oninput="nrClampQte();nrRecalcPrice()"/>
+        <input type="number" id="nr-qte" min="1" max="20" value="1" class="hidden" oninput="nrClampQte();nrRecalcPrice()"/>
         <label style="margin-top:8px">Installation<span style="text-transform:none;font-weight:400;color:var(--grey-soft)"> — impacte le prix</span></label>
         <div class="periods" style="margin:0 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[0]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[0])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[0]}')" style="flex:none;padding:7px 16px">Autonome</button>
