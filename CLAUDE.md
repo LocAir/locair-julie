@@ -51,14 +51,13 @@ concernées (vrais écrans, client d'exemple) et corriger le texte des diapos.
 Le propriétaire l'a demandé le 21/11/2026 : le site et la présentation
 disent toujours la même chose.
 
-Structure (22/11/2026, « tournée opérationnel ») : mission, sommaire, puis
-4 parties numérotées — **1 · Le site** (le client fait tout en ligne,
-tarifs), **2 · Le point** (au comptoir, ce que vous recevez : affiche QR,
-flyer, climatiseurs, espace partenaire ; vos règles, 20 %, 0 €,
-parrainage), **3 · Les climatiseurs** (côté pratique : 70 cm de haut,
-30 × 32 cm au sol, 24 kg sur roulettes, modèle type Domo CoolMax ; la
-saison), **4 · La publicité** (Google → locair.fr → comptoir ; qui
-réserve) — puis plan, FAQ, on démarre, et **la démo en dernier**. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
+Structure (24/11/2026, « démonstration du fonctionnement », 8 diapos) :
+mission → 1 · Le client réserve (le site) → 2 · Au comptoir (retrait :
+écran vert + pièce d'identité ; retour : code commerçant) → 3 · Ce que vous
+recevez (affiche QR, flyer, climatiseurs, espace partenaire) → 4 · Ce que
+vous gagnez (20 %) → 5 · L'essentiel (6 règles de la convention) → On
+démarre → **la démo en dernier**. Les autres diapos restent dans les
+fichiers, hors de l'ordre. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
 le numéro **0000** sur ce point lance un mode démo dans le téléphone
 (`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
 
