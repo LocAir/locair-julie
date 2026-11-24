@@ -1190,6 +1190,8 @@ h1 em,h2 em,h3 em{font-style:normal;font-weight:900}
 /* points « exemple » : bandeau d'information + phrase du haut */
 .avert-ex{font-size:14px;color:var(--ex-txt);background:var(--ex-fond);border-left:3px solid var(--alerte);border-radius:var(--r-s);padding:10px 12px;margin:0 0 12px}
 .avert-ex[hidden],.hero-sous[hidden]{display:none}
+.t-saison{color:var(--bleu,#1A5EDB);font-weight:700}
+.cal-saison{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:var(--bleu-clair,#EFF4FD);color:var(--ink,#0E1726);font-weight:700;font-size:14px}
 .kit-note{font-size:13px;color:var(--ink-2);margin:-8px 0 16px}
 .t-prix .t-eur{font-size:.62em;letter-spacing:-.02em;margin-right:2px}
 .bdp ul button.lien-cook{font:500 14px var(--font)}
@@ -1341,9 +1343,10 @@ body:not(.en-etape) .lg-btn{background:rgba(255,255,255,.16);border-color:rgba(2
             <span class="t-badge"><span lang="fr">Sans caution</span><span lang="en">No deposit</span><span lang="es">Sin fianza</span></span>
           </span>
           <span class="t-corps">
-            <span class="t-l1"><b class="t-nom"><span lang="fr">Climatiseur mobile</span><span lang="en">Portable air conditioner</span><span lang="es">Aire acondicionado portátil</span></b><span class="t-note"><span class="t-et" aria-hidden="true">★</span> <span lang="fr" id="t-note-fr">4,9</span><span lang="en" id="t-note-en">4.9</span><span lang="es" id="t-note-es">4,9</span> <small>(<span id="t-nb">38</span>)</small></span></span>
+            <span class="t-l1"><b class="t-nom"><span lang="fr">Climatiseur mobile</span><span lang="en">Portable air conditioner</span><span lang="es">Aire acondicionado portátil</span></b></span>
             <span class="t-sous"><span lang="fr">Prêt à brancher · pièce jusqu’à 15&nbsp;m²</span><span lang="en">Plug and play · rooms up to 15&nbsp;m²</span><span lang="es">Listo para enchufar · hasta 15&nbsp;m²</span></span>
             <span class="t-sous"><span lang="fr">Chez un commerçant près de chez vous</span><span lang="en">At a shop near you</span><span lang="es">En un comercio cerca de ti</span></span>
+            <span class="t-sous t-saison" id="t-saison" hidden><span lang="fr">Réservez dès maintenant · retrait à partir du 16 mai</span><span lang="en">Book now · pick-up from 16 May</span><span lang="es">Reserva ya · recogida desde el 16 de mayo</span></span>
             <span class="t-prix"><small class="t-des" id="t-des" hidden><span lang="fr">dès</span><span lang="en">from</span><span lang="es">desde</span></small><b><span class="t-eur" lang="en">€</span><span id="prix-mini">99</span></b><em><span lang="fr">€ les 3 jours</span><span lang="en">for 3 days</span><span lang="es">€ por 3 días</span></em></span>
           </span>
           <span class="t-cta"><span lang="fr">Trouver le point le plus proche</span><span lang="en">Find the nearest point</span><span lang="es">Buscar el punto más cercano</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>
@@ -2454,10 +2457,19 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
      du point barrés. Retour 7 à 90 jours après. Le premier mois commence à
      la semaine en cours (pas de semaines passées toutes grisées). */
   var MOIS_MAX = 12;
-  function ferme(s){ var f = (etat.point && etat.point.fermes) || []; return f.indexOf(d2(s).getDay()) >= 0; }
-  function prochainOuvert(s){ var n = 0; while(ferme(s) && n++ < 7) s = plus(s, 1); return s; }
+  /* Saison du point (playbook) : retrait à partir de l'ouverture, retour au plus tard la fin. */
+  function horsSaisonJ(s){ var sa = etat.point && etat.point.saison; if(!sa) return false; var md = s.slice(5); return md < sa.ouverture || md > sa.fin; }
+  function ferme(s){ var f = (etat.point && etat.point.fermes) || []; return f.indexOf(d2(s).getDay()) >= 0 || horsSaisonJ(s); }
+  function prochainOuvert(s){
+    var sa = etat.point && etat.point.saison;
+    if(sa && horsSaisonJ(s)){ var y = +s.slice(0, 4); s = (s.slice(5) > sa.fin ? y + 1 : y) + '-' + sa.ouverture; }
+    var n = 0; while(ferme(s) && n++ < 7) s = plus(s, 1); return s;
+  }
   function finRetour(debut, n){
-    var f = prochainOuvert(plus(debut, n)), k = 0;
+    var cible = plus(debut, n), k = 0, f;
+    // retour au plus tard le dernier jour de la saison
+    if(horsSaisonJ(cible)){ f = cible; while(horsSaisonJ(f) && k++ < 120) f = plus(f, -1); while(ferme(f) && k++ < 140) f = plus(f, -1); return f; }
+    f = prochainOuvert(cible);
     while(ecart(debut, f) > JOURS_MAX && k++ < 14){ f = plus(f, -1); while(ferme(f) && k++ < 14) f = plus(f, -1); }
     return f;
   }
@@ -2465,6 +2477,13 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function dessinerCal(){
     var auj = dans(0), max = dans(365), html = '';
     var base = new Date(); base.setDate(1);
+    // hors saison aujourd'hui : le calendrier s'ouvre sur le mois de l'ouverture
+    if(etat.point && etat.point.saison && horsSaisonJ(dans(1))){
+      var po = prochainOuvert(dans(1));
+      base = new Date(+po.slice(0, 4), +po.slice(5, 7) - 1, 1);
+      var sa = etat.point.saison, jm = function(mmjj){ return new Date(2027, +mmjj.slice(0, 2) - 1, +mmjj.slice(3)).toLocaleDateString(LOC(), {day:'numeric', month:'long'}); };
+      html += '<p class="cal-saison">' + esc(L('Click & Collect ouvert du ' + jm(sa.ouverture) + ' au ' + jm(sa.fin) + '.', 'Click & Collect runs from ' + jm(sa.ouverture) + ' to ' + jm(sa.fin) + '.', 'Click & Collect abierto del ' + jm(sa.ouverture) + ' al ' + jm(sa.fin) + '.')) + '</p>';
+    }
     var lundiCourant = plus(auj, -((new Date().getDay() + 6) % 7));
     for(var m = 0; m < etat.mois; m++){
       var d0 = new Date(base.getFullYear(), base.getMonth() + m, 1);
@@ -3455,7 +3474,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(h && h !== 'paiement' && h !== 'merci' && sv){ try{ history.replaceState({e:'ville'}, '', location.pathname); }catch(e){} if(h !== 'ville') aller(h); else aller('ville', true); }
     else aller('ville');
   }
-  fetch('/api/points-retrait' + (/[?&]test=1\b/.test(location.search) ? '?test=1' : '')).then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine, court:(j.tarif.court && j.tarif.court.base > 0) ? j.tarif.court : CC.court, demain:CC.demain}; majPrixTextes(); } })
+  fetch('/api/points-retrait' + (/[?&]test=1\b/.test(location.search) ? '?test=1' : '')).then(function(r){ return r.json(); }).then(function(j){ POINTS = (j && j.points) || []; try{ var ps = POINTS.filter(function(x){ return !x.exemple && x.saison; })[0] || POINTS.filter(function(x){ return x.saison; })[0]; if(ps){ var md = dans(1).slice(5); $('t-saison').hidden = !(md < ps.saison.ouverture || md > ps.saison.fin); } }catch(e){} if(j && j.tarif && j.tarif.baseSemaine > 0){ CC = {base:+j.tarif.baseSemaine, min:+j.tarif.minSemaine, max:+j.tarif.maxSemaine, court:(j.tarif.court && j.tarif.court.base > 0) ? j.tarif.court : CC.court, demain:CC.demain}; majPrixTextes(); } })
     .catch(function(){ $('loc-err').textContent = L('Impossible de charger les points de retrait. Rechargez la page ou écrivez à Julie (menu ☰ → Aide).', 'Pick-up points couldn’t load. Reload the page or chat with Julie (menu ☰ → Help).'); $('loc-err').hidden = false; })
     .then(demarrer).then(function(){ majSimu(); if(POINTS.length){ gcQuandVisible(); chargerDispo(); montrerRevient(); } });
   majPrixTextes();
