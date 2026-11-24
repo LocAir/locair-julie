@@ -24,18 +24,22 @@ async function detecterParrainage(supabase, partenaire) {
     if (!partenaire || !partenaire.id) return null;
     const { data: liste, error } = await supabase.from('parrainages')
       .select('id, parrain_id, parrain_nom, commerce, contact_nom, tel')
-      .eq('statut', 'en_attente').order('created_at', { ascending: false }).limit(200);
+      .eq('statut', 'en_attente').order('created_at', { ascending: true }).limit(500); // le 1er parrain gagne
     if (error || !liste || !liste.length) return null;
     const tel = chiffres(partenaire.telephone);
     const nom = nomSimple(partenaire.nom);
-    const p = liste.find((x) => x.parrain_id !== partenaire.id && (
-      (tel.length === 9 && chiffres(x.tel) === tel) || (nom.length >= 4 && nomSimple(x.commerce) === nom)));
+    const correspond = (x) => (tel.length === 9 && chiffres(x.tel) === tel) || (nom.length >= 4 && nomSimple(x.commerce) === nom);
+    const p = liste.find((x) => x.parrain_id !== partenaire.id && correspond(x));
     if (!p) return null;
 
     const { data: maj } = await supabase.from('parrainages')
       .update({ statut: 'signe', signe_at: new Date().toISOString(), filleul_id: partenaire.id })
       .eq('id', p.id).eq('statut', 'en_attente').select('id');
     if (!maj || !maj.length) return null;
+    // Les autres demandes pour ce même commerce (autre parrain, plus tard) :
+    // « Pas cette fois » dans leur espace, au lieu de rester en attente.
+    const autres = liste.filter((x) => x.id !== p.id && correspond(x)).map((x) => x.id);
+    if (autres.length) await supabase.from('parrainages').update({ statut: 'refuse' }).in('id', autres).eq('statut', 'en_attente').then(() => {}, () => {});
 
     pushToAdmin(supabase, {
       title: `🎁 Parrainage détecté — ${partenaire.nom}`,
