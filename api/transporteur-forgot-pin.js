@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
   }
   await recordFailedAttempt(supabase, rateKey).catch(() => {});
 
-  const email = ((req.body || {}).email || '').trim().toLowerCase();
+  const email = String((req.body || {}).email || '').trim().toLowerCase();
   // Toujours la même réponse, que l'email existe ou non — évite de révéler
   // quels emails sont enregistrés (énumération de comptes).
   const genericResponse = { ok: true, message: "Si ce compte existe, un email vient d'être envoyé." };

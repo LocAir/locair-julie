@@ -65,7 +65,7 @@ async function checkAdminToken(req, supabase) {
   const rateKey = `admin:${getClientIp(req)}`;
   if (await isRateLimited(supabase, rateKey)) return false;
 
-  const token = ((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
+  const token = String((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
   const { auth, signatureValid } = await resolveAdminAuth(token, supabase);
   // Ne compte dans le blocage anti-bruteforce que les jetons qui ne prouvent
   // rien (mot de passe faux/deviné, jeton malformé/forgé) — jamais un jeton
@@ -82,7 +82,7 @@ async function checkAdminRole(req, supabase) {
   const rateKey = `admin:${getClientIp(req)}`;
   if (await isRateLimited(supabase, rateKey)) return { ok: false };
 
-  const token = ((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
+  const token = String((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
   const { auth, signatureValid } = await resolveAdminAuth(token, supabase);
   if (!auth) {
     if (!signatureValid) await recordFailedAttempt(supabase, rateKey);
@@ -120,7 +120,7 @@ function signTransporteurToken(transporteurId, pin) {
 async function verifyTransporteurToken(req, supabase) {
   const secret = process.env.TRANSPORTEUR_SECRET;
   if (!secret) return null;
-  const token = ((req.body || {}).token || req.headers['x-transporteur-token'] || '').trim();
+  const token = String((req.body || {}).token || req.headers['x-transporteur-token'] || '').trim();
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [idStr, fingerprint, sig] = parts;
@@ -153,7 +153,7 @@ function signPartenaireToken(partenaireId, pin) {
 async function verifyPartenaireToken(req, supabase) {
   const secret = process.env.TRANSPORTEUR_SECRET;
   if (!secret) return null;
-  const token = ((req.body || {}).token || req.headers['x-partenaire-token'] || '').trim();
+  const token = String((req.body || {}).token || req.headers['x-partenaire-token'] || '').trim();
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [prefixedId, fingerprint, sig] = parts;
@@ -200,7 +200,7 @@ function signClientToken(reservationId, ref) {
 async function verifyClientToken(req, supabase) {
   const secret = process.env.TRANSPORTEUR_SECRET;
   if (!secret) return null;
-  const token = ((req.body || {}).token || req.headers['x-client-token'] || '').trim();
+  const token = String((req.body || {}).token || req.headers['x-client-token'] || '').trim();
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [prefixedId, fingerprint, sig] = parts;

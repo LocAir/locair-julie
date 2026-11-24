@@ -187,7 +187,7 @@ module.exports = async (req, res) => {
   try {
     let customerId = '';
     if (data.email) {
-      const email = data.email.trim().toLowerCase();
+      const email = String(data.email).trim().toLowerCase();
       const existing = await stripe.customers.list({ email, limit: 1 });
       if (existing.data.length > 0) {
         customerId = existing.data[0].id;

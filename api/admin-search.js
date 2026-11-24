@@ -14,7 +14,7 @@ module.exports = async (req, res) => {
   const admin = await checkAdminRole(req, supabase);
   if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
-  const q = ((req.body || {}).q || '').trim().slice(0, 100);
+  const q = String((req.body || {}).q || '').trim().slice(0, 100);
   if (q.length < 2) {
     return res.status(200).json({ commandes: [], clients: [], climatiseurs: [], transporteurs: [], partenaires: [] });
   }
