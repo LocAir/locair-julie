@@ -2,14 +2,22 @@
 // qu'il faut pour piloter les points Click & Collect sur un seul écran.
 //   - résumé : points ouverts, appareils chez les clients, retards, à reconditionner
 //   - aujourd'hui : retraits prévus, retours prévus, retards (avec le n° à 4 chiffres)
+//   - passages de l'agent (tous les 10 jours, table passages_agent) :
+//     { action: 'passage', point_id } note un passage fait aujourd'hui
+//   - saison : jours-machine loués face au point mort du playbook
 //   - chaque point : stock libre aujourd'hui, commerçant relié, commission,
 //     chiffre du mois, code retour (jamais affiché sur le site public)
-// Lecture seule. La liste des points vit dans _lib/pointsRetrait.js.
+// La liste des points vit dans _lib/pointsRetrait.js.
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { POINTS_RETRAIT, pointFermeLe } = require('./_lib/pointsRetrait');
 const { codeRetour, numeroComptoir } = require('./_lib/clickCollect');
 const { todayParis, addDays } = require('./_lib/dates');
+
+// Point mort de la saison (playbook Cellule 1 V3) : 1 465 €/mois de charges
+// (box, agent, pub) sur 4 mois = 313 à 369 jours-machine loués, selon le prix.
+const POINT_MORT = { min: 313, max: 369 };
+const ENTRETIEN_JOURS = 10;
 
 const CHAMPS = 'id, ref, prenom, nom, tel, point_retrait_id, date_debut, date_fin, quantite, statut, remis_at, rendu_at, prix_total_cents, partenaire_commission_cents, created_at, source';
 
@@ -20,9 +28,17 @@ module.exports = async (req, res) => {
   if (!a.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   try {
+    const b = req.body || {};
+    if (b.action === 'passage') {
+      const id = String(b.point_id || '');
+      if (!POINTS_RETRAIT.some((p) => p.id === id)) return res.status(400).json({ error: 'Point inconnu' });
+      const { error: e } = await supabase.from('passages_agent').insert({ point_id: id, fait_le: todayParis() });
+      if (e) return res.status(500).json({ error: /passages_agent|42P01/.test(e.message + (e.code || '')) ? 'Table passages_agent à créer dans Supabase' : e.message });
+      return res.status(200).json({ ok: true });
+    }
     const auj = todayParis();
     const debutMois = auj.slice(0, 8) + '01';
-    const depuis = addDays(auj, -120);
+    const depuis = addDays(auj, -200); // couvre toute la saison (fin mai → fin septembre)
 
     // Réservations Click & Collect récentes ou en cours. Si une colonne
     // récente manque encore dans la vraie base (migration pas passée), on
@@ -57,6 +73,16 @@ module.exports = async (req, res) => {
     const aujourdhui = { retraits: [], retours: [], retards: [] };
     let dehorsTotal = 0, aReconditionner = 0;
 
+    // Dernier passage de l'agent par point (table absente : rien, sans erreur).
+    const dernierPassage = {};
+    let passagesTable = true;
+    {
+      const { data: pas, error: ep } = await supabase.from('passages_agent').select('point_id, fait_le')
+        .gte('fait_le', addDays(auj, -200)).order('fait_le', { ascending: false }).limit(1000);
+      if (ep) passagesTable = false;
+      (pas || []).forEach((x) => { if (!dernierPassage[x.point_id]) dernierPassage[x.point_id] = x.fait_le; });
+    }
+
     const points = POINTS_RETRAIT.map((p) => {
       // Les lignes « prolongation » ne sont pas des appareils en plus : la
       // location d'origine porte déjà la nouvelle date de fin (webhook.js).
@@ -89,6 +115,8 @@ module.exports = async (req, res) => {
         exemple: !!p.exemple, test: !!p.test, ferme_aujourdhui: pointFermeLe(p, auj),
         stock: p.stock || 0, libres: Math.max(0, (p.stock || 0) - occupe), dehors, a_venir: aVenir, a_reconditionner: recond,
         commission_pct: p.commission_pct,
+        dernier_passage: dernierPassage[p.id] || null,
+        jours_sans_passage: dernierPassage[p.id] ? Math.round((Date.parse(auj) - Date.parse(dernierPassage[p.id])) / 864e5) : null,
         commercant: part ? { nom: part.nom || part.code, code: part.code, telephone: part.telephone || null, rib_ok: !!(part.iban && String(part.iban).trim()), actif: part.actif !== false } : null,
         partenaire_code: p.partenaire_code || null,
         code_retour: codeRetour(p, part),
@@ -112,6 +140,13 @@ module.exports = async (req, res) => {
       return { ville: v.ville, points: v.points, pct, pub: pct >= 90 ? 'pause' : pct >= 85 ? 'baisser' : 'normale' };
     }).sort((x, y) => y.pct - x.pct);
 
+    // Saison en cours : jours-machine loués (appareils × jours), points réels.
+    const reels = new Set(POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).map((p) => p.id));
+    const debutSaison = auj.slice(0, 4) + '-05-01';
+    const joursMachine = resas.filter((r) => reels.has(r.point_retrait_id) && r.source !== 'site_prolongation' && r.date_debut >= debutSaison)
+      .reduce((s, r) => s + qte(r) * Math.max(0, Math.round((Date.parse(r.date_fin) - Date.parse(r.date_debut)) / 864e5)), 0);
+    const entretienEnRetard = points.filter((p) => !p.test && !p.exemple && (p.jours_sans_passage == null || p.jours_sans_passage > ENTRETIEN_JOURS)).length;
+
     const tri = (l) => l.sort((x, y) => x.point.localeCompare(y.point) || x.client.localeCompare(y.client));
     tri(aujourdhui.retraits); tri(aujourdhui.retours); aujourdhui.retards.sort((x, y) => y.jours_retard - x.jours_retard);
 
@@ -123,7 +158,11 @@ module.exports = async (req, res) => {
         dehors: dehorsTotal,
         retards: aujourdhui.retards.length,
         a_reconditionner: aReconditionner,
+        entretien_en_retard: passagesTable ? entretienEnRetard : 0,
       },
+      saison: { jours_machine: joursMachine, point_mort: POINT_MORT },
+      passages_table: passagesTable,
+      entretien_jours: ENTRETIEN_JOURS,
       aujourdhui,
       remplissage,
       points,

@@ -341,7 +341,11 @@ housse et gaine récupérés → code ; ! un souci (accessoire manquant, abîmé
 sale) → le commerçant reprend l'appareil et prévient tout de suite, avec
 une photo (WhatsApp / email partenaires / 06 63 79 87 56). Admin → Points de
 retrait → « Remplissage · 7 prochains jours » par ville : 85 % = baisser
-la pub, 90 % = pub en pause.
+la pub, 90 % = pub en pause. Même écran : « Passage fait » sur chaque
+point (table `passages_agent`, `supabase/migration_2026-11-24_passages_agent.sql`),
+en rouge au-delà de 10 jours ; et « Saison · point mort » : jours-machine
+loués depuis le 1er mai face aux 313–369 du playbook (charges 1 465 €/mois :
+box 165, agent 700, pub 600).
 
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans
