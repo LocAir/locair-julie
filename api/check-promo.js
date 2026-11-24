@@ -21,9 +21,9 @@ module.exports = async (req, res) => {
       return res.status(429).json({ eligible: false, reason: 'rate_limited' });
   } catch (_e) { /* ne jamais bloquer l'affichage pour un souci de rate-limit */ }
 
-  const code  = (req.query.code   || '').trim().toUpperCase();
-  const email = (req.query.email  || '').trim().toLowerCase();
-  const prenom= (req.query.prenom || '').trim();
+  const code  = String(req.query.code   || '').trim().toUpperCase();
+  const email = String(req.query.email  || '').trim().toLowerCase();
+  const prenom= String(req.query.prenom || '').trim();
 
   if (!code || code.length < 2 || code.length > 60) {
     return res.json({ eligible: false, type: 'none' });
@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
 
     if (promo && ['pourcentage', 'montant_fixe'].includes(promo.type_remise)
         && Number.isFinite(Number(promo.valeur)) && Number(promo.valeur) > 0) {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = require('./_lib/dates').todayParis(); // jour à Nice, pas à Londres
       if (promo.date_debut && today < promo.date_debut)
         return res.json({ eligible: false, type: 'admin', reason: 'pas_encore_active' });
       if (promo.date_fin && today > promo.date_fin)
