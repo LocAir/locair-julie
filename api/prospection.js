@@ -267,7 +267,16 @@ module.exports = async (req, res) => {
       const statut = STATUTS.includes(b.statut) && b.statut !== 'session' ? b.statut : null;
       if (!statut) return res.status(400).json({ error: 'Statut inconnu.' });
       const patch = { statut, updated_at: new Date().toISOString() };
-      if (statut === 'signe') { patch.signe_at = new Date().toISOString(); patch.signataire = clip(b.signataire, 120) || 'Signé sur papier'; }
+      if (statut === 'signe') {
+        patch.signe_at = new Date().toISOString(); patch.signataire = clip(b.signataire, 120) || 'Signé sur papier';
+        // Le nombre de climatiseurs compte dans l'objectif (40) : obligatoire si la fiche n'en a pas.
+        const cap = Number(b.capacite);
+        if ([3, 4, 5].includes(cap)) patch.capacite = cap;
+        else {
+          const { data: cur } = await supabase.from('prospection_points').select('capacite').eq('id', id).maybeSingle();
+          if (!cur || !cur.capacite) return res.status(400).json({ error: 'Indiquez 3, 4 ou 5 climatiseurs.' });
+        }
+      }
       const notes = clip(b.notes, 500); if (notes) patch.notes = notes;
       const { data, error } = await supabase.from('prospection_points').update(patch).eq('id', id).select('*').single();
       if (error) throw error;

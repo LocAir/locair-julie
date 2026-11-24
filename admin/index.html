@@ -11782,7 +11782,7 @@ async function prTerrain(){
         ${f.photo_url ? `<a href="${escAttr(f.photo_url)}" target="_blank" rel="noopener">Photo</a>` : ''}
         ${f.lat != null ? `<a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank" rel="noopener">GPS</a>` : ''}
         ${f.statut !== 'refuse' ? `<button type="button" onclick="ptEnvoyer(${f.id}, ${escAttr(JSON.stringify(f.email || ''))})">${f.statut === 'signe' ? 'Renvoyer la convention' : 'Envoyer présentation + convention'}</button>` : ''}
-        ${f.statut !== 'signe' ? `<button type="button" onclick="ptCopier(${escAttr(JSON.stringify(f.lien))})">Lien pour signer</button><button type="button" onclick="ptStatut(${f.id}, 'signe')">Signé sur papier</button>` : ''}
+        ${f.statut !== 'signe' ? `<button type="button" onclick="ptCopier(${escAttr(JSON.stringify(f.lien))})">Lien pour signer</button><button type="button" onclick="ptStatut(${f.id}, 'signe', ${f.capacite || 0})">Signé sur papier</button>` : ''}
         ${f.statut !== 'refuse' && f.statut !== 'signe' ? `<button type="button" onclick="ptStatut(${f.id}, 'refuse')">Pas cette fois</button>` : ''}
         ${f.statut === 'refuse' ? `<button type="button" onclick="ptStatut(${f.id}, 'a_repasser')">À repasser</button>` : ''}
       </span></span><span class="pr-etat ${PT_CLASSE[f.statut] || ''}">${PT_LIB[f.statut] || escHtml(f.statut)}</span></li>`;
@@ -11820,10 +11820,13 @@ async function ptEnvoyer(id, email){
   try{ await ptApi({action:'envoyer', id, email:e}); showToast('Présentation + convention envoyées ✓', 'success'); prTerrain(); }
   catch(x){ showToast(x.message, 'error'); }
 }
-async function ptStatut(id, statut){
-  let signataire = '';
-  if(statut === 'signe'){ signataire = prompt('Signée sur papier par (nom & qualité) :', ''); if(signataire === null) return; }
-  try{ await ptApi({action:'statut', id, statut, signataire}); showToast('Fiche mise à jour ✓', 'success'); prTerrain(); }
+async function ptStatut(id, statut, capaActuelle){
+  let signataire = '', capacite = capaActuelle || null;
+  if(statut === 'signe'){
+    signataire = prompt('Signée sur papier par (nom & qualité) :', ''); if(signataire === null) return;
+    if(!capacite){ const c = prompt('Combien de climatiseurs ? (3, 4 ou 5)', '4'); if(c === null) return; capacite = Number(c); }
+  }
+  try{ await ptApi({action:'statut', id, statut, signataire, capacite}); showToast('Fiche mise à jour ✓', 'success'); prTerrain(); }
   catch(x){ showToast(x.message, 'error'); }
 }
 function ptCopier(t){
