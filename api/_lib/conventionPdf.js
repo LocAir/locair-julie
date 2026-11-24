@@ -21,7 +21,7 @@ const LOCAIR = [
 const ESSENTIEL = [
   ['Dépose & saison', 'Dépose entre le 10 et le 15 mai 2027, saison active de fin mai à fin septembre (environ 120 jours), sans livraison à domicile.'],
   ['Rémunération', '20 % des locations encaissées (hors annulations remboursées), sans minimum garanti ; 0 € fixe à la charge du partenaire.'],
-  ['Stock & rangement', 'Stock fixe chez le commerçant (pas de rotation ni de transfert), rangé contre un mur sous housse bleue unie sans logo, gaine d’évacuation au-dessus ; retrait et retour au même point.'],
+  ['Stock & rangement', 'Stock fixe chez le commerçant (pas de rotation ni de transfert), nombre fixé à la signature et modifiable d’un commun accord, rangé contre un mur sous housse bleue unie sans logo, gaine d’évacuation au-dessus ; retrait et retour au même point.'],
   ['Entretien & pannes', 'Passage de l’agent Loc’Air tous les 10 jours ; appareil en panne repris et remplacé par Loc’Air.'],
   ['Vol ou casse', 'Dans la boutique : Loc’Air paie, sauf faute grave du partenaire.'],
   ['Résiliation', 'Libre à tout moment par écrit (e-mail ou SMS) avec 7 jours de préavis.'],
@@ -32,7 +32,7 @@ const ARTICLES = [
     'La présente convention est conclue sans engagement de durée initiale et se reconduit tacitement aux mêmes conditions.',
     'Les climatiseurs mobiles sont déposés entre le 10 et le 15 mai 2027 pour une saison active de fin mai à fin septembre (environ 4 mois / 120 jours actifs). Loc’Air n’assure aucune livraison à domicile depuis le point : le service fonctionne en Click & Collect via les points de retrait partenaires.',
     'Le partenaire met à disposition un espace intérieur sec, sécurisé et accessible aux heures d’ouverture habituelles (environ 40 × 40 cm par appareil sur roulettes).',
-    'Stock fixe sans rotation ni transfert : chaque point reçoit un stock fixe d’appareils (3 à 5 unités, selon la place disponible, fixé à la signature). Aucune rotation ni transfert d’appareils n’a lieu d’un commerçant à un autre.',
+    'Stock fixe sans rotation ni transfert : chaque point reçoit un stock fixe d’appareils, fixé à la signature selon la place disponible. Ce nombre peut évoluer à tout moment d’un commun accord (confirmation écrite par e-mail). Aucune rotation ni transfert d’appareils n’a lieu d’un commerçant à un autre.',
     'Le client retire et rapporte l’appareil au même point de retrait. Si un point est complet ou indisponible, le client peut être orienté vers un autre point du réseau.',
   ]],
   ['Article 2 — Commission de 20 % & règlement', [
@@ -120,7 +120,7 @@ function generateConventionPdf(fiche, signaturePng) {
       ['Dirigeant', f.gerant || f.signataire || vide],
       ['SIRET', vide],
       ['Téléphone / e-mail', [f.tel, f.email].filter(Boolean).join(' · ') || vide],
-      ['Stock fixe (sans rotation)', f.capacite ? `${f.capacite} climatiseurs` : '____ climatiseurs (3 à 5)'],
+      ['Stock fixe (sans rotation)', f.capacite ? `${f.capacite} climatiseur${f.capacite > 1 ? 's' : ''} (modifiable d’un commun accord)` : '____ climatiseurs'],
       ['Mise en service', 'Dépose du 10 au 15 mai 2027'],
     ]);
     doc.y = Math.max(yA, yB) + 6;

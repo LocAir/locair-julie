@@ -25,6 +25,9 @@ const BUCKET = 'missions';
 
 const clip = (s, n) => (typeof s === 'string' || typeof s === 'number' ? String(s) : '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+// Nombre de climatiseurs à la signature : souvent 3, 4 ou 5, mais libre
+// (selon la place, d'un commun accord), et modifiable ensuite dans l'admin.
+const capaciteOk = (n) => Number.isInteger(n) && n >= 1 && n <= 20;
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 const pasDeTable = (e) => e && (e.code === '42P01' || /prospection_points/.test(e.message || '') && /does not exist|relation/.test(e.message || ''));
 const MSG_TABLE = 'La table de prospection n’existe pas encore : collez le SQL du 25/11 dans Supabase (SQL Editor).';
@@ -101,7 +104,7 @@ module.exports = async (req, res) => {
       if (action === 'accepter') {
         if (f.statut === 'signe') return res.json({ ok: true, fiche: publicFiche(f) });
         const capacite = Number(b.capacite);
-        if (![3, 4, 5].includes(capacite)) return res.status(400).json({ error: 'Choisissez 3, 4 ou 5 climatiseurs.' });
+        if (!capaciteOk(capacite)) return res.status(400).json({ error: 'Choisissez le nombre de climatiseurs (1 à 20).' });
         const email = clip(b.email, 160).toLowerCase();
         if (email && !emailOk(email)) return res.status(400).json({ error: 'E-mail incorrect.' });
         const patch = { capacite, statut: 'en_attente_signature', accepte_at: new Date().toISOString(), updated_at: new Date().toISOString() };
@@ -116,7 +119,7 @@ module.exports = async (req, res) => {
 
       // signer
       if (f.statut === 'signe') return res.json({ ok: true, fiche: publicFiche(f), pdf: `/api/prospection?s=${f.session_token}` });
-      if (!f.capacite) return res.status(400).json({ error: 'Choisissez d’abord 3, 4 ou 5 climatiseurs.' });
+      if (!f.capacite) return res.status(400).json({ error: 'Choisissez d’abord le nombre de climatiseurs.' });
       const signataire = clip(b.signataire, 120);
       if (signataire.length < 3) return res.status(400).json({ error: 'Écrivez votre nom et votre qualité (ex. Marie Dupont, gérante).' });
       const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(typeof b.signature === 'string' ? b.signature : '');
@@ -271,10 +274,10 @@ module.exports = async (req, res) => {
         patch.signe_at = new Date().toISOString(); patch.signataire = clip(b.signataire, 120) || 'Signé sur papier';
         // Le nombre de climatiseurs compte dans l'objectif (40) : obligatoire si la fiche n'en a pas.
         const cap = Number(b.capacite);
-        if ([3, 4, 5].includes(cap)) patch.capacite = cap;
+        if (capaciteOk(cap)) patch.capacite = cap;
         else {
           const { data: cur } = await supabase.from('prospection_points').select('capacite').eq('id', id).maybeSingle();
-          if (!cur || !cur.capacite) return res.status(400).json({ error: 'Indiquez 3, 4 ou 5 climatiseurs.' });
+          if (!cur || !cur.capacite) return res.status(400).json({ error: 'Indiquez le nombre de climatiseurs.' });
         }
       }
       const notes = clip(b.notes, 500); if (notes) patch.notes = notes;

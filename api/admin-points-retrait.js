@@ -12,7 +12,8 @@ const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { POINTS_RETRAIT, pointFermeLe, CELLULES, getCellule, pointMortCellule, COMMISSION_POINT_PCT } = require('./_lib/pointsRetrait');
-const { codeRetour, numeroComptoir } = require('./_lib/clickCollect');
+const { codeRetour, numeroComptoir, occupationParPoint } = require('./_lib/clickCollect');
+const { chargerStocks } = require('./_lib/stockPoints');
 const { todayParis, addDays, debutJourParisISO } = require('./_lib/dates');
 
 // Flotte, charges, saison et point mort : par cellule (_lib/pointsRetrait.js → CELLULES).
@@ -29,6 +30,53 @@ module.exports = async (req, res) => {
 
   try {
     const b = req.body || {};
+    const stockTable = await chargerStocks(supabase, { force: true });
+
+    // Stock d'un point (25/11/2026) : il peut évoluer d'un point à l'autre et
+    // dans le temps, avec l'accord du gérant. Chaque changement est gardé
+    // (qui, quand, avant → après, pourquoi) et le commerçant reçoit une trace
+    // écrite par e-mail. Baisser sous les locations déjà prévues : refusé
+    // sauf confirmation (forcer).
+    if (b.action === 'stock') {
+      if (!roleHasAccess(a.role, 'partenaires') && a.role !== 'administrateur') return res.status(403).json({ error: 'Réservé au gérant.' });
+      if (stockTable === false) return res.status(503).json({ error: 'Table stock_points à créer dans Supabase (SQL du 25/11).' });
+      const p = POINTS_RETRAIT.find((x) => x.id === String(b.point_id || ''));
+      if (!p) return res.status(400).json({ error: 'Point inconnu' });
+      const nouveau = Number(b.stock);
+      if (!Number.isInteger(nouveau) || nouveau < 0 || nouveau > 30) return res.status(400).json({ error: 'Stock : un nombre entre 0 et 30.' });
+      if (nouveau === p.stock) return res.status(400).json({ error: 'C’est déjà le stock du point.' });
+      if (b.accord !== true) return res.status(400).json({ error: 'Cochez « Le gérant est d’accord ».' });
+      const raison = String(b.raison || '').trim().slice(0, 300);
+      if (raison.length < 3) return res.status(400).json({ error: 'Écrivez la raison (ex. place en plus dans la réserve).' });
+      const auj0 = todayParis();
+      if (nouveau < p.stock && !b.forcer) {
+        const occ = await occupationParPoint(supabase, [p], auj0, addDays(auj0, 60), { avecAttente: true }).catch(() => ({}));
+        const pic = occ[p.id] || 0;
+        if (pic > nouveau) return res.status(409).json({ error: `Jusqu’à ${pic} climatiseur${pic > 1 ? 's' : ''} déjà loué${pic > 1 ? 's' : ''} en même temps sur les 60 prochains jours : le stock ne peut pas descendre à ${nouveau} sans les déplacer.`, pic, confirmer: true });
+      }
+      const ancien = p.stock;
+      const par = a.nom || a.role;
+      const { error: e1 } = await supabase.from('stock_points').upsert({ point_id: p.id, stock: nouveau, updated_at: new Date().toISOString(), updated_by: par }, { onConflict: 'point_id' });
+      if (e1) throw e1;
+      await supabase.from('stock_points_historique').insert({ point_id: p.id, ancien, nouveau, raison, accord_gerant: true, par }).then(() => {}, () => {});
+      await chargerStocks(supabase, { force: true });
+      // Trace écrite au commerçant (s'il a un e-mail).
+      let prevenu = false;
+      if (p.partenaire_code && !p.test) {
+        const { data: part } = await supabase.from('partenaires').select('nom, email').eq('code', String(p.partenaire_code).toLowerCase()).maybeSingle();
+        if (part && part.email) {
+          const { sendBrevoEmail } = require('./_lib/brevo');
+          const r = await sendBrevoEmail({
+            to: part.email, senderName: 'Loc’Air Partenaires', replyTo: 'partenaires.locair@outlook.com',
+            subject: `Votre stock Loc’Air passe à ${nouveau} climatiseur${nouveau > 1 ? 's' : ''}`,
+            html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Votre stock change</h2><p>Comme convenu ensemble, le stock de <b>${String(p.nom).replace(/[<>&]/g, '')}</b> passe de <b>${ancien}</b> à <b>${nouveau}</b> climatiseur${nouveau > 1 ? 's' : ''}, à partir d’aujourd’hui.</p><p>Rien d’autre ne change : mêmes règles, mêmes 20 %.</p><p style="color:#4B5873;font-size:13px">Une question : 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`,
+          }).catch(() => ({ ok: false }));
+          prevenu = !!r.ok;
+        }
+      }
+      return res.status(200).json({ ok: true, ancien, nouveau, commercant_prevenu: prevenu });
+    }
+
     if (b.action === 'passage') {
       const id = String(b.point_id || '');
       if (!POINTS_RETRAIT.some((p) => p.id === id)) return res.status(400).json({ error: 'Point inconnu' });
@@ -182,7 +230,7 @@ module.exports = async (req, res) => {
         a_virer_cents: p.test || p.exemple ? 0 : aVirer,
         id: p.id, nom: p.nom, ville: p.ville, adresse: p.adresse, horaires: p.horaires,
         exemple: !!p.exemple, test: !!p.test, ferme_aujourdhui: pointFermeLe(p, auj),
-        stock: p.stock || 0, libres: Math.max(0, (p.stock || 0) - occupe), dehors, a_venir: aVenir, a_reconditionner: recond,
+        stock: p.stock || 0, stock_code: p.stock_code, stock_modifie: !!p.stock_modifie, libres: Math.max(0, (p.stock || 0) - occupe), dehors, a_venir: aVenir, a_reconditionner: recond,
         commission_pct: p.commission_pct,
         dernier_passage: dernierPassage[p.id] || null,
         jours_sans_passage: dernierPassage[p.id] ? Math.round((Date.parse(auj) - Date.parse(dernierPassage[p.id])) / 864e5) : null,
@@ -226,7 +274,7 @@ module.exports = async (req, res) => {
       return {
         id: c.id, nom: c.nom, flotte: c.flotte, depose: c.depose, fin_saison: c.fin_saison, pub_jour: c.pub_jour,
         charges_mois: c.charges.box + c.charges.agent + c.charges.pub,
-        points_ouverts: pts.length, en_points: enPoints, micro_box: Math.max(0, c.flotte - enPoints),
+        points_ouverts: pts.length, en_points: enPoints, micro_box: Math.max(0, c.flotte - enPoints), flotte_depassee: enPoints > c.flotte,
         jours_machine: jm, capacite, occupation_pct: capacite ? Math.round(jm / capacite * 1000) / 10 : 0,
         point_mort: pointMortCellule(c, COMMISSION_POINT_PCT),
         remplissage_pct: remPct, pub: remPct == null ? null : remPct >= 90 ? 'pause' : remPct >= 85 ? 'baisser' : 'normale',
@@ -234,6 +282,19 @@ module.exports = async (req, res) => {
         commissions_saison_cents: pts.reduce((s, p) => s + p.saison.commission_cents, 0),
       };
     });
+
+    // Contrôle du stock (chaque jour) : locations prévues qui dépassent le
+    // stock d'un point sur les 60 prochains jours, et flotte dépassée.
+    {
+      const reelsPts = POINTS_RETRAIT.filter((p) => !p.test && !p.exemple);
+      const pics = reelsPts.length ? await occupationParPoint(supabase, reelsPts, auj, addDays(auj, 60), { avecAttente: false }).catch(() => ({})) : {};
+      points.forEach((pt) => { if (pics[pt.id] != null) { pt.pic_60j = pics[pt.id]; pt.surbooke = pics[pt.id] > pt.stock; } });
+    }
+    let stockHistorique = [];
+    if (stockTable) {
+      const { data: h } = await supabase.from('stock_points_historique').select('point_id, ancien, nouveau, raison, accord_gerant, par, created_at').order('created_at', { ascending: false }).limit(40);
+      stockHistorique = (h || []).map((x) => ({ ...x, point: (POINTS_RETRAIT.find((p) => p.id === x.point_id) || {}).nom || x.point_id }));
+    }
 
     const tri = (l) => l.sort((x, y) => x.point.localeCompare(y.point) || x.client.localeCompare(y.client));
     tri(aujourdhui.retraits); tri(aujourdhui.retours); aujourdhui.retards.sort((x, y) => y.jours_retard - x.jours_retard);
@@ -262,6 +323,8 @@ module.exports = async (req, res) => {
       micro_box: { flotte: CELLULES.reduce((s, c) => s + c.flotte, 0), en_points: POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).reduce((s, p) => s + (p.stock || 0), 0) },
       signalements,
       passages_table: passagesTable,
+      stock_table: stockTable !== false,
+      stock_historique: stockHistorique,
       entretien_jours: ENTRETIEN_JOURS,
       aujourdhui,
       remplissage,
