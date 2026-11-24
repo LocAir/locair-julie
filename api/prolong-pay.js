@@ -162,6 +162,11 @@ module.exports = async (req, res) => {
   if (jours < 1) {
     return res.status(400).json({ error: 'Durée minimale : 1 jour.' });
   }
+  // Même plafond que checkout-prolong.js et que la réservation (90 jours) :
+  // sans lui, une prolongation de 400 jours passait.
+  if (jours > 90) {
+    return res.status(400).json({ error: 'Prolongation : 90 jours maximum à la fois.' });
+  }
 
   // Même logique que checkout-prolong.js (_safeIncrement) : filet de sécurité
   // pour un incrément négatif, qui ne devrait plus survenir pour une nouvelle
