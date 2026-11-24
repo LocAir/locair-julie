@@ -54,6 +54,12 @@ input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
 .commercant p{margin:0 0 14px;color:var(--ink-2);font-size:15px;line-height:1.45}
 .client-ret{margin:0}
 .client-ret p{margin:0 0 14px;color:var(--ink-2);font-size:15.5px;line-height:1.5}
+.c-resa{background:#E8F6EE;border-radius:16px;padding:14px 16px;margin:6px 0 18px;display:flex;flex-direction:column;gap:2px}
+.c-resa b{font-size:22px;font-weight:900;letter-spacing:-.02em;color:var(--ink)}
+.c-resa span{font-size:15.5px;font-weight:700;color:var(--ok)}
+.c-etapes{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:12px}
+.c-etapes li{display:flex;gap:12px;align-items:flex-start;font-size:16.5px;line-height:1.4;color:var(--ink)}
+.c-n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ok);color:#fff;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;margin-top:-1px}
 
 .signal{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
 .sig-lien{border:0;background:none;color:var(--ink-2);font:700 15px 'DM Sans',sans-serif;text-decoration:underline;cursor:pointer;padding:10px 0;min-height:44px;text-align:left}
@@ -138,7 +144,12 @@ html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):n
 
       <div class="client-ret" id="f-cli" hidden>
         <h2 class="bloc-t t-ret">✓ <span lang="fr">Retrait</span><span lang="en">Pick-up</span><span lang="es">Recogida</span></h2>
-        <p id="c-consigne"></p>
+        <!-- à qui on remet, puis 2 gestes : valider, montrer (écran vert + pièce d'identité) -->
+        <div class="c-resa"><b id="c-nom"></b><span id="c-qte"></span></div>
+        <ol class="c-etapes">
+          <li><span class="c-n">1</span><span><span lang="fr">Appuyez sur <b>Valider mon retrait</b></span><span lang="en">Tap <b>Confirm my pick-up</b></span><span lang="es">Pulsa <b>Confirmar mi recogida</b></span></span></li>
+          <li><span class="c-n">2</span><span><span lang="fr">Montrez au commerçant <b>l’écran vert</b> et <b>votre pièce d’identité</b></span><span lang="en">Show the shopkeeper <b>the green screen</b> and <b>your ID</b></span><span lang="es">Enseña al comerciante <b>la pantalla verde</b> y <b>tu documento de identidad</b></span> 🪪</span></li>
+        </ol>
         <button class="btn vert" id="b-cli" type="button"><span lang="fr">Valider mon retrait</span><span lang="en">Confirm my pick-up</span><span lang="es">Confirmar mi recogida</span></button>
         <p class="msg err" id="m-cli" role="alert" hidden></p>
       </div>
@@ -279,7 +290,8 @@ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ na
     /* RETRAIT : le client valide lui-même, puis montre l'écran vert et sa pièce d'identité (convention, art. 4 : le commerçant la regarde, sans copie).
        RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
     if(r.peut_remettre){
-      $('c-consigne').textContent = (nq > 1 ? L(nq + ' climatiseurs à votre nom. ', nq + ' air conditioners in your name. ', nq + ' aparatos a tu nombre. ') : '') + L('Validez, puis montrez l’écran vert et votre pièce d’identité (' + nom + ') au commerçant.', 'Confirm, then show the green screen and your ID (' + nom + ') to the shopkeeper.', 'Confirma y enseña la pantalla verde y tu documento de identidad (' + nom + ') al comerciante.');
+      $('c-nom').textContent = nom;
+      $('c-qte').textContent = nq > 1 ? L(nq + ' climatiseurs à récupérer', nq + ' air conditioners to pick up', nq + ' aparatos para recoger') : L('1 climatiseur à récupérer', '1 air conditioner to pick up', '1 aparato para recoger');
       $('f-cli').hidden = false;
     } else if(r.peut_rendre){
       etat.action = 'rendre';
