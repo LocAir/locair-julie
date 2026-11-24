@@ -322,7 +322,8 @@ module.exports = async (req, res) => {
       const { calcTieredPrice } = require('./_lib/pricing');
       const pricingCC = await getPricingConfig(supabase);
       const jourCents = montantProlongationCC(calcTieredPrice(1, pricingCC) * 100, pricingCC); // 1 jour au tarif Click & Collect
-      const debutJour = todayStr + 'T00:00:00Z';
+      // Minuit à Nice (pas à Londres) : sinon, entre 0 h et 2 h, le retard du jour était facturé une 2e fois.
+      const debutJour = require('./_lib/dates').debutJourParisISO(todayStr);
       let ccRetard = 0, ccFactures = 0;
       for (const r of ccNonRendus || []) {
         if (r.source === 'site_prolongation') continue; // la fiche d'origine porte le suivi
