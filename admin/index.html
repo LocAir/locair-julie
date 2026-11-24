@@ -1013,6 +1013,39 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .pr-infos dt{margin:0}.pr-infos dd{margin:0;color:var(--black);font-weight:700;text-align:right}
 .pr-infos dd.manque{color:var(--amber)}
 .pr-code{font-family:var(--body);letter-spacing:.12em;border:0;background:var(--bg);border-radius:8px;padding:4px 10px;font-weight:900;color:var(--black);cursor:pointer;font-size:13px}
+.ck{margin:0 0 20px}
+.ck-tete{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.ck-tete h2{font:900 30px var(--body);letter-spacing:-.04em;margin:0}
+.ck-tete p{margin:4px 0 0;color:var(--grey);font-size:14.5px}
+.ck-puce{background:#fff;border:1px solid var(--rule);border-radius:100px;padding:8px 14px;font-size:13px;font-weight:700}
+.ck-titre{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--grey);margin:0 0 10px}
+.ck-afaire{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:8px}
+.ck-act{background:#fff;border-radius:18px;padding:16px 16px 14px;border-left:6px solid #1A5EDB;box-shadow:0 1px 2px rgba(11,30,68,.05),0 12px 32px -18px rgba(11,30,68,.25);display:flex;flex-direction:column;gap:8px}
+.ck-act.ck-rouge{border-left-color:#B42318}.ck-act.ck-orange{border-left-color:#C2410C}
+.ck-act b{font-size:16.5px;font-weight:900;letter-spacing:-.02em;line-height:1.25}
+.ck-act small{font-size:13px;color:var(--grey);line-height:1.4;flex:1}
+.ck-btn{align-self:flex-start;border:0;border-radius:100px;background:#1A5EDB;color:#fff;font:800 13.5px var(--body);padding:9px 16px;cursor:pointer}
+.ck-btn.cl{background:#EFF4FD;color:#0D3FA0}
+.ck-plus{background:none;border:0;color:#1A5EDB;font:700 14px var(--body);cursor:pointer;padding:4px 0 12px}
+.ck-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:8px 0 12px}
+.ck-kpi{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(11,30,68,.05)}
+.ck-kpi b{display:block;font:900 30px var(--body);letter-spacing:-.04em;line-height:1}
+.ck-kpi span{display:block;font-size:13px;color:var(--grey);margin-top:6px}
+.ck-reseau{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(11,30,68,.05);cursor:pointer}
+.ck-r1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ck-r1 b{font:900 26px var(--body);letter-spacing:-.03em}
+.ck-jauge{height:10px;background:#EEF1F6;border-radius:100px;overflow:hidden;margin:10px 0 8px}
+.ck-jauge div{height:100%;background:#1A5EDB;border-radius:100px}
+.ck-reseau small{font-size:13px;color:var(--grey)}
+@media(max-width:600px){
+  .ck-tete h2{font-size:26px}
+  .ck-afaire{grid-template-columns:1fr;gap:8px}
+  .ck-act{flex-direction:row;align-items:center;gap:12px;padding:12px 12px 12px 14px}
+  .ck-act b{flex:1;font-size:15px}
+  .ck-act small{display:none}
+  .ck-act .ck-btn,.ck-act button{flex:none}
+  .ck-kpis{grid-template-columns:1fr 1fr}
+}
 .pr-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
 .pr-actions a,.pr-actions button{flex:1;cursor:pointer;background:none;text-align:center;text-decoration:none;border:1.5px solid var(--rule);border-radius:100px;padding:9px 10px;font:700 12.5px var(--body);color:var(--black);white-space:nowrap}
 .pr-actions a:hover,.pr-actions button:hover{border-color:var(--blue);color:var(--blue)}
@@ -2795,16 +2828,76 @@ async function autoRefreshTick(){
 
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
 let CURRENT_DASHBOARD_PERIODE = '7j';
+// ── Cockpit du jour (accueil) — maquette Figma « Loc'Air — Admin, maquettes »
+// validée par le propriétaire le 25/11/2026 : bonjour + « À faire
+// aujourd'hui » (4 cartes, la plus urgente d'abord, une action chacune),
+// 4 gros chiffres, le réseau Click & Collect. Le programme du jour (board)
+// et le détail restent en dessous.
+function cockpitHtml(d, al, pr){
+  al = al || {};
+  const items = [];
+  const ajoute = (n, t, s, bouton, action) => items.push({n, t, s, b: `<button type="button" class="ck-btn${n==='urgent'?'':' cl'}" onclick="${action}">${bouton}</button>`});
+  if(al.incidents) ajoute('urgent', `${al.incidents} incident${al.incidents>1?'s':''} ouvert${al.incidents>1?'s':''}`, 'Pannes, casse ou réclamations à traiter', 'Traiter', "switchAdminTab('incidents')");
+  if(al.reservations) ajoute('urgent', `${al.reservations} réservation${al.reservations>1?'s':''} à traiter`, 'À confirmer ou à compléter', 'Voir', "switchAdminTab('reservations')");
+  if(al.livraisons) ajoute('jour', `${al.livraisons} mission${al.livraisons>1?'s':''} à organiser`, 'Transporteur ou créneau à fixer', 'Organiser', "switchAdminTab('livraisons')");
+  if(al.communications) ajoute('jour', `${al.communications} message${al.communications>1?'s':''} de clients`, 'Réponses en attente', 'Lire', "switchAdminTab('communications')");
+  const vir = (al.virements||0) + (al.partenaire_virements||0);
+  if(vir) ajoute('jour', `${vir} virement${vir>1?'s':''} à faire`, 'Transporteurs et partenaires', 'Virer', "switchAdminTab('virements')");
+  if(pr && pr.points && typeof prAFaireListe === 'function'){
+    // Les urgences du Click & Collect (stock dépassé, passage agent, 20 % à virer…)
+    prAFaireListe(pr).forEach(x => items.push({n: x.n, t: x.t, s: x.s, b: x.b ? x.b.replace('<button type="button"', '<button type="button" class="ck-btn cl"') : ''}));
+  }
+  const ordre = {urgent:0, jour:1, info:2};
+  // À urgence égale, une panne ou un signalement passe avant le reste.
+  const critique = (x) => /^(Panne|Signalement|Stock dépassé)/.test(x.t) || /incident/.test(x.t);
+  const poids = (x) => critique(x) ? 0 : ordre[x.n] * 10 + 1;
+  items.sort((a, b) => poids(a) - poids(b));
+  const top = items.slice(0, 4);
+  top.forEach(x => { if(critique(x)){ x.n = 'urgent'; x.b = (x.b||'').replace('class="ck-btn cl"', 'class="ck-btn"'); } });
+  const couleur = {urgent:'ck-rouge', jour:'ck-orange', info:'ck-bleu'};
+  const jour = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', timeZone:'Europe/Paris'});
+  const prenom = (NOM_COMPTE || '').split(/\s+/)[0];
+  const r = pr && pr.resume ? pr.resume : null;
+  const cel = pr && pr.cellules && pr.cellules[0] ? pr.cellules[0] : null;
+  const rem = pr && (pr.remplissage||[]).length ? Math.round(pr.remplissage.reduce((s, v) => s + v.pct * v.points, 0) / pr.remplissage.reduce((s, v) => s + v.points, 0)) : null;
+  const phase = pr && typeof prPhase === 'function' ? prPhase(pr.date, pr.cellule || cel) : '';
+  return `
+  <div class="ck">
+    <div class="ck-tete"><div><h2>Bonjour${prenom ? ' ' + escHtml(prenom) : ''} 👋</h2>
+      <p>${escHtml(jour.charAt(0).toUpperCase() + jour.slice(1))} · ${items.length ? items.length + ' chose' + (items.length>1?'s':'') + ' à faire, la plus urgente en premier' : 'rien d’urgent ✓'}</p></div>
+      ${phase ? `<span class="ck-puce">${phase}</span>` : ''}</div>
+    ${top.length ? `<p class="ck-titre">À faire aujourd’hui</p>
+    <div class="ck-afaire">${top.map(x => `<div class="ck-act ${couleur[x.n]||''}"><b>${x.t}</b><small>${x.s}</small>${x.b||''}</div>`).join('')}</div>
+    ${items.length > 4 ? `<button type="button" class="ck-plus" onclick="PR_ONGLET='afaire';switchAdminTab('pointsretrait')">Voir les ${items.length} choses à faire →</button>` : ''}` : ''}
+    <div class="ck-kpis">
+      <div class="ck-kpi"><b>${eurosMilliers(d.ca_euros)}</b><span>Chiffre · ${({jour:'aujourd’hui','7j':'7 jours','30j':'30 jours',mois:'ce mois'})[CURRENT_DASHBOARD_PERIODE]||'période'}</span></div>
+      <div class="ck-kpi"><b>${(d.unites_occupees||0) + (r ? r.dehors||0 : 0)}</b><span>Climatiseurs chez des clients</span></div>
+      <div class="ck-kpi"><b>${rem == null ? Math.round((d.taux_occupation||0)*100) : rem} %</b><span>${rem == null ? 'Occupation de la flotte' : 'Remplissage Click & Collect · 7 jours'}</span></div>
+      <div class="ck-kpi"><b>${r ? r.ouverts : '—'}${cel ? ' / 10' : ''}</b><span>Points de retrait ouverts</span></div>
+    </div>
+    ${cel ? `<div class="ck-reseau" onclick="switchAdminTab('pointsretrait')">
+      <div class="ck-r1"><p class="ck-titre" style="margin:0">Le réseau · ${escHtml(cel.nom.replace(/^Cellule 1 · /, ''))}</p><b>${cel.en_points} / ${cel.flotte}</b></div>
+      <div class="ck-jauge"><div style="width:${Math.min(100, Math.round(cel.en_points / Math.max(1, cel.flotte) * 100))}%"></div></div>
+      <small>${cel.points_ouverts} point${cel.points_ouverts>1?'s':''} ouvert${cel.points_ouverts>1?'s':''} · ${cel.micro_box} en micro-box${cel.pub ? ' · pub ' + ({normale:'normale', baisser:'à baisser', pause:'en pause'})[cel.pub] : ''}</small>
+    </div>` : ''}
+  </div>`;
+}
 async function loadDashboard(periode, silent){
   CURRENT_DASHBOARD_PERIODE = periode;
   const zone = document.getElementById('tab-accueil');
   if(!silent) zone.innerHTML = loading();
   try{
-    const [dr, lr, tr] = await Promise.all([
+    const [dr, lr, tr, ar, pr] = await Promise.all([
       fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      // Cockpit du jour (maquette Figma validée le 25/11/2026) : alertes + points de retrait.
+      fetch(API('admin-alerts'), {method:'POST', headers:authHeaders(), body:'{}'}).catch(() => null),
+      fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:'{}'}).catch(() => null),
     ]);
+    const alertes = ar && ar.ok ? await ar.json().catch(() => ({})) : {};
+    const prData = pr && pr.ok ? await pr.json().catch(() => null) : null;
+    if(prData && prData.points) PR_DATA = prData;
     const d = await dr.json();
     if(!dr.ok) throw new Error(d.error||'Erreur serveur');
     const ld = await lr.json().catch(()=>({livraisons:[]}));
@@ -2821,6 +2914,7 @@ async function loadDashboard(periode, silent){
     // avant le rétroviseur d'hier — un centre de pilotage montre d'abord ce
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     zone.innerHTML = `
+      ${cockpitHtml(d, alertes, prData)}
       <div style="display:flex;gap:10px;margin-bottom:16px;align-items:stretch">
         <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()" style="flex:1">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 13h6M12 10v6"/></svg>
@@ -11572,7 +11666,7 @@ function prPhase(dateIso, c){
   const jm = (mmjj) => new Date(y + '-' + mmjj + 'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
   const k = prPhaseCle(dateIso, c);
   if(k === 'avant') return `<b>Avant la saison</b> · dépose des climatiseurs du ${jm(dep[0])} au ${jm(dep[1])} (J-${jours(y+'-'+dep[0])}) · pub à lancer dès la dépose (${pub} €/jour)`;
-  if(k === 'depose') return `<b>Dépose des climatiseurs</b> · 4 à 5 par point, sous housse bleue · pub lancée (${pub} €/jour)`;
+  if(k === 'depose') return `<b>Dépose des climatiseurs</b> · le nombre convenu par point, sous housse bleue · pub lancée (${pub} €/jour)`;
   if(k === 'saison') return `<b>Saison en cours</b> · fin le ${jm(fin)} (J-${jours(y+'-'+fin)}) · agent tous les 10 jours`;
   if(k === 'reprise') return `<b>Reprise des climatiseurs</b> · passer chez chaque commerçant · couper la pub`;
   return `<b>Hors saison</b> · signer les points pour mai (dépose du ${jm(dep[0])} au ${jm(dep[1])})`;
