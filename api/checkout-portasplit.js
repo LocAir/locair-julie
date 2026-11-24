@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
 
   const data = req.body || {};
 
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email).trim())) {
     return res.status(400).json({ error: 'Email invalide.' });
   }
 
@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
 
-      ...(data.email ? { customer_email: data.email.trim().toLowerCase() } : {}),
+      ...(data.email ? { customer_email: String(data.email).trim().toLowerCase() } : {}),
 
       line_items: [
         {

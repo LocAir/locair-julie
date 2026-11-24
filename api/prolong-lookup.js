@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
       .eq('statut', 'confirmee')
       .maybeSingle());
   } else {
-    if (!email || !ref) return res.status(400).json({ error: 'Email et référence de commande requis' });
+    if (typeof email !== 'string' || typeof ref !== 'string' || !email || !ref) return res.status(400).json({ error: 'Email et référence de commande requis' });
     const normalizedEmail = String(email).trim().toLowerCase();
     ref = await refDepuisNumero(supabase, normalizedEmail, ref);
     // .eq('statut','confirmee') indispensable : sans lui, une réservation plus

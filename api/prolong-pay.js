@@ -37,8 +37,11 @@ module.exports = async (req, res) => {
 
   const { email, new_date_fin, cgv_accepted, client_token } = req.body || {};
   let { ref } = req.body || {};
+  // Champ reçu d'un navigateur : jamais autre chose que du texte (un tableau
+  // ou un objet faisait planter .trim() plus bas).
+  ref = typeof ref === 'string' ? ref : '';
 
-  if (!email || !new_date_fin) {
+  if (typeof email !== 'string' || typeof new_date_fin !== 'string' || !email || !new_date_fin) {
     return res.status(400).json({ error: 'Email et nouvelle date de fin requis' });
   }
   if (!isValidDate(new_date_fin)) {

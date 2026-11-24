@@ -14,7 +14,7 @@
 //   4. la commission du commerçant suit le taux du point (commission_pct).
 const { calcTieredPrice } = require('./pricing');
 const { getPointRetrait, pointFermeLe } = require('./pointsRetrait');
-const { occupationParPoint, numeroComptoir } = require('./clickCollect');
+const { occupationParPoint, numeroComptoir, JOURS_MAX_CC } = require('./clickCollect');
 const { facteurCC, baseCents } = require('./tarifDynamique');
 
 function estClickCollect(resa) {
@@ -71,6 +71,10 @@ async function coefPrixPaye(supabase, orig, pricing) {
 async function preparerProlongationCC(supabase, { orig, debut, fin, qty, montantDomicileCents, pricing }) {
   if (orig.rendu_at) {
     return { ok: false, status: 422, error: 'L’appareil a déjà été rendu au point de retrait : la location est terminée.' };
+  }
+  // Même limite qu'à la réservation : 90 jours de location au total.
+  if (jours(orig.date_debut, fin) > JOURS_MAX_CC) {
+    return { ok: false, status: 400, error: `Une location Click & Collect dure ${JOURS_MAX_CC} jours au plus. Pour plus long, écrivez-nous.` };
   }
   const coef = await coefPrixPaye(supabase, orig, pricing);
   const amountCents = Math.round(prixJoursAjoutesCC(orig, debut, fin, qty, montantDomicileCents, pricing) * coef / 100) * 100;

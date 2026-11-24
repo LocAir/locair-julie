@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
 
   // data.email && ... court-circuitait la validation si email vide →
   // une réservation sans email passait, aucun email de confirmation envoyé.
-  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email).trim())) {
     return res.status(400).json({ error: 'Adresse email requise et doit être valide' });
   }
   if (!data.adresse || !String(data.adresse).trim()) {
@@ -209,7 +209,7 @@ module.exports = async (req, res) => {
     // off-session en cas de retard de restitution (empreinte carte, sans blocage de fonds)
     let customerId = '';
     if (data.email) {
-      const email = data.email.trim().toLowerCase();
+      const email = String(data.email).trim().toLowerCase();
       const existing = await stripe.customers.list({ email, limit: 1 });
       if (existing.data.length > 0) {
         customerId = existing.data[0].id;

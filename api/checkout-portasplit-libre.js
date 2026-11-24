@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
 
   const data = req.body || {};
 
-  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email).trim())) {
     return res.status(400).json({ error: 'Adresse email requise et valide.' });
   }
   if (!data.prenom || !String(data.prenom).trim()) {
@@ -73,7 +73,7 @@ module.exports = async (req, res) => {
         installation: withInstall ? 'Technicien' : 'Autonome',
         date:         (data.date    || '').slice(0, 20),
       },
-      receipt_email:   data.email.trim().toLowerCase(),
+      receipt_email:   String(data.email).trim().toLowerCase(),
       description:     `PortaSplit sans engagement — ${jours} j — ${withInstall ? 'avec installation' : 'auto-install'}`,
       statement_descriptor_suffix: 'LOCAIR',
     });

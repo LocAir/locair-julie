@@ -6,7 +6,7 @@ const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/rate
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const pin = ((req.body || {}).pin || '').trim();
+  const pin = String((req.body || {}).pin || '').trim();
   if (!pin) return res.status(400).json({ error: 'Code manquant' });
   if (!process.env.TRANSPORTEUR_SECRET) {
     console.error('[Transporteur login] TRANSPORTEUR_SECRET manquant');
