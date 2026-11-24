@@ -8,7 +8,7 @@ const { getAvailability }      = require('./_lib/stock');
 const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runFactureTransporteurHebdo } = require('./_lib/transporteurFacture');
-const { runMonthlyRecap, runDormantClientsWinback, runRecapPartenaires } = require('./cron-monthly');
+const { runMonthlyRecap, runDormantClientsWinback, runRecapPartenaires, runReleveCommercants } = require('./cron-monthly');
 const { dailyRate, getPricingConfig } = require('./_lib/pricing');
 const { todayParis, dateInParis }     = require('./_lib/dates');
 const { scenariosDueToday, isSupersededReservation } = require('./_lib/emailSchedule');
@@ -1232,6 +1232,13 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('[Cron partenaires via daily]', e.message);
+  }
+  try {
+    if (today.getDate() === 1) { // 1er du mois — relevé récapitulatif à chaque commerçant (convention, art. 2)
+      report.releves = await runReleveCommercants(supabase);
+    }
+  } catch (e) {
+    console.error('[Cron relevés commerçants]', e.message);
   }
   try {
     if (today.getDate() === 1) { // 1er du mois — même cadence que le récap virements
