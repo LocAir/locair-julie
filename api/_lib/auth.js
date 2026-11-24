@@ -71,14 +71,16 @@ async function checkAdminToken(req, supabase) {
   // rien (mot de passe faux/deviné, jeton malformé/forgé) — jamais un jeton
   // valablement signé mais simplement périmé (voir resolveAdminAuth).
   if (!auth && !signatureValid) await recordFailedAttempt(supabase, rateKey);
-  return Boolean(auth);
+  // Un compte « prospecteur » n'ouvre que l'appli terrain (checkProspecteur) :
+  // jamais les réservations, clients ou autres écrans de l'admin.
+  return Boolean(auth) && auth.role !== 'prospecteur';
 }
 
 // Même vérification que checkAdminToken, mais renvoie aussi le rôle — pour
 // les quelques rubriques sensibles (finances, réglages, équipe) qui doivent
 // rester fermées à certains rôles. Le compte historique vaut toujours
 // "administrateur" (accès complet), donc jamais bloqué par ce contrôle.
-async function checkAdminRole(req, supabase) {
+async function checkAdminRole(req, supabase, opts) {
   const rateKey = `admin:${getClientIp(req)}`;
   if (await isRateLimited(supabase, rateKey)) return { ok: false };
 
@@ -88,7 +90,13 @@ async function checkAdminRole(req, supabase) {
     if (!signatureValid) await recordFailedAttempt(supabase, rateKey);
     return { ok: false };
   }
+  if (auth.role === 'prospecteur' && !(opts && opts.prospecteur)) return { ok: false };
   return { ok: true, role: auth.role, adminUserId: auth.adminUserId, nom: auth.nom };
+}
+
+// Appli terrain (/prospection) : tout compte d'équipe, y compris « prospecteur ».
+function checkProspecteur(req, supabase) {
+  return checkAdminRole(req, supabase, { prospecteur: true });
 }
 
 function signAdminUserToken(adminUserId, pin) {
@@ -219,6 +227,7 @@ async function verifyClientToken(req, supabase) {
 }
 
 module.exports = {
+  checkProspecteur,
   safeEqual, checkAdminToken, checkAdminRole, signAdminUserToken,
   signTransporteurToken, verifyTransporteurToken,
   signPartenaireToken, verifyPartenaireToken,

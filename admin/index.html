@@ -11686,7 +11686,7 @@ function renderPointsRetrait(){
   const liste = d.points.filter(filtres[PR_FILTRE] || filtres.tous);
   const jour = new Date(d.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   const nbAFaire = prAFaireListe(d).length;
-  const ONGLETS = [['afaire', 'À faire' + (nbAFaire ? ' · ' + nbAFaire : '')], ['jour', 'Aujourd’hui'], ['points', 'Points'], ['pilotage', 'Pilotage'], ['outils', 'Outils']];
+  const ONGLETS = [['afaire', 'À faire' + (nbAFaire ? ' · ' + nbAFaire : '')], ['jour', 'Aujourd’hui'], ['points', 'Points'], ['terrain', 'Terrain'], ['pilotage', 'Pilotage'], ['outils', 'Outils']];
   if(!ONGLETS.some(o => o[0] === PR_ONGLET)) PR_ONGLET = 'afaire';
   const cels = D.cellules || [];
   const choixCellule = cels.length > 1 ? `<div class="pr-filtres" style="margin-bottom:12px">${[['toutes','Tout le réseau']].concat(cels.map(c => [c.id, c.nom])).map(([k,t]) => `<button type="button" class="${PR_CELLULE===k?'on':''}" onclick="setPrCellule('${escHtml(k)}')">${escHtml(t)}</button>`).join('')}</div>` : '';
@@ -11713,6 +11713,7 @@ function renderPointsRetrait(){
     ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
     ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
 `;
+  else if(PR_ONGLET === 'terrain') corps = '<div id="pr-terrain"><p class="empty">Chargement…</p></div>';
   else if(PR_ONGLET === 'pilotage') corps = `
     ${prCellules(D)}
     ${r.ouverts && d.saison ? (() => { const s = d.saison, pm = s.point_mort, pct = Math.min(100, Math.round(s.jours_machine / pm.max * 100)), ok = s.jours_machine >= pm.max, presque = s.jours_machine >= pm.min;
@@ -11742,12 +11743,12 @@ function renderPointsRetrait(){
       <div id="tr-apercu"></div>
     </details>
     <details class="pr-ouvrir"><summary>Ouvrir un nouveau point</summary><ol>
-      <li>Démo (QR code, numéro 0000), puis la convention signée sur papier, en 2 exemplaires : SIRET, RIB, horaires. Axe Nice–Cannes, un seul point par quartier.</li>
+      <li>Démo (QR code, numéro 0000), puis la signature : sur l’écran avec l’appli terrain (onglet Terrain), ou sur papier en 2 exemplaires. Prévoir SIRET, RIB, horaires. Axe Nice–Cannes, un seul point par quartier.</li>
       <li>Ajouter le point dans <code>api/_lib/pointsRetrait.js</code> : adresse, horaires, téléphone, code partenaire, <code>exemple: false</code>.</li>
       <li>Créer le commerçant dans l’onglet Ambassadeurs, avec le même code partenaire.</li>
       <li>Imprimer l’affiche du comptoir (bouton « Affiche » de sa carte).</li>
       <li>Imprimer le flyer et le remettre en main propre (bouton « Flyer »).</li>
-      <li>Déposer 4 à 5 climatiseurs (du 10 au 15 mai), sous housse bleue, gaine au-dessus.</li>
+      <li>Déposer 3 à 5 climatiseurs, le nombre signé (du 10 au 15 mai), sous housse bleue, gaine au-dessus.</li>
       <li>Faire un essai complet : un retrait, puis un retour. Puis « Passage fait ».</li>
     </ol></details>`;
   zone.innerHTML = `
@@ -11756,6 +11757,77 @@ function renderPointsRetrait(){
     <div class="pr-phase">${d.cellule && cels.length > 1 ? '<b>'+escHtml(d.cellule.nom)+'</b> · ' : ''}${prPhase(d.date, d.cellule)}${d.micro_box && r.ouverts ? ` · <b>Micro-box : ${Math.max(0, d.micro_box.flotte - d.micro_box.en_points)}</b>` : ''}</div>
     <div class="pr-onglets" role="tablist">${ONGLETS.map(([k,t]) => `<button type="button" role="tab" aria-selected="${PR_ONGLET===k}" class="${PR_ONGLET===k?'on':''}${k==='afaire'&&nbAFaire?' alerte':''}" onclick="setPrOnglet('${k}')">${t}</button>`).join('')}</div>
     ${corps}`;
+  if(PR_ONGLET === 'terrain') prTerrain();
+}
+
+// ── Terrain : prospection des points de retrait (appli /prospection,
+// page commerçant /partenaires, api/prospection.js). Objectif Cellule 1 :
+// 8 à 10 points signés, 40 climatiseurs, sur Nice / Antibes-JLP / Cannes.
+const PT_LIB = {signe:'Signé', en_attente_signature:'À signer', a_repasser:'À repasser', refuse:'Pas cette fois'};
+const PT_CLASSE = {signe:'ouvert', en_attente_signature:'exemple', a_repasser:'exemple', refuse:'ferme'};
+async function ptApi(body){
+  const r = await fetch(API('prospection'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(j.error || 'Erreur');
+  return j;
+}
+async function prTerrain(){
+  const el = document.getElementById('pr-terrain'); if(!el) return;
+  let j, m;
+  try{ [j, m] = await Promise.all([ptApi({action:'liste'}), ptApi({action:'modeles'})]); }
+  catch(e){ el.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`; return; }
+  const o = j.objectif, pz = j.par_zone;
+  const fiche = f => `<li><span><b>${escHtml(f.enseigne || 'Boutique sans nom')}</b><small>${escHtml([f.zone, f.capacite ? f.capacite + ' clims' : '', f.gerant || f.signataire, f.tel, f.email].filter(Boolean).join(' · '))}<br>${escHtml(f.prospecteur || '')} · ${new Date(f.updated_at).toLocaleDateString('fr-FR')}${f.docs_envoyes_at ? ' · documents envoyés' : ''}${f.relance_at ? ' · relancé' : ''}${f.notes ? ' · ' + escHtml(f.notes) : ''}</small>
+      <span class="pr-actions" style="margin-top:8px">
+        ${f.photo_url ? `<a href="${escAttr(f.photo_url)}" target="_blank" rel="noopener">Photo</a>` : ''}
+        ${f.lat != null ? `<a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank" rel="noopener">GPS</a>` : ''}
+        ${f.statut !== 'refuse' ? `<button type="button" onclick="ptEnvoyer(${f.id}, ${escAttr(JSON.stringify(f.email || ''))})">${f.statut === 'signe' ? 'Renvoyer la convention' : 'Envoyer présentation + convention'}</button>` : ''}
+        ${f.statut !== 'signe' ? `<button type="button" onclick="ptCopier(${escAttr(JSON.stringify(f.lien))})">Lien pour signer</button><button type="button" onclick="ptStatut(${f.id}, 'signe')">Signé sur papier</button>` : ''}
+        ${f.statut !== 'refuse' && f.statut !== 'signe' ? `<button type="button" onclick="ptStatut(${f.id}, 'refuse')">Pas cette fois</button>` : ''}
+        ${f.statut === 'refuse' ? `<button type="button" onclick="ptStatut(${f.id}, 'a_repasser')">À repasser</button>` : ''}
+      </span></span><span class="pr-etat ${PT_CLASSE[f.statut] || ''}">${PT_LIB[f.statut] || escHtml(f.statut)}</span></li>`;
+  const groupes = ['en_attente_signature', 'a_repasser', 'signe', 'refuse'].map(st => ({st, l: j.fiches.filter(f => f.statut === st)})).filter(g => g.l.length);
+  el.innerHTML = `
+    <div class="pr-tuiles">
+      <div class="pr-tuile${j.total.signes >= o.points_min ? ' ' : ' a-faire'}"><b>${j.total.signes} / ${o.points_min}–${o.points_max}</b><span>points signés</span></div>
+      <div class="pr-tuile"><b>${j.total.climatiseurs} / ${o.climatiseurs}</b><span>climatiseurs placés (${Math.round(j.total.climatiseurs / o.climatiseurs * 100)} % du parc)</span></div>
+      ${j.zones.map(z => `<div class="pr-tuile"><b>${pz[z].signes}</b><span>${escHtml(z)} · ${pz[z].climatiseurs} clims · ${pz[z].en_attente} à signer · ${pz[z].a_repasser} à repasser</span></div>`).join('')}
+    </div>
+    <div class="pr-outils" style="margin:12px 0">
+      <a class="pr-outil" href="/prospection" target="_blank" rel="noopener"><b>Appli terrain</b><span>QR de visite, photo + GPS, signature</span></a>
+      <a class="pr-outil" href="/guide-prospecteur" target="_blank" rel="noopener"><b>Guide du prospecteur</b><span>Le tutoriel des recrues</span></a>
+      <a class="pr-outil" href="/documents/locair-devenez-point-de-retrait.pdf" target="_blank" rel="noopener"><b>Présentation (PDF)</b><span>Pièce jointe des e-mails</span></a>
+      <a class="pr-outil" href="/partenaires" target="_blank" rel="noopener"><b>Page /partenaires</b><span>QR de la fiche mémo</span></a>
+    </div>
+    ${groupes.length ? groupes.map(g => `<p class="section-title">${PT_LIB[g.st]} · ${g.l.length}</p><div class="pr-col" style="margin-bottom:8px"><ul>${g.l.map(fiche).join('')}</ul></div>`).join('') : '<p class="empty">Aucune visite pour l’instant. Les fiches de l’appli terrain arrivent ici.</p>'}
+    <details class="pr-ouvrir"><summary>Messages types</summary>
+      <p style="margin:10px 0 4px;font-weight:800">1 · Avant passage (premier contact)</p>
+      <p style="margin:0 0 6px;font-size:13px;color:var(--grey)">À envoyer à la main depuis partenaires.locair@outlook.com — jamais depuis le site (règle prospection).</p>
+      <b style="font-size:13.5px">Objet : ${escHtml(m.avant_passage.objet)}</b>
+      <pre style="white-space:pre-wrap;font:500 13.5px/1.5 var(--body,inherit);background:var(--bg-soft,#F4F7FC);border-radius:12px;padding:12px">${escHtml(m.avant_passage.texte)}</pre>
+      <button type="button" onclick="ptCopier(${escAttr(JSON.stringify('Objet : ' + m.avant_passage.objet + '\n\n' + m.avant_passage.texte))})">Copier</button>
+      <p style="margin:14px 0 4px;font-weight:800">2 · Après la visite ou l’appel (automatique)</p>
+      <p style="margin:0;font-size:13.5px;color:var(--grey)">Bouton « Envoyer présentation + convention » : e-mail avec les 2 pièces jointes (présentation + convention pré-remplie) et le bouton « Signer en ligne ». Réponses vers partenaires.locair@outlook.com.</p>
+      <p style="margin:14px 0 4px;font-weight:800">3 · Relance du lendemain (automatique, une seule fois)</p>
+      <p style="margin:0;font-size:13.5px;color:var(--grey)">Fiche « À repasser » ou « À signer » de la veille, avec e-mail ou téléphone, sans documents envoyés : le lendemain vers 8 h 30, l’e-mail (2 pièces jointes) et/ou un SMS avec le lien pour signer.</p>
+      <p style="margin:14px 0 4px;font-weight:800">4 · Après la signature (automatique)</p>
+      <p style="margin:0;font-size:13.5px;color:var(--grey)">« Merci ! » + la convention signée en pièce jointe + la prochaine étape (dépose du 10 au 15 mai). Copie à contact@locair.fr.</p>
+    </details>`;
+}
+async function ptEnvoyer(id, email){
+  const e = prompt('E-mail du commerçant :', email || '');
+  if(e === null) return;
+  try{ await ptApi({action:'envoyer', id, email:e}); showToast('Présentation + convention envoyées ✓', 'success'); prTerrain(); }
+  catch(x){ showToast(x.message, 'error'); }
+}
+async function ptStatut(id, statut){
+  let signataire = '';
+  if(statut === 'signe'){ signataire = prompt('Signée sur papier par (nom & qualité) :', ''); if(signataire === null) return; }
+  try{ await ptApi({action:'statut', id, statut, signataire}); showToast('Fiche mise à jour ✓', 'success'); prTerrain(); }
+  catch(x){ showToast(x.message, 'error'); }
+}
+function ptCopier(t){
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => showToast('Copié ✓', 'success')).catch(() => prompt('Copiez :', t));
 }
 async function loadVilles(silent){
   const zone = document.getElementById('tab-villes');
@@ -12504,6 +12576,7 @@ const ROLE_LABEL = {
   operateur:      '📋 Opérateur — commandes, missions, clients',
   comptabilite:   '💶 Comptabilité — paiements, commissions',
   support_client: '🛟 Support client — clients, demandes',
+  prospecteur:    '🚶 Prospecteur — appli terrain seulement (/prospection)',
 };
 let EQUIPE_CACHE = [];
 async function loadEquipe(silent){
@@ -12716,6 +12789,10 @@ function renderTutoriels(){
   const nbEnvoyees = TUTO_VIDEOS_CACHE.filter(v => v.storage_path).length;
   const nbAEnvoyer = TUTO_VIDEOS_CACHE.filter(v => !v.storage_path).length;
   zone.innerHTML = `
+    <div class="pr-outils" style="margin:0 0 16px">
+      <a class="pr-outil" href="/guide-prospecteur" target="_blank" rel="noopener"><b>📘 Guide du prospecteur</b><span>Une visite en 5 étapes : QR code, 3/4/5 + OK, photo + GPS, signature — pour les jeunes recrutés</span></a>
+      <a class="pr-outil" href="/prospection" target="_blank" rel="noopener"><b>📱 Appli Terrain</b><span>À ouvrir sur le téléphone du prospecteur (rôle « Prospecteur » dans Équipe)</span></a>
+    </div>
     <p class="sub" style="margin:-4px 0 14px">Les vidéos ci-dessous s'affichent aux transporteurs dans leur appli, pour leur expliquer chaque étape (accès au box, installation, chargement...). Une seule bibliothèque, partagée par toutes les villes — pas besoin de les envoyer plusieurs fois.</p>
     <div class="stat-grid">
       <div class="stat-tile"><div class="n">${nbSujetsActifs}</div><div class="l">Sujets actifs</div></div>
