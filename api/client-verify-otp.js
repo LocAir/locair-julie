@@ -54,30 +54,41 @@ module.exports = async (req, res) => {
 
     if (!otp || otp.code_hash !== expectedHash) {
       await recordFailedAttempt(supabase, rateKey);
+      // Limite PAR NUMÉRO (pas seulement par adresse IP) : 5 mauvais codes et
+      // le code en cours est annulé — il faut en redemander un.
+      const cleTel = `otp-tel:${telNorm}`;
+      await recordFailedAttempt(supabase, cleTel).catch(() => {});
+      if (otp && await isRateLimited(supabase, cleTel, 5, 15).catch(() => false)) {
+        await supabase.from('otp_codes').update({ used: true }).eq('id', otp.id);
+      }
       return res.status(401).json({ error: GENERIC_ERROR });
     }
 
-    // Récupère le client pour ce numéro — AVANT de consommer le code
-    const { data: client } = await supabase
+    // Récupère le(s) client(s) pour ce numéro — une fiche par ville — AVANT
+    // de consommer le code.
+    const { data: clientsTel } = await supabase
       .from('clients')
       .select('id')
       .eq('tel_normalise', telNorm)
-      .limit(1)
-      .maybeSingle();
+      .limit(20);
+    const clientIds = (clientsTel || []).map((c) => c.id);
 
-    if (!client) {
+    if (!clientIds.length) {
       return res.status(404).json({ error: GENERIC_ERROR });
     }
 
-    // Cherche la réservation principale (pas une prolongation) la plus récente
-    const { data: resa } = await supabase
+    // La réservation à ouvrir (pas une prolongation) : d'abord une location
+    // payée (en cours, puis terminée), jamais un paiement abandonné ou annulé
+    // quand une vraie location existe.
+    const { data: resas } = await supabase
       .from('reservations')
-      .select('id, ref, reservation_origine_id')
-      .eq('client_id', client.id)
+      .select('id, ref, reservation_origine_id, statut')
+      .in('client_id', clientIds)
       .is('reservation_origine_id', null)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(30);
+    const rang = (r) => (r.statut === 'confirmee' ? 0 : r.statut === 'terminee' ? 1 : 2);
+    const resa = (resas || []).slice().sort((x, y) => rang(x) - rang(y))[0] || null;
 
     if (!resa) {
       return res.status(404).json({ error: GENERIC_ERROR });
