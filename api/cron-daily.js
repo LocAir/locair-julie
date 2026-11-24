@@ -1234,7 +1234,7 @@ module.exports = async (req, res) => {
     console.error('[Cron partenaires via daily]', e.message);
   }
   try {
-    if (today.getDate() === 1) { // 1er du mois — relevé récapitulatif à chaque commerçant (convention, art. 2)
+    if (today.getDate() <= 3) { // du 1er au 3 du mois — relevé récapitulatif à chaque commerçant (convention, art. 2) ; jamais deux fois (email_log), un envoi raté est retenté
       report.releves = await runReleveCommercants(supabase);
     }
   } catch (e) {

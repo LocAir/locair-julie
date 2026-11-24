@@ -340,7 +340,7 @@ async function runReleveCommercants(supabase) {
   let envoyes = 0;
   for (const p of partenaires || []) {
     if (!p.email || p.actif === false) continue;
-    const { data: deja } = await supabase.from('email_log').select('id').eq('scenario', cle).eq('destinataire', p.email).limit(1);
+    const { data: deja } = await supabase.from('email_log').select('id').eq('scenario', cle).eq('destinataire', p.email).eq('statut', 'envoye').limit(1); // un envoi raté est retenté le 2 et le 3
     if (deja && deja.length) continue;
     const x = par[p.id], ribOk = !!(p.iban && String(p.iban).trim());
     const ligne = (k, v, fort) => `<tr><td style="padding:10px 0;border-bottom:1px solid #E3E9F4;color:#4B5873">${k}</td><td style="padding:10px 0;border-bottom:1px solid #E3E9F4;text-align:right${fort ? ';font-size:18px' : ''}"><b>${v}</b></td></tr>`;
