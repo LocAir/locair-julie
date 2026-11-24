@@ -67,11 +67,11 @@ mission → 1 · Le client réserve (le site) → 2 · Au comptoir (retrait :
 recevez (affiche QR, flyer, climatiseurs, espace partenaire) → 4 · Ce que
 vous gagnez (20 %) → 5 · L'essentiel (6 règles de la convention) → **la
 démo (test du QR code) → puis la signature** (« On signe ensemble ? », en
-dernier). **Signature sur papier pour l'instant** (24/11/2026) : la convention
-imprimée en 2 exemplaires, signée en rendez-vous ; prévoir SIRET, RIB, horaires.
-Pas de signature électronique ni de QR code « Créer mon contrat » dans les
-présentations ; la page `/contrat-point-retrait` reste une simple demande de
-rappel. Les autres diapos restent dans les
+dernier). **Signature** (changé le 25/11/2026 par le propriétaire) : sur
+l'écran du commerçant, du doigt, avec l'appli terrain (voir « Prospection
+terrain des points de retrait ») ; le papier en 2 exemplaires reste possible
+(admin → Terrain → « Signé sur papier ») ; prévoir SIRET, RIB, horaires.
+La page `/contrat-point-retrait` reste une simple demande de rappel. Les autres diapos restent dans les
 fichiers, hors de l'ordre. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
 le numéro **0000** sur ce point lance un mode démo dans le téléphone
 (`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
@@ -332,7 +332,7 @@ validé dans Stripe.
 Contact des commerçants : **partenaires.locair@outlook.com** (pages et emails
 partenaires, réponses des emails envoyés aux commerçants ; les notifications
 internes restent sur contact@locair.fr). Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
-septembre** (≈ 120 jours), stock fixe **4 à 5 climatiseurs** par point (selon
+septembre** (≈ 120 jours), stock fixe **3 à 5 climatiseurs** par point (3, 4 ou 5 choisi par le commerçant à la signature, 25/11/2026 ; selon
 la place, ≈ 40 × 40 cm chacun, sans rotation), rangés contre un mur sous
 **housse bleue unie sans logo**, gaine au-dessus ; retrait et retour **au
 même point** ; agent Loc'Air **tous les 10 jours** ; 20 % virés **entre le
@@ -393,6 +393,58 @@ les CGV 10 ter et dans Julie.
 Page `click-and-collect.html` : si le point choisi est complet aux dates
 choisies, bouton « Prendre {point le plus proche libre} · à X km » (cherche
 parmi les 3 points ouverts les plus proches, même calcul que le paiement).
+
+### Prospection terrain des points de retrait (25/11/2026)
+
+Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
+
+1. **Accroche + QR code** : le prospecteur ouvre `locair.fr/prospection`
+   (son code d'équipe ; rôle **« prospecteur »** = l'appli terrain
+   seulement, rien d'autre de l'admin, voir `checkProspecteur` dans
+   `api/_lib/auth.js`), choisit sa zone (Nice, Antibes / Juan-les-Pins,
+   Cannes) et touche « Nouvelle visite » : QR code de session.
+2. **3 · 4 · 5 + OK** : le commerçant scanne avec son téléphone
+   (`/partenaires?s=…`), lit les règles, choisit **3, 4 ou 5
+   climatiseurs** (stock fixe), met son e-mail s'il veut, touche
+   « OK — J'accepte ». Le prospecteur le voit tout de suite.
+3. **1 photo + GPS** (emplacement contre le mur, ou devanture) : la fiche
+   est créée, sans saisie obligatoire. Pas de « OK » (gérant absent) :
+   fiche « À repasser » ; « Saisie rapide » = boutique + tél./e-mail.
+4. **Signature** : du doigt sur le téléphone du commerçant (convention
+   signée en PDF, copie par e-mail au commerçant et à Loc'Air), ou
+   « Il veut relire » : e-mail avec la présentation + la convention
+   pré-remplie + bouton « Signer en ligne ».
+5. **Point signé** : compte dans l'objectif (8–10 points, 40 clims).
+   Il faut encore l'ajouter à `api/_lib/pointsRetrait.js` et créer le
+   commerçant (onglet Partenaires), comme avant.
+
+- **Fichiers :** `api/prospection.js` (tout le serveur), `prospection.html`
+  (appli), `partenaires.html` (commerçant ; sans `?s=` : demande de rappel
+  très courte, QR code de la fiche mémo), `guide-prospecteur.html`
+  (tutoriel des recrues, lié dans l'onglet Tutoriels), `api/_lib/prospection.js`
+  (e-mails, SMS, modèle « avant passage »), `api/_lib/conventionPdf.js`
+  (convention V11 en PDF, pré-remplie, avec la signature). Table
+  `prospection_points` (`supabase/migration_2026-11-25_prospection.sql`,
+  ajoute aussi le rôle « prospecteur »). Admin → Points de retrait →
+  **Terrain** : tableau par zone, fiches, boutons, messages types.
+- **Pièces jointes :** la présentation `documents/locair-devenez-point-de-retrait.pdf`
+  (les 8 diapos de la démonstration, allégées à 0,9 Mo ; Brevo refuse
+  plus de 10 Mo) + la convention pré-remplie (ou signée). À refaire si la
+  présentation change. Expéditeur contact@locair.fr (Brevo n'accepte pas
+  un expéditeur outlook.com), réponses vers partenaires.locair@outlook.com.
+- **Convention générée :** texte V11 avec les décisions du propriétaire
+  (article 6 : vol ou casse dans la boutique payés par Loc'Air sauf faute
+  grave ; saison 2027 ; stock 3 à 5).
+- **E-mails aux commerçants rencontrés** (après visite, signature,
+  relance) : autorisés par le propriétaire le 25/11/2026. **Relance du
+  lendemain** (`relancerProspection`, `cron-daily.js`) : une seule fois,
+  fiches d'hier « À repasser » ou « À signer » avec e-mail/téléphone et
+  sans documents envoyés. Le message **« avant passage »** (premier
+  contact) n'est jamais envoyé par le site : modèle à copier, envoyé à la
+  main depuis partenaires.locair@outlook.com.
+- **Suivi Google Sheet :** « Loc'Air — CRM terrain points de retrait »
+  (Drive du propriétaire, créée le 25/11/2026 : onglets Tableau de bord et
+  Points terrain, statuts en liste, formules au point-virgule).
 
 Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
 « K7P3 »), fixe pour chaque point (voir `codeRetour` dans

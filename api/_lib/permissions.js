@@ -8,6 +8,8 @@ const DOMAINES_PAR_ROLE = {
   operateur: ['commandes', 'logistique', 'clients', 'support', 'stock'],
   comptabilite: ['finances', 'commandes', 'partenaires', 'transporteurs'],
   support_client: ['clients', 'support', 'documents'],
+  // Jeunes recrutés : l'appli terrain (/prospection) seulement.
+  prospecteur: ['prospection'],
 };
 
 function roleHasAccess(role, domaine) {

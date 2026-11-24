@@ -45,7 +45,9 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName, sche
     if (scheduledAt) body.scheduledAt = scheduledAt;
     if (replyTo) body.replyTo = { email: replyTo };
     if (attachments && attachments.length) {
-      body.attachment = attachments.map(a => ({
+      // { name, url } : Brevo va chercher le fichier lui-même (ex. la
+      // présentation commerçants publiée sur locair.fr/documents/).
+      body.attachment = attachments.map(a => (a.url ? { name: a.name, url: a.url } : {
         name:    a.name,
         content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : a.content,
       }));

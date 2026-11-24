@@ -1040,7 +1040,7 @@ create table admin_users (
   -- lieu du code en clair — bascule progressive à la prochaine connexion
   -- réussie (voir admin-user-login.js), jamais en masse.
   pin_hashed    boolean not null default false,
-  role          text not null check (role in ('administrateur','operateur','comptabilite','support_client')),
+  role          text not null check (role in ('administrateur','operateur','comptabilite','support_client','prospecteur')),
   actif         boolean not null default true,
   created_at    timestamptz not null default now(),
   last_login_at timestamptz
@@ -1077,3 +1077,32 @@ create table if not exists passages_agent (
 );
 create index if not exists passages_agent_point_idx on passages_agent (point_id, fait_le desc);
 alter table passages_agent enable row level security;
+create table if not exists prospection_points (
+  id              bigint generated always as identity primary key,
+  session_token   text not null unique,
+  statut          text not null default 'session'
+                  check (statut in ('session','a_repasser','en_attente_signature','signe','refuse')),
+  zone            text,
+  enseigne        text,
+  gerant          text,
+  tel             text,
+  email           text,
+  adresse         text,
+  capacite        int check (capacite between 3 and 5),
+  accepte_at      timestamptz,
+  photo_path      text,
+  lat             double precision,
+  lng             double precision,
+  gps_precision   double precision,
+  signataire      text,
+  signature_path  text,
+  signe_at        timestamptz,
+  docs_envoyes_at timestamptz,
+  relance_at      timestamptz,
+  prospecteur     text,
+  notes           text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+create index if not exists prospection_points_statut_idx on prospection_points (statut, created_at desc);
+alter table prospection_points enable row level security;

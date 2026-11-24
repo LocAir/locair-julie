@@ -1233,6 +1233,15 @@ module.exports = async (req, res) => {
   } catch (e) {
     console.error('[Cron partenaires via daily]', e.message);
   }
+  // ── Prospection terrain : relance du lendemain matin (une seule fois) ──
+  // Fiche « À repasser » ou « À signer » d'hier (ou des 7 derniers jours),
+  // avec un e-mail ou un téléphone, à qui rien n'a encore été envoyé :
+  // la présentation + la convention par e-mail, et/ou un SMS avec le lien.
+  try {
+    report.relancesProspection = await relancerProspection(supabase);
+  } catch (e) {
+    console.error('[Cron relance prospection]', e.message);
+  }
   try {
     if (today.getDate() <= 3) { // du 1er au 3 du mois — relevé récapitulatif à chaque commerçant (convention, art. 2) ; jamais deux fois (email_log), un envoi raté est retenté
       report.releves = await runReleveCommercants(supabase);
@@ -1513,3 +1522,32 @@ async function rappelerFiltreClickCollect(supabase, todayStr) {
   return n;
 }
 module.exports.effacerIdentitesOrphelines = effacerIdentitesOrphelines; // pour les tests
+
+async function relancerProspection(supabase) {
+  const { debutJourParisISO, todayParis, addDays } = require('./_lib/dates');
+  const { envoyerDocuments, envoyerSmsRelance } = require('./_lib/prospection');
+  const auj = todayParis();
+  const { data, error } = await supabase.from('prospection_points')
+    .select('*').in('statut', ['a_repasser', 'en_attente_signature'])
+    .is('relance_at', null).is('docs_envoyes_at', null)
+    .lt('created_at', debutJourParisISO(auj)).gte('created_at', debutJourParisISO(addDays(auj, -7)))
+    .limit(50);
+  if (error) {
+    if (error.code === '42P01' || /does not exist/.test(error.message || '')) return 'table absente';
+    throw error;
+  }
+  let n = 0;
+  for (const f of data || []) {
+    if (!f.email && !f.tel) continue;
+    // Verrou d'abord : jamais deux relances, même si l'envoi échoue.
+    const { data: pris } = await supabase.from('prospection_points').update({ relance_at: new Date().toISOString() }).eq('id', f.id).is('relance_at', null).select('id');
+    if (!pris || !pris.length) continue;
+    let ok = false;
+    if (f.email) { const r = await envoyerDocuments(f, { relance: true }).catch(() => ({ ok: false })); if (r.ok) { ok = true; await supabase.from('prospection_points').update({ docs_envoyes_at: new Date().toISOString() }).eq('id', f.id); } }
+    if (f.tel) { const r = await envoyerSmsRelance(f).catch(() => ({ ok: false })); ok = ok || !!r.ok; }
+    if (ok) n++;
+  }
+  return n;
+}
+module.exports.relancerProspection = relancerProspection;
+
