@@ -134,7 +134,7 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
 async function findReservationByPaymentIntent(supabase, paymentIntentId) {
   if (!paymentIntentId) return null;
   const { data } = await supabase
-    .from('reservations').select('id, city_id, ref, statut, prenom, nom, partenaire_commission_payee')
+    .from('reservations').select('id, city_id, ref, statut, prenom, nom, partenaire_commission_payee, partenaire_id, partenaire_commission_cents, source_channel, point_retrait_id')
     .eq('stripe_payment_intent_id', paymentIntentId).maybeSingle();
   return data || null;
 }
@@ -317,6 +317,39 @@ async function handleChargeRefunded(supabase, charge) {
   // Une commission déjà versée à un partenaire pour cette réservation devient
   // un litige à réconcilier — jusqu'ici visible seulement en badge, jamais
   // poussé au moment où ça arrive vraiment (audit automatisations, 2026-08-02).
+  // Remboursement PARTIEL (ex. rétractation après le retrait : le client ne
+  // paie que les jours utilisés) : la commission du partenaire est recalculée
+  // sur ce qui reste encaissé (convention : 20 % des locations encaissées).
+  // Calcul toujours repris du taux et du montant restant : sans effet si
+  // Stripe renvoie le même événement.
+  if (resa && !remboursementTotal && resa.partenaire_id && (resa.partenaire_commission_cents || 0) > 0 && charge.amount > 0) {
+    try {
+      let pct = null;
+      if (resa.source_channel === 'click_collect') {
+        const pt = require('./_lib/pointsRetrait').getPointRetrait(resa.point_retrait_id || '');
+        if (pt) pct = pt.commission_pct;
+      }
+      if (pct == null) {
+        const { data: part } = await supabase.from('partenaires').select('taux_commission_pct').eq('id', resa.partenaire_id).maybeSingle();
+        if (part && Number.isFinite(part.taux_commission_pct)) pct = part.taux_commission_pct;
+      }
+      if (pct != null) {
+        const reste = Math.max(0, charge.amount - (charge.amount_refunded || 0));
+        const nouvelle = Math.min(resa.partenaire_commission_cents, Math.round(reste * pct / 100));
+        if (nouvelle !== resa.partenaire_commission_cents) {
+          if (resa.partenaire_commission_payee) {
+            await pushToAdmin(supabase, {
+              title: '⚠️ Commission partenaire à corriger',
+              body: `Dossier ${resa.ref || '?'} remboursé en partie : la commission devrait passer de ${(resa.partenaire_commission_cents / 100).toFixed(2)} € à ${(nouvelle / 100).toFixed(2)} €, mais elle est déjà versée. À déduire du prochain virement.`,
+              tag: `partenaire-commission-partielle-${resa.id}`,
+            });
+          } else {
+            await supabase.from('reservations').update({ partenaire_commission_cents: nouvelle }).eq('id', resa.id).eq('partenaire_commission_payee', false);
+          }
+        }
+      }
+    } catch (e) { console.error('[Remboursement partiel commission]', e.message); }
+  }
   if (resa && remboursementTotal && resa.partenaire_commission_payee) {
     await pushToAdmin(supabase, {
       title: '⚠️ Litige commission partenaire',

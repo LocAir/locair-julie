@@ -3,16 +3,14 @@ const { verifyPartenaireToken } = require('./_lib/auth');
 const { pushToAdmin } = require('./_lib/push');
 const { pointDuPartenaire, tauxAffiche } = require('./_lib/pointsRetrait');
 const { codeRetour } = require('./_lib/clickCollect');
+const { debutJourParisISO: debutParisISO } = require('./_lib/dates');
 
-function startOfDayISO() {
-  const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
-}
-function startOfMonthISO() {
-  const d = new Date(); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
-}
-function startOfYearISO() {
-  const d = new Date(); d.setUTCMonth(0, 1); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
-}
+// Débuts de jour / mois / année à l'heure de PARIS (pas de Londres) : une
+// location payée le 1er à 0 h 30 compte bien dans le nouveau mois.
+const aujParis = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+function startOfDayISO() { return debutParisISO(aujParis()); }
+function startOfMonthISO() { return debutParisISO(aujParis().slice(0, 8) + '01'); }
+function startOfYearISO() { return debutParisISO(aujParis().slice(0, 5) + '01-01'); }
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

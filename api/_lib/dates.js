@@ -43,4 +43,11 @@ function heureParis(d) {
 const EXPRESS_HEURE_LIMITE = 18;
 function expressPossible(d) { return heureParis(d) < EXPRESS_HEURE_LIMITE; }
 
-module.exports = { isValidDate, addDays, todayParis, dateInParis, heureParis, expressPossible, EXPRESS_HEURE_LIMITE };
+// Instant (ISO, UTC) où commence le jour `ymd` à Paris : 2027-07-01 → 2027-06-30T22:00:00Z.
+function debutJourParisISO(ymd) {
+  const midi = new Date(ymd + 'T12:00:00Z');
+  const h = Number(midi.toLocaleString('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }));
+  return new Date(Date.parse(ymd + 'T00:00:00Z') - (h - 12) * 3600000).toISOString();
+}
+
+module.exports = { debutJourParisISO, isValidDate, addDays, todayParis, dateInParis, heureParis, expressPossible, EXPRESS_HEURE_LIMITE };
