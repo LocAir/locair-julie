@@ -15,7 +15,8 @@ const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/rate
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // « MARIE CORNIGLIONE » → « Marie » ; « jean-pierre dupont » → « Jean-Pierre »
 const prenomPropre = (s) => (String(s || '').trim().split(/\s+/)[0] || '').toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) || 'et bienvenue';
-const clip = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
+// Texte simple : pas d'objet (« [object Object] »), pas de retour à la ligne (sujet d'email).
+const clip = (s, n) => (typeof s === 'string' || typeof s === 'number' ? String(s) : '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
 
 const CHAMPS = [
   ['commerce', 'Commerce', 120],
@@ -43,8 +44,13 @@ module.exports = async (req, res) => {
   if (!d.commerce || !d.gerant || !telOk || !emailOk || !d.adresse || !/^\d{5}$/.test(d.cp) || !d.ville || !d.horaires) {
     return res.status(400).json({ ok: false, error: 'Il manque une information.' });
   }
-  if (!/^\d{1,2}$/.test(d.appareils)) d.appareils = '4';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.debut)) d.debut = '';
+  // Climatiseurs : 1 à 10 (le formulaire propose 2 à 10), sinon 4.
+  const nb = Number(d.appareils);
+  d.appareils = /^\d{1,2}$/.test(d.appareils) && nb >= 1 && nb <= 10 ? String(nb) : '4';
+  // Démarrage : une vraie date, pas dans le passé (heure de Paris), sinon rien.
+  const auj = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  const dt = /^\d{4}-\d{2}-\d{2}$/.test(d.debut) ? new Date(d.debut + 'T12:00:00Z') : null;
+  if (!dt || isNaN(dt) || dt.toISOString().slice(0, 10) !== d.debut || d.debut < auj) d.debut = '';
 
   const supabase = getSupabase();
   try {
