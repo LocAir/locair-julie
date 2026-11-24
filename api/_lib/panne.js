@@ -30,7 +30,7 @@ const { notifyTransporteur } = require('./transporteurNotif');
 const { pushToAdmin } = require('./push');
 const { todayParis, heureParis, addDays } = require('./dates');
 const { occupationParPoint } = require('./clickCollect');
-const { STOCK_PAR_DEFAUT, POINTS_RETRAIT } = require('./pointsRetrait');
+const { STOCK_PAR_DEFAUT, POINTS_RETRAIT, horsSaison } = require('./pointsRetrait');
 const { extractPostalCode } = require('./postal');
 const { INCIDENT_OPEN_STATUSES } = require('./incidentStatus');
 
@@ -81,7 +81,10 @@ async function missionsOuvertesAuPoint(supabase, point) {
 // sur la carte par la Base Adresse Nationale ; sinon, même code postal ;
 // sinon, le premier point ouvert de sa ville.
 async function pointLePlusProche(r) {
-  const points = POINTS_RETRAIT.filter((p) => !p.test && !p.exemple);
+  // Hors saison (climatiseurs repris fin septembre, déposés mi-mai), un point
+  // n'a plus d'appareil à échanger : on ne l'envoie pas là-bas (ticket admin).
+  const jour = todayParis();
+  const points = POINTS_RETRAIT.filter((p) => !p.test && !p.exemple && !horsSaison(p, jour, jour));
   if (!points.length) return null;
   try {
     const u = 'https://api-adresse.data.gouv.fr/search/?limit=1&q=' + encodeURIComponent(String(r.adresse || '').slice(0, 200));
