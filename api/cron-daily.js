@@ -1496,7 +1496,8 @@ async function rappelerFiltreClickCollect(supabase, todayStr) {
   if (error) return 'colonnes manquantes';
   let n = 0;
   for (const r of rows || []) {
-    if (r.source === 'site_prolongation' || r.rendu_at) continue;
+    // Le client n'a pas l'appareil (jamais retiré) : pas de conseil filtre.
+    if (r.source === 'site_prolongation' || r.rendu_at || !r.remis_at) continue;
     const ecoule = jours(r.date_debut, todayStr), reste = jours(todayStr, r.date_fin);
     if (ecoule < 7 || ecoule % 7 !== 0 || reste <= 1) continue;
     const depuis = new Date(Date.now() - 5 * 864e5).toISOString();
@@ -1523,6 +1524,7 @@ async function rappelerFiltreClickCollect(supabase, todayStr) {
   return n;
 }
 module.exports.effacerIdentitesOrphelines = effacerIdentitesOrphelines; // pour les tests
+module.exports.rappelerFiltreClickCollect = rappelerFiltreClickCollect;
 
 async function relancerProspection(supabase) {
   const { debutJourParisISO, todayParis, addDays } = require('./_lib/dates');
