@@ -54,8 +54,8 @@ async function detecterParrainage(supabase, partenaire) {
 <p><b>${esc(partenaire.nom)}</b> devient point de retrait Loc’Air grâce à vous.</p>
 <p>Votre bonus : <b>50 €</b>, versé avec votre virement dès sa 1re location.</p>
 <p><a href="https://www.locair.fr/partenaire" style="color:#1A5EDB;font-weight:bold">Voir mon espace</a></p>
-<p style="color:#4B5873;font-size:13px">Loc’Air · 06 63 79 87 56 · locair.fr</p></div>`,
-          senderName: "Loc'Air",
+<p style="color:#4B5873;font-size:13px">Loc’Air · 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`,
+          senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com',
         }).catch(() => {});
       }
     }

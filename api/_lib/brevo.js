@@ -31,7 +31,9 @@ const BREVO_TIMEOUT_MS = 20000;
 // réservation comme "email envoyé") doit vérifier `result.ok` — sans quoi
 // un échec Brevo (clé désactivée, adresse invalide, quota, panne API) était
 // jusqu'ici marqué comme un envoi réussi, sans aucune trace de l'échec.
-async function sendBrevoEmail({ to, subject, html, attachments, senderName, scheduledAt }) {
+// `replyTo` (optionnel) : adresse qui reçoit les réponses (ex. partenaires.locair@outlook.com
+// pour les commerçants, voir CLAUDE.md). L'expéditeur reste contact@locair.fr.
+async function sendBrevoEmail({ to, subject, html, attachments, senderName, scheduledAt, replyTo }) {
   if (!process.env.BREVO_API_KEY || !to) return { ok: false, error: 'BREVO_API_KEY ou destinataire manquant' };
   try {
     const body = {
@@ -41,6 +43,7 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName, sche
       htmlContent: html,
     };
     if (scheduledAt) body.scheduledAt = scheduledAt;
+    if (replyTo) body.replyTo = { email: replyTo };
     if (attachments && attachments.length) {
       body.attachment = attachments.map(a => ({
         name:    a.name,

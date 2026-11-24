@@ -312,7 +312,9 @@ au premier geste (page plus rapide). `/retrait` s'ouvre sans réseau
 validé dans Stripe.
 
 **Convention de partenariat (V11, reçue le 24/11/2026) = référence.**
-Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
+Contact des commerçants : **partenaires.locair@outlook.com** (pages et emails
+partenaires, réponses des emails envoyés aux commerçants ; les notifications
+internes restent sur contact@locair.fr). Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
 septembre** (≈ 120 jours), stock fixe **4 à 5 climatiseurs** par point (selon
 la place, ≈ 40 × 40 cm chacun, sans rotation), rangés contre un mur sous
 **housse bleue unie sans logo**, gaine au-dessus ; retrait et retour **au
