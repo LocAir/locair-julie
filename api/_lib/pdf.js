@@ -484,7 +484,8 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
     const instCents = isTech ? 80 * 100 : 0;
     const isExpress = !!reservation.express;
     const expCents  = isExpress ? 60 * 100 : 0;
-    const modele    = modeleLabel(appareils);
+    // Click & Collect : appareil pas encore attribué → pas de marque inventée
+    const modele    = (isCC && !(appareils && appareils.length)) ? '9 000 à 12 000 BTU' : modeleLabel(appareils);
     const totalReel = reservation.prix_total_cents || 0;
     const sousTotal = locCents + livCents + instCents + expCents;
     const ecart     = totalReel - sousTotal;
