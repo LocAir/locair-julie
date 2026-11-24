@@ -490,6 +490,7 @@ body:not(.en-etape) .nav-tel{background:rgba(255,255,255,.16);border:1px solid r
 .gpin.proche{transform:scale(1.15)}
 /* stock en direct (api/points-dispo.js) : vert = disponible, orange = dernier appareil, gris = complet */
 .gpin.d-dispo .g-f{fill:#0F7A3D}.gpin.d-dernier .g-f{fill:#C2410C}.gpin.d-complet .g-f{fill:#98A2B3}
+.alt-point{display:block;margin-top:6px;border:0;background:var(--vif,#1A5EDB);color:#fff;font:800 14px 'DM Sans',sans-serif;padding:9px 16px;border-radius:100px;cursor:pointer;min-height:40px}
 .badge-dispo{background:#E6F4EC;color:#0F7A3D}.badge-dernier{background:#FDF1E3;color:#B45309}.badge-complet{background:#EEF1F6;color:#4B5873}
 .gc-fiche{position:absolute;left:10px;right:10px;bottom:10px;z-index:4;background:#fff;border-radius:20px;padding:14px 14px 12px;box-shadow:0 18px 40px -12px rgba(11,30,68,.5);animation:gcMonte .3s cubic-bezier(.2,.8,.2,1)}
 .gc-fiche[hidden]{display:none}
@@ -2510,6 +2511,29 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function qteMax(){ var pr = (etat.prix && etat.prix.cle === clePrix()) ? etat.prix : null; return Math.max(1, Math.min(QTE_MAX, pr && pr.libres ? pr.libres : QTE_MAX)); }
   function totalUnit(){ var k = clePrix(); return (etat.prix && etat.prix.cle === k) ? etat.prix.totalCents / 100 : prix(jours()); }
   function total(){ return Math.round(totalUnit() * qte() * 100) / 100; }
+  /* Point complet : cherche, parmi les 3 points ouverts les plus proches, le
+     premier libre aux mêmes dates (même calcul que le paiement). */
+  var ALT = {cle:'', p:null, km:0};
+  function chercherAutrePoint(){
+    var k = clePrix(), ici = etat.point; if(!k || ALT.cle === k) return;
+    ALT = {cle:k, p:null, km:0};
+    var jd = d2(etat.debut).getDay(), jf = d2(etat.fin).getDay(), n = ecart(etat.debut, etat.fin);
+    var liste = POINTS.filter(function(x){ var f = x.fermes || []; return x.id !== ici.id && !x.exemple && !!x.test === !!ici.test && f.indexOf(jd) < 0 && f.indexOf(jf) < 0; })
+      .map(function(x){ return {p:x, km:km(ici, x)}; }).sort(function(a, b){ return a.km - b.km; }).slice(0, 3);
+    (function essai(i){
+      if(i >= liste.length || ALT.cle !== k) return;
+      fetch('/api/click-collect-prix?point=' + encodeURIComponent(liste[i].p.id) + '&debut=' + etat.debut + '&jours=' + n)
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ if(ALT.cle !== k) return; if(j && !j.complet){ ALT.p = liste[i].p; ALT.km = liste[i].km; if(!ecrans.dates.hidden) majSelection(); } else essai(i + 1); })
+        .catch(function(){ essai(i + 1); });
+    })(0);
+  }
+  $('bd-txt').addEventListener('click', function(e){
+    var b = e.target.closest('[data-alt]'); if(!b) return;
+    var p = parId(b.dataset.alt); if(!p) return;
+    etat.point = p; etat.ville = p.ville; etat.prix = null; window.mesurer && window.mesurer('cc_autre_point');
+    demanderPrix(); majSelection(); majResume('dates'); sauver('dates');
+  });
   function demanderPrix(){
     var k = clePrix(); if(!k || (etat.prix && etat.prix.cle === k)) return;
     var cle = k;
@@ -2578,7 +2602,14 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       demanderPrix();
       var n = ecart(etat.debut, etat.fin), tot = total(), pr = (etat.prix && etat.prix.cle === clePrix()) ? etat.prix : null;
       complet = !!(pr && pr.complet);
-      if(complet) t.innerHTML = L('<b>Point complet à ces dates</b>Changez de dates ou de point de retrait', '<b>Point fully booked on these dates</b>Change dates or pick-up point');
+      if(complet){
+        /* playbook : un point complet → on oriente vers le point libre le plus proche */
+        var alt = (ALT.cle === clePrix() && ALT.p) ? ALT : null;
+        t.innerHTML = L('<b>Point complet à ces dates</b>', '<b>Point fully booked on these dates</b>', '<b>Punto completo en estas fechas</b>') +
+          (alt ? '<button type="button" class="alt-point" data-alt="' + esc(alt.p.id) + '">' + L('Prendre ', 'Take ', 'Elegir ') + esc(alt.p.nom) + ' · ' + dist(alt.km) + '</button>'
+               : L('Changez de dates ou de point de retrait', 'Change dates or pick-up point', 'Cambia de fechas o de punto de recogida'));
+        if(!alt) chercherAutrePoint();
+      }
       else t.innerHTML = '<b>' + n + L(' jours · ', ' days · ') + euros(tot) + (qte() > 1 ? ' · ' + qte() + L(' appareils', ' units', ' aparatos') : '') + (pr && pr.majore ? ' <s class="prix-normal">' + euros(pr.normalCents * qte() / 100) + '</s>' : '') + '</b>' +
         (pr && (pr.majore || pr.remise) ? '<span class="forte' + (pr.remise ? ' baisse' : '') + '">' + L('Tarif dynamique : ', 'Dynamic pricing: ') + (pr.variationPct > 0 ? '+' : '−') + Math.abs(pr.variationPct || pr.majorationPct) + ' %' + raisonsTexte(pr.raisons) + L(' · prix garanti 30 min', ' · price held 30 min') + '</span>' : esc(court(etat.debut) + ' → ' + court(etat.fin)) + L(' · soit ', ' · ') + euros(Math.round(totalUnit() / n * 100) / 100) + L('/jour', '/day') + (qte() > 1 ? L(' par appareil', ' per unit', ' por aparato') : ''));
     }
