@@ -303,6 +303,8 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    fenêtre « 🎁 Parrainage détecté » + notification admin + email au
    parrain. À la 1re location payée du nouveau point : notification et
    email « À verser » (50 € au parrain et 50 € au nouveau).
+   Même commerce parrainé par deux commerçants : **le premier qui a
+   parrainé gagne** ; les autres demandes passent à « Pas cette fois ».
 1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
    `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
    du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
