@@ -365,6 +365,9 @@ ouverts (remplacer avec la micro-box), retards, 20 % à virer (rouge après le
 5 du mois), passages agent, pub à baisser, à reconditionner, commerçant non
 relié, RIB manquant. Le bloc point mort montre aussi l'occupation de la
 saison (jours-machine / 4 800 possibles = 40 × 120 jours).
+**Retour anticipé (décidé le 24/11/2026)** : accepté à tout moment au même
+point ; les jours non utilisés ne sont **pas remboursés**, sauf panne ou
+rétractation dans les 14 jours (CGV 10 ter, FAQ de la page, Julie).
 **Cellules (24/11/2026)** : `CELLULES` dans `api/_lib/pointsRetrait.js`
 (flotte, charges box/agent/pub, saison, dépose, prix repères, pub/jour) ;
 chaque point a un champ `cellule` (`c1` par défaut). Admin → Points de

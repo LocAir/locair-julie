@@ -975,6 +975,10 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .pr-cel-g .rouge b{color:var(--red)}.pr-cel-g .ambre b{color:var(--amber)}.pr-cel-g .vert b{color:var(--green)}
 .pr-cel-p{font-size:12px;color:var(--grey);border-top:1px solid var(--rule);padding-top:8px}
 .pr-cel-tous{justify-content:center;align-items:flex-start}.pr-cel-tous b{font:800 16px var(--body);color:var(--black)}
+.pr-onglets{display:flex;gap:6px;overflow-x:auto;margin:0 0 18px;padding-bottom:2px;border-bottom:1px solid var(--rule)}
+.pr-onglets button{flex:none;border:0;background:none;padding:10px 14px;font:700 14px var(--body);color:var(--grey);border-bottom:3px solid transparent;cursor:pointer;margin-bottom:-1px}
+.pr-onglets button.on{color:var(--black);border-bottom-color:var(--blue)}
+.pr-onglets button.alerte:not(.on){color:var(--red)}
 .pr-phase{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--white);border:1px solid var(--rule);border-radius:100px;padding:8px 16px;margin:-4px 0 16px;font-size:13px;color:var(--grey);box-shadow:var(--sh-xs)}
 .pr-phase b{color:var(--black)}
 .pr-faire{margin-bottom:22px}
@@ -11647,6 +11651,10 @@ async function setParrainage(id, statut){
     loadPointsRetrait(true);
   }catch(e){ alert('Échec. Réessaie.'); }
 }
+/* Écran « Points de retrait » : 1 écran = 1 pensée. Il s'ouvre sur « À faire » ;
+   le reste est rangé dans 4 onglets (Aujourd'hui, Points, Pilotage, Outils). */
+let PR_ONGLET = (() => { try{ return localStorage.getItem('pr_onglet') || 'afaire'; }catch(e){ return 'afaire'; } })();
+function setPrOnglet(o){ PR_ONGLET = o; try{ localStorage.setItem('pr_onglet', o); }catch(e){} renderPointsRetrait(); }
 function renderPointsRetrait(){
   const D = PR_DATA, zone = document.getElementById('tab-pointsretrait'); if(!D) return;
   if(PR_CELLULE !== 'toutes' && !(D.cellules||[]).some(c => c.id === PR_CELLULE)) PR_CELLULE = 'toutes';
@@ -11658,11 +11666,14 @@ function renderPointsRetrait(){
   const filtres = {tous:p => !p.test, ouverts:p => !p.test && !p.exemple, exemples:p => !p.test && p.exemple, test:p => p.test};
   const liste = d.points.filter(filtres[PR_FILTRE] || filtres.tous);
   const jour = new Date(d.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-  zone.innerHTML = `
-    <div class="pr-tete"><div><h2>Points de retrait</h2><p>Click &amp; Collect · ${escHtml(jour)}</p></div></div>
-    ${prCellules(D)}
-    <div class="pr-phase">${d.cellule ? '<b>'+escHtml(d.cellule.nom)+'</b> · ' : ''}${prPhase(d.date, d.cellule)}${d.micro_box && r.ouverts ? ` · <b>Micro-box : ${Math.max(0, d.micro_box.flotte - d.micro_box.en_points)}</b> de secours (${d.micro_box.en_points}/${d.micro_box.flotte} en points)` : ''}</div>
-    ${prAFaire(d)}
+  const nbAFaire = prAFaireListe(d).length;
+  const ONGLETS = [['afaire', 'À faire' + (nbAFaire ? ' · ' + nbAFaire : '')], ['jour', 'Aujourd’hui'], ['points', 'Points'], ['pilotage', 'Pilotage'], ['outils', 'Outils']];
+  if(!ONGLETS.some(o => o[0] === PR_ONGLET)) PR_ONGLET = 'afaire';
+  const cels = D.cellules || [];
+  const choixCellule = cels.length > 1 ? `<div class="pr-filtres" style="margin-bottom:12px">${[['toutes','Tout le réseau']].concat(cels.map(c => [c.id, c.nom])).map(([k,t]) => `<button type="button" class="${PR_CELLULE===k?'on':''}" onclick="setPrCellule('${escHtml(k)}')">${escHtml(t)}</button>`).join('')}</div>` : '';
+  let corps = '';
+  if(PR_ONGLET === 'afaire') corps = prAFaire(d);
+  else if(PR_ONGLET === 'jour') corps = `
     <div class="pr-tuiles">
       <div class="pr-tuile"><b>${r.ouverts}</b><span>point${r.ouverts>1?'s':''} ouvert${r.ouverts>1?'s':''}${r.exemples?' · '+r.exemples+' en exemple':''}</span></div>
       <div class="pr-tuile"><b>${r.dehors}</b><span>appareil${r.dehors>1?'s':''} chez des clients</span></div>
@@ -11675,17 +11686,24 @@ function renderPointsRetrait(){
       ${prListe('Retours','↩','bleu',j.retours,'Aucun retour prévu.')}
       ${prListe('Retards','!','rouge',j.retards,'Aucun retard.')}
     </div>
-    <div class="pr-tete" style="margin:26px 0 12px"><p class="section-title" style="margin:0">Les points</p>
+`;
+  else if(PR_ONGLET === 'points') corps = `
+    <div class="pr-tete" style="margin:0 0 12px"><p class="section-title" style="margin:0">Les points</p>
       <div class="pr-filtres">${[['tous','Tous'],['ouverts','Ouverts'],['exemples','Exemples'],['test','Test']].map(([k,t]) => `<button type="button" class="${PR_FILTRE===k?'on':''}" onclick="setPrFiltre('${k}')">${t}</button>`).join('')}</div>
     </div>
     ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
     ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
+`;
+  else if(PR_ONGLET === 'pilotage') corps = `
+    ${prCellules(D)}
     ${r.ouverts && d.saison ? (() => { const s = d.saison, pm = s.point_mort, pct = Math.min(100, Math.round(s.jours_machine / pm.max * 100)), ok = s.jours_machine >= pm.max, presque = s.jours_machine >= pm.min;
       return `<p class="section-title">Pilotage · point mort de la saison</p><div class="pr-col" style="margin-bottom:8px;padding:16px 18px"><b style="font:900 26px var(--disp)">${s.jours_machine} <small style="font-size:14px;font-weight:600;color:var(--grey)">jours-machine loués · ${(s.jours_machine / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')} % d’occupation (sur ${(d.micro_box?d.micro_box.flotte:40) * 120} possibles ; point mort ≈ ${(pm.min / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')}–${(pm.max / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')} %)</small></b>
       <div class="stock-gauge" style="margin:10px 0 8px"><div class="stock-gauge-fill" style="width:${pct}%;${ok?'background:var(--green)':''}"></div></div>
       <small style="color:var(--grey);font-weight:600">${ok?'Charges de la saison couvertes ✓':presque?'Presque : charges couvertes si le prix moyen reste haut':'Charges couvertes entre '+pm.min+' et '+pm.max+' jours-machine'} · charges ${d.cellule ? d.cellule.charges_mois.toLocaleString('fr-FR') : '1 465'} €/mois (box, agent, pub)</small></div>`; })() : ''}
     ${(d.remplissage||[]).length ? `<p class="section-title">Remplissage · 7 prochains jours</p>
     <div class="pr-col" style="margin-bottom:8px"><ul>${d.remplissage.map(v => `<li><span><b>${escHtml(v.ville)} · ${v.pct} %</b><small>${v.points} point${v.points>1?'s':''}</small></span><span class="pr-etat ${v.pub==='normale'?'ouvert':v.pub==='baisser'?'exemple':'ferme'}">${v.pub==='normale'?'Pub normale':v.pub==='baisser'?'Baisser la pub':'Pub en pause'}</span></li>`).join('')}</ul></div>` : ''}
+    ${!r.ouverts ? '<p class="empty">Les chiffres de la saison apparaissent dès qu’un vrai point est ouvert.</p>' : ''}`;
+  else corps = `
     ${prParrainages(d)}
     <p class="section-title">Outils</p>
     <div class="pr-outils">
@@ -11713,8 +11731,13 @@ function renderPointsRetrait(){
       <li>Déposer 4 à 5 climatiseurs (du 10 au 15 mai), sous housse bleue, gaine au-dessus.</li>
       <li>Faire un essai complet : un retrait, puis un retour. Puis « Passage fait ».</li>
     </ol></details>`;
+  zone.innerHTML = `
+    <div class="pr-tete"><div><h2>Points de retrait</h2><p>Click &amp; Collect · ${escHtml(jour)}</p></div></div>
+    ${choixCellule}
+    <div class="pr-phase">${d.cellule && cels.length > 1 ? '<b>'+escHtml(d.cellule.nom)+'</b> · ' : ''}${prPhase(d.date, d.cellule)}${d.micro_box && r.ouverts ? ` · <b>Micro-box : ${Math.max(0, d.micro_box.flotte - d.micro_box.en_points)}</b>` : ''}</div>
+    <div class="pr-onglets" role="tablist">${ONGLETS.map(([k,t]) => `<button type="button" role="tab" aria-selected="${PR_ONGLET===k}" class="${PR_ONGLET===k?'on':''}${k==='afaire'&&nbAFaire?' alerte':''}" onclick="setPrOnglet('${k}')">${t}</button>`).join('')}</div>
+    ${corps}`;
 }
-
 async function loadVilles(silent){
   const zone = document.getElementById('tab-villes');
   if(!silent) zone.innerHTML = loading();
