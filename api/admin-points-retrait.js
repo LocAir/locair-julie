@@ -159,7 +159,9 @@ module.exports = async (req, res) => {
     const ligne = (r, p) => ({ id: r.id, ref: r.ref, numero: numeroComptoir(r.ref), client: client(r), tel: r.tel || null,
       point: p ? p.nom : '', cellule: p ? p.cellule : null, quantite: qte(r), date_debut: r.date_debut, date_fin: r.date_fin });
 
-    const aujourdhui = { retraits: [], retours: [], retards: [] };
+    // non_retires : payé mais jamais venu chercher (la location est finie) :
+    // plus un retrait à faire, mais un client à appeler (30 jours au plus).
+    const aujourdhui = { retraits: [], retours: [], retards: [], non_retires: [] };
     let dehorsTotal = 0, aReconditionner = 0;
 
     // Dernier passage de l'agent par point (table absente : rien, sans erreur).
@@ -203,7 +205,8 @@ module.exports = async (req, res) => {
 
       actives.forEach((r) => {
         if (p.test) return;
-        if (!r.remis_at && r.date_debut <= auj) aujourdhui.retraits.push(ligne(r, p));
+        if (!r.remis_at && r.date_debut <= auj && r.date_fin >= auj) aujourdhui.retraits.push(ligne(r, p));
+        else if (!r.remis_at && r.date_fin < auj && r.date_fin >= addDays(auj, -30)) aujourdhui.non_retires.push(ligne(r, p));
         else if (r.remis_at && r.date_fin === auj) aujourdhui.retours.push(ligne(r, p));
         else if (r.remis_at && r.date_fin < auj) aujourdhui.retards.push(Object.assign(ligne(r, p), { jours_retard: Math.round((Date.parse(auj) - Date.parse(r.date_fin)) / 864e5) }));
       });
