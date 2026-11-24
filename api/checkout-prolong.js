@@ -75,7 +75,8 @@ module.exports = async (req, res) => {
     await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
     return res.status(400).json({ error: 'Durée de prolongation invalide' });
   }
-  jours = Math.min(90, joursCalc);
+  if (joursCalc > 90) return res.status(400).json({ error: 'Prolongation : 90 jours maximum à la fois.' });
+  jours = joursCalc;
   amountCents = (clientOrigDays > 0 ? _safeIncrement(clientOrigDays, jours) : calcBase(jours)) * qty * 100;
   const today = todayParis();
   if (extDateDebut < today) {
@@ -145,6 +146,7 @@ module.exports = async (req, res) => {
       }
       const joursReel = Math.round((new Date(extDateFin+'T00:00:00Z') - new Date(extDateDebut+'T00:00:00Z')) / 86400000);
       if (joursReel < 1) return res.status(400).json({ error: 'Durée de prolongation invalide' });
+      if (joursReel > 90) return res.status(400).json({ error: 'Prolongation : 90 jours maximum à la fois.' });
       jours = joursReel;
     }
     // Recalcul du montant avec les dates réelles pour empêcher la manipulation de origDays.
