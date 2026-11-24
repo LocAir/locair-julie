@@ -193,6 +193,12 @@ module.exports = async (req, res) => {
   if (data.express === true && !expressPossible()) {
     return res.status(400).json({ error: "L'Express n'est plus possible après 18 h. Choisissez une livraison demain matin." });
   }
+  // L'Express, c'est livré AUJOURD'HUI sous 2 h : jamais facturé pour un
+  // autre jour, ni sur l'offre rafraîchisseur pro (forfait de 120 € déjà
+  // compris, Express non prévu dans l'offre B2B).
+  if (data.express === true && (dateDebut !== todayParis() || pro)) {
+    return res.status(400).json({ error: pro ? "L'Express n'est pas proposé pour cette offre. Appelez le 06 63 79 87 56." : "L'Express, c'est une livraison aujourd'hui. Choisissez la date d'aujourd'hui ou une livraison normale." });
+  }
   const expressCents     = data.express === true ? EXPRESS_FEE * 100 : 0;
   const amountCents      = Math.max(0, baseCents - remiseCents + installCents + deliveryFeeCents + expressCents - promoDiscount);
 
