@@ -90,7 +90,7 @@ module.exports = async (req, res) => {
     }
 
     // ══ CÔTÉ COMMERÇANT (lien de session, sans compte) ══════════════════════
-    if (['voir', 'accepter', 'signer'].includes(action)) {
+    if (['voir', 'accepter', 'signer', 'renvoyer'].includes(action)) {
       const ip = getClientIp(req);
       if (await isRateLimited(supabase, `prospection-pub:${ip}`, 30, 10).catch(() => false)) return res.status(429).json({ error: 'Trop d’essais. Réessayez dans quelques minutes.' });
       const { fiche: f, error } = await ficheParToken(supabase, b.s);
@@ -100,6 +100,19 @@ module.exports = async (req, res) => {
         return res.status(404).json({ error: 'Ce lien n’est plus valable. Appelez le 06 63 79 87 56.' });
       }
       if (action === 'voir') return res.json({ ok: true, fiche: publicFiche(f) });
+
+      // « Pas reçu ? Renvoyer » (écran « C'est envoyé », 25/11/2026) :
+      // 3 envois en plus au maximum par fiche et par jour.
+      if (action === 'renvoyer') {
+        if (f.statut === 'signe' || !f.capacite || !f.email) return res.status(400).json({ error: 'Rien à renvoyer. Appelez le 06 63 79 87 56.' });
+        const cle = `prosp-renvoi:${f.id}`;
+        if (await isRateLimited(supabase, cle, 3, 1440)) return res.status(429).json({ error: 'Déjà renvoyé plusieurs fois. Regardez dans les spams, ou appelez le 06 63 79 87 56.' });
+        await recordFailedAttempt(supabase, cle);
+        const r = await envoyerDocuments(f).catch(() => ({ ok: false }));
+        if (!r || !r.ok) return res.status(502).json({ error: 'L’e-mail n’est pas parti. Réessayez dans une minute.' });
+        await supabase.from('prospection_points').update({ docs_envoyes_at: new Date().toISOString() }).eq('id', f.id).then(() => {}, () => {});
+        return res.json({ ok: true });
+      }
 
       if (action === 'accepter') {
         if (f.statut === 'signe') return res.json({ ok: true, fiche: publicFiche(f) });
@@ -117,6 +130,15 @@ module.exports = async (req, res) => {
         const gerant = [clip(b.prenom, 60), clip(b.nom, 60)].filter(Boolean).join(' ') || clip(b.gerant, 120); if (gerant) patch.gerant = gerant;
         const tel = clip(b.tel, 30); if (tel.replace(/\D/g, '').length >= 9) patch.tel = tel;
         const telCom = clip(b.tel_commerce, 30); if (telCom.replace(/\D/g, '').length >= 9) patch.tel_commerce = telCom;
+        // E-mail corrigé après un premier envoi (« Pas le bon e-mail ? ») :
+        // on renvoie à la nouvelle adresse, 3 fois par jour au plus.
+        const emailChange = !!f.email && email !== String(f.email).toLowerCase();
+        let emailEnvoye = !!f.docs_envoyes_at && !emailChange;
+        if (!emailEnvoye && f.docs_envoyes_at) {
+          const cle = `prosp-renvoi:${f.id}`;
+          if (await isRateLimited(supabase, cle, 3, 1440)) return res.status(429).json({ error: 'Trop de changements d’e-mail aujourd’hui. Appelez le 06 63 79 87 56.' });
+          await recordFailedAttempt(supabase, cle);
+        }
         let { data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle();
         // Colonne tel_commerce pas encore créée (SQL du 25/11 pas collé) : on garde le numéro dans les notes.
         if (e2 && patch.tel_commerce && /tel_commerce/.test(String(e2.message || ''))) {
@@ -128,7 +150,6 @@ module.exports = async (req, res) => {
         pushToAdmin(supabase, { title: `✅ OK commerçant — ${patch.enseigne || f.enseigne || 'point ' + f.id}`, body: `${capacite} climatiseurs${email ? ' · ' + email : ''}`, tag: `prospection-ok-${f.id}` }).catch(() => {});
         // Envoi des documents tout de suite (une seule fois, même si le
         // commerçant retouche « OK »).
-        let emailEnvoye = !!f.docs_envoyes_at;
         if (!emailEnvoye) {
           const { data: complete } = await supabase.from('prospection_points').select('*').eq('id', f.id).maybeSingle();
           const r = await envoyerDocuments(complete || { ...f, ...patch }).catch(() => ({ ok: false }));

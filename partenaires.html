@@ -59,6 +59,29 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
 .resume:last-child{border:0}
 .resume b{font-weight:800}
 .pied{text-align:center;color:var(--ink-2);font-size:13px;margin-top:22px}
+/* Écran « C'est envoyé » (25/11/2026) : l'e-mail tel qu'il apparaîtra dans sa boîte */
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+#e-envoye .rond{animation:pop .45s ease-out both}
+.mail{display:flex;gap:12px;text-align:left;align-items:flex-start}
+.mail .av{flex:none;width:44px;height:44px;border-radius:50%;background:var(--vif);color:#fff;font:900 16px 'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;letter-spacing:-.03em}
+.mail .av em{font-style:italic}
+.mail .de{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:15px}
+.mail .de small{font-weight:600;color:var(--ink-2);font-size:12.5px}
+.mail .obj{font-size:14.5px;margin:2px 0 6px;line-height:1.3}
+.mail .pj{display:flex;gap:6px;flex-wrap:wrap}
+.mail .pj span{background:var(--vif-c);color:var(--vif-d);border-radius:100px;padding:4px 10px;font-size:12.5px;font-weight:700}
+.a-qui{font-size:14px;color:var(--ink-2);margin:14px 0 0;padding-top:12px;border-top:1px solid var(--line);text-align:left;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.a-qui b{color:var(--ink);word-break:break-all}
+.petit{background:none;border:0;padding:0;color:var(--vif);font:800 14px 'DM Sans',sans-serif;cursor:pointer}
+.etapes{list-style:none;margin:6px 0 16px;padding:0;display:grid;gap:10px;text-align:left}
+.etapes li{display:flex;gap:11px;align-items:center;font-size:15.5px}
+.etapes i{flex:none;width:26px;height:26px;border-radius:50%;background:var(--vif-c);color:var(--vif-d);font-style:normal;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center}
+.etapes li.fait i{background:var(--ok);color:#fff}
+.etapes li.fait{font-weight:800}
+.corr{display:flex;gap:8px;margin-top:10px}
+.corr input{min-height:46px}
+.corr button{flex:none;border:0;border-radius:100px;background:var(--vif);color:#fff;font:800 15px 'DM Sans',sans-serif;padding:0 16px;cursor:pointer}
+.msg-ok{background:#E6F4EC;color:var(--ok)}
 .pied a{color:var(--vif);font-weight:700;text-decoration:none}
 [hidden]{display:none!important}
 .hp{position:absolute;left:-9999px}
@@ -113,16 +136,42 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
     </div>
   </section>
 
-  <!-- 2 · Documents envoyés (sur place : pas de signature, décidé le 25/11/2026) -->
+  <!-- 2 · Documents envoyés (sur place : pas de signature, décidé le 25/11/2026).
+       Refait le 25/11/2026 : on montre l'e-mail tel qu'il arrive dans sa boîte
+       (expéditeur, objet, pièces jointes), l'adresse en entier pour repérer
+       une faute, « Corriger » / « Renvoyer », et les 3 étapes, sans pression. -->
   <section id="e-envoye" class="centre" hidden>
     <div class="rond"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-    <h1>C’est noté.</h1>
-    <p class="sous" id="v-texte">La présentation et la convention arrivent par e-mail.</p>
+    <h1>C’est envoyé.</h1>
+    <p class="sous" id="v-texte">Regardez votre boîte mail.</p>
+    <div class="carte">
+      <div class="mail">
+        <span class="av" aria-hidden="true">L<em>’A</em></span>
+        <div style="flex:1;min-width:0">
+          <div class="de"><span>Loc’Air Partenaires</span><small>à l’instant</small></div>
+          <div class="obj" id="v-objet">Votre point de retrait Loc’Air</div>
+          <div class="pj"><span>📎 Présentation</span><span>📎 Convention</span></div>
+        </div>
+      </div>
+      <div class="a-qui"><span>Envoyé à <b id="v-email">—</b></span><button type="button" class="petit" id="v-corriger">Corriger</button></div>
+      <div class="corr" id="v-corr" hidden>
+        <input id="v-nouvel" type="email" inputmode="email" autocomplete="email" placeholder="vous@commerce.fr" aria-label="Bon e-mail">
+        <button type="button" id="v-envoyer">Envoyer</button>
+      </div>
+      <div class="msg" id="v-msg" role="status" hidden></div>
+    </div>
+    <a class="btn" id="v-ouvrir" href="#" target="_blank" rel="noopener" hidden>Ouvrir ma messagerie</a>
+    <ul class="etapes" style="margin-top:22px">
+      <li class="fait"><i>✓</i>E-mail envoyé</li>
+      <li><i>2</i>Vous lisez chez vous, sans pression</li>
+      <li><i>3</i>Si ça vous va : « Signer en ligne », dans l’e-mail</li>
+    </ul>
     <div class="carte" style="text-align:left">
       <div class="resume"><span>Climatiseurs</span><b id="v-capa">—</b></div>
       <div class="resume"><span>Dépose</span><b>10 – 15 mai 2027</b></div>
+      <div class="resume"><span>Votre part</span><b>20 % de chaque location</b></div>
     </div>
-    <p class="sous">Lisez tranquillement chez vous.</p>
+    <p class="aide">Pas reçu ? Regardez dans les spams, ou <button type="button" class="petit" id="v-renvoyer" style="font-size:13px">renvoyer l’e-mail</button>.</p>
   </section>
 
   <!-- 3 · La signature (ouverte depuis l'e-mail : ?signer=1) -->
@@ -254,11 +303,53 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
   });
 
   // ── 2 · Documents envoyés : il étudie chez lui, il signera depuis l'e-mail
-  function envoye(f, ok){
-    $('v-capa').textContent = (f.capacite || capa) + ' climatiseur' + ((f.capacite || capa) > 1 ? 's' : '');
-    $('v-texte').textContent = ok === false ? 'L’e-mail n’est pas parti. Loc’Air vous l’envoie dans la journée.' : 'Tout arrive sur ' + (f.email || 'votre e-mail') + '.';
-    ecran('e-envoye');
+  var MESSAGERIES = [
+    [/^(gmail|googlemail)\.com$/, 'Ouvrir Gmail', 'https://mail.google.com/mail/u/0/#inbox'],
+    [/^(outlook|hotmail|live|msn)\.[a-z.]+$/, 'Ouvrir Outlook', 'https://outlook.live.com/mail/0/'],
+    [/^yahoo\.[a-z.]+$/, 'Ouvrir Yahoo Mail', 'https://mail.yahoo.com/'],
+    [/^(icloud|me|mac)\.com$/, 'Ouvrir iCloud Mail', 'https://www.icloud.com/mail'],
+    [/^(orange|wanadoo)\.fr$/, 'Ouvrir ma messagerie Orange', 'https://messagerie.orange.fr/'],
+    [/^free\.fr$/, 'Ouvrir ma messagerie Free', 'https://webmail.free.fr/'],
+    [/^(sfr|neuf)\.fr$/, 'Ouvrir ma messagerie SFR', 'https://webmail.sfr.fr/'],
+    [/^laposte\.net$/, 'Ouvrir ma messagerie La Poste', 'https://www.laposte.net/accueil']
+  ];
+  function afficherEmail(adr){
+    $('v-email').textContent = adr || 'votre e-mail';
+    var dom = String(adr || '').split('@')[1] || '', m = MESSAGERIES.filter(function(x){ return x[0].test(dom.toLowerCase()); })[0];
+    $('v-ouvrir').hidden = !m;
+    if (m){ $('v-ouvrir').textContent = m[1]; $('v-ouvrir').href = m[2]; }
   }
+  function message(t, ok){ var el = $('v-msg'); el.textContent = t || ''; el.hidden = !t; el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err'); }
+  function envoye(f, ok){
+    var n = f.capacite || capa;
+    $('v-capa').textContent = n + ' climatiseur' + (n > 1 ? 's' : '');
+    var ens = (f.enseigne || $('a-commerce').value || '').trim();
+    $('v-objet').textContent = ens ? ens + ' — votre point de retrait Loc’Air' : 'Votre point de retrait Loc’Air';
+    // L'adresse qu'il vient de taper, en entier (sur son propre téléphone) ;
+    // sinon celle du serveur, masquée.
+    afficherEmail($('a-email').value.trim() || f.email);
+    if (ok === false){ $('v-texte').textContent = 'L’e-mail n’est pas encore parti.'; message('Touchez « renvoyer l’e-mail » ci-dessous, ou Loc’Air vous l’envoie dans la journée.'); }
+    else { $('v-texte').textContent = 'Regardez votre boîte mail.'; message(''); }
+    ecran('e-envoye');
+    if (navigator.vibrate) navigator.vibrate([12, 60, 12]);
+  }
+  $('v-corriger').addEventListener('click', function(){ $('v-corr').hidden = false; $('v-nouvel').value = $('a-email').value.trim(); $('v-nouvel').focus(); });
+  $('v-envoyer').addEventListener('click', function(){
+    var b = this, adr = $('v-nouvel').value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adr)){ message('Cet e-mail ne semble pas complet.'); return; }
+    b.disabled = true; message('');
+    api({action:'accepter', s:S, capacite:capa || (fiche && fiche.capacite), email:adr})
+      .then(function(j){ $('a-email').value = adr; $('v-corr').hidden = true; afficherEmail(adr); message(j.email_envoye ? 'C’est renvoyé à la bonne adresse ✓' : 'Enregistré. Loc’Air vous l’envoie dans la journée.', j.email_envoye); })
+      .catch(function(x){ message(x.message); })
+      .then(function(){ b.disabled = false; });
+  });
+  $('v-renvoyer').addEventListener('click', function(){
+    var b = this; b.disabled = true;
+    api({action:'renvoyer', s:S})
+      .then(function(){ message('C’est renvoyé ✓ Regardez aussi dans les spams.', true); })
+      .catch(function(x){ message(x.message); })
+      .then(function(){ b.disabled = false; });
+  });
 
   // ── 3 · Signature au doigt (depuis le lien de l'e-mail)
   var toile = $('s-toile'), ctx, trace = false, encre = false;
