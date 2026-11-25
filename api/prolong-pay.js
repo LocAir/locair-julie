@@ -23,6 +23,7 @@ function diffDays(startStr, endStr) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  require('./_lib/traduireErreurs').traduireErreurs(res, req.body && typeof req.body === 'object' ? req.body.lang : null);
 
   const supabaseRL = getSupabase();
   const ip = getClientIp(req);
