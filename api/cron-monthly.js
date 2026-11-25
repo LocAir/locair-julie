@@ -323,20 +323,29 @@ async function runReleveCommercants(supabase) {
   const cle = `releve_partenaire_${py}-${String(pm).padStart(2, '0')}`;
 
   const { data: resas, error } = await supabase.from('reservations')
-    .select('partenaire_id, prix_total_cents, partenaire_commission_cents, source, created_at')
+    .select('partenaire_id, prix_total_cents, partenaire_commission_cents, source, created_at, point_retrait_id')
     .not('partenaire_id', 'is', null).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
     .gte('created_at', debut).lt('created_at', fin);
   if (error) throw error;
+  const lignes = (resas || []).filter((r) => r.partenaire_commission_cents > 0);
+  const ids = [...new Set(lignes.map((r) => r.partenaire_id))];
+  if (!ids.length) return { envoyes: 0 };
+  const { data: partenaires } = await supabase.from('partenaires').select('id, nom, email, iban, actif, taux_commission_pct').in('id', ids);
+  const { getPointRetrait } = require('./_lib/pointsRetrait');
   const par = {};
-  for (const r of resas || []) {
-    if (!(r.partenaire_commission_cents > 0)) continue;
+  for (const r of lignes) {
     const x = par[r.partenaire_id] || (par[r.partenaire_id] = { locations: 0, ca: 0, com: 0 });
     if (r.source !== 'site_prolongation') x.locations++;
-    x.ca += r.prix_total_cents || 0; x.com += r.partenaire_commission_cents || 0;
+    // Remboursement partiel : la commission est déjà recalculée sur ce qui
+    // reste (webhook.js), mais prix_total_cents garde le prix de départ. On
+    // affiche donc ce qui reste vraiment encaissé (commission ÷ taux).
+    const pt = r.point_retrait_id ? getPointRetrait(r.point_retrait_id) : null;
+    const pa = (partenaires || []).find((z) => z.id === r.partenaire_id);
+    const pct = pt && pt.commission_pct ? pt.commission_pct : (pa && pa.taux_commission_pct) || null;
+    let ca = r.prix_total_cents || 0;
+    if (pct && r.partenaire_commission_cents < Math.round(ca * pct / 100) - 1) ca = Math.round(r.partenaire_commission_cents * 100 / pct);
+    x.ca += ca; x.com += r.partenaire_commission_cents || 0;
   }
-  const ids = Object.keys(par).map(Number);
-  if (!ids.length) return { envoyes: 0 };
-  const { data: partenaires } = await supabase.from('partenaires').select('id, nom, email, iban, actif').in('id', ids);
   const eur = (c) => (c / 100).toFixed(2).replace('.', ',') + ' €';
   let envoyes = 0;
   for (const p of partenaires || []) {
