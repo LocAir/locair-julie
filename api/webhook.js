@@ -133,9 +133,11 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
 // payment_intent.succeeded / checkout.session.completed, plus bas).
 async function findReservationByPaymentIntent(supabase, paymentIntentId) {
   if (!paymentIntentId) return null;
-  const { data } = await supabase
-    .from('reservations').select('id, city_id, ref, statut, prenom, nom, partenaire_commission_payee, partenaire_id, partenaire_commission_cents, source_channel, point_retrait_id')
+  const base = 'id, city_id, ref, statut, prenom, nom, partenaire_commission_payee, partenaire_id, partenaire_commission_cents, source_channel, point_retrait_id';
+  let { data, error } = await supabase.from('reservations').select(base + ', remis_at, rendu_at')
     .eq('stripe_payment_intent_id', paymentIntentId).maybeSingle();
+  // Colonnes du retrait/retour absentes de la base : on relit sans elles.
+  if (error) ({ data } = await supabase.from('reservations').select(base).eq('stripe_payment_intent_id', paymentIntentId).maybeSingle());
   return data || null;
 }
 
@@ -311,7 +313,7 @@ async function handleChargeRefunded(supabase, charge) {
   });
   await pushToAdmin(supabase, {
     title: 'Remboursement Stripe',
-    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}${resa && remboursementTotal && livraisonDejaEffectuee ? ' — le climatiseur est chez le client, vérifie la mission de récupération.' : ''}`.trim(),
+    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}${resa && remboursementTotal && livraisonDejaEffectuee ? ' — le climatiseur est chez le client, vérifie la mission de récupération.' : ''}${resa && remboursementTotal && resa.source_channel === 'click_collect' && resa.remis_at && !resa.rendu_at ? ' — Click & Collect : le climatiseur est chez le client, il doit le rapporter au point (le retour reste possible au comptoir).' : ''}`.trim(),
     tag:   `remboursement-${resa?.id || piId}`,
   });
   // Une commission déjà versée à un partenaire pour cette réservation devient

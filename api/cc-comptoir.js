@@ -56,9 +56,11 @@ module.exports = async (req, res) => {
       const depuis = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
       const { data: ouvertes } = await supabase.from('reservations').select('*')
         .eq('point_retrait_id', point.id).eq('source_channel', 'click_collect').is('reservation_origine_id', null)
-        .in('statut', ['en_attente', 'confirmee', 'terminee']).gte('date_fin', depuis)
+        .in('statut', ['en_attente', 'confirmee', 'terminee', 'remboursee', 'annulee']).gte('date_fin', depuis)
         .order('id', { ascending: false }).limit(2000);
-      const memes = (ouvertes || []).filter((x) => numeroComptoir(x.ref) === ref);
+      // Remboursée ou annulée : seulement si l'appareil est encore chez le client (à rendre).
+      const memes = (ouvertes || []).filter((x) => numeroComptoir(x.ref) === ref
+        && (!['remboursee', 'annulee'].includes(x.statut) || (x.remis_at && !x.rendu_at)));
       // Même client, plusieurs commandes au même point (même numéro) : on
       // prend celle qui a quelque chose à faire aujourd'hui — d'abord un
       // retrait possible, puis un retour, puis la plus récente.
