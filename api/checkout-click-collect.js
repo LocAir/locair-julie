@@ -32,8 +32,52 @@ const JOURS_MAX = 90;
 const QTE_MAX = 3;
 const clip = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
 
+// Messages d'erreur montrés tels quels au client : traduits pour les pages
+// en anglais et en espagnol (le français reste le texte de référence).
+const TRAD = {
+  'Trop de tentatives, réessayez dans 15 minutes.': ['Too many attempts, try again in 15 minutes.', 'Demasiados intentos, inténtalo de nuevo en 15 minutos.'],
+  'Configuration serveur manquante — contactez-nous.': ['Server setup issue — please contact us.', 'Problema de configuración — contáctanos.'],
+  'Merci d’accepter les conditions avant de payer.': ['Please accept the terms before paying.', 'Acepta las condiciones antes de pagar.'],
+  'Prénom et nom requis.': ['First and last name required.', 'Nombre y apellidos obligatorios.'],
+  'Adresse email invalide.': ['Invalid email address.', 'Email no válido.'],
+  'Numéro de téléphone invalide.': ['Invalid phone number.', 'Número de teléfono no válido.'],
+  'Adresse postale requise.': ['Postal address required.', 'Dirección postal obligatoria.'],
+  'Numéro SIRET invalide.': ['Invalid SIRET number.', 'Número SIRET no válido.'],
+  'Pièce d’identité incomplète (carte recto et verso, ou passeport).': ['ID incomplete (card front and back, or passport).', 'Documento incompleto (DNI por ambas caras o pasaporte).'],
+  'Point de retrait inconnu.': ['Unknown pick-up point.', 'Punto de recogida desconocido.'],
+  'Ce point de retrait n’est pas encore ouvert au paiement en ligne. Choisissez un autre point, ou écrivez à Julie sur la page.': ['This pick-up point isn’t open for online payment yet. Choose another point, or chat with Julie on the page.', 'Este punto aún no acepta pagos en línea. Elige otro punto o escribe a Julie en la página.'],
+  'Date de retrait invalide.': ['Invalid pick-up date.', 'Fecha de recogida no válida.'],
+  'Le point de retrait est fermé ce jour-là. Choisissez une autre date.': ['The pick-up point is closed that day. Choose another date.', 'El punto de recogida está cerrado ese día. Elige otra fecha.'],
+  'Impossible de calculer le prix. Réessayez dans un instant.': ['Unable to calculate the price. Try again in a moment.', 'No se puede calcular el precio. Inténtalo de nuevo en un momento.'],
+  'Ce point de retrait est complet à ces dates. Choisissez un autre point ou d’autres dates.': ['This pick-up point is full on these dates. Choose another point or other dates.', 'Este punto está completo en esas fechas. Elige otro punto u otras fechas.'],
+  'Montant invalide.': ['Invalid amount.', 'Importe no válido.'],
+  'Le prix vient de changer pour ces dates (forte demande). Vérifiez le nouveau prix avant de payer.': ['The price has just changed for these dates (high demand). Check the new price before paying.', 'El precio acaba de cambiar para esas fechas (alta demanda). Revisa el nuevo precio antes de pagar.'],
+  'Erreur serveur.': ['Server error.', 'Error del servidor.'],
+  'Erreur serveur réservation.': ['Server error.', 'Error del servidor.'],
+  'Ce point n’est rattaché à aucune ville Loc’Air — contactez-nous.': ['This point isn’t linked to a Loc’Air city — please contact us.', 'Este punto no está vinculado a ninguna ciudad Loc’Air — contáctanos.'],
+  'Plus d’appareil disponible à ces dates. Essayez d’autres dates ou appelez-nous.': ['No unit left on these dates. Try other dates or call us.', 'No quedan aparatos en esas fechas. Prueba otras fechas o llámanos.'],
+  'Impossible de vérifier la disponibilité. Réessayez dans un instant.': ['Unable to check availability. Try again in a moment.', 'No se puede comprobar la disponibilidad. Inténtalo de nuevo en un momento.'],
+  'Quelqu’un vient de réserver les derniers appareils de ce point à ces dates. Choisissez un autre point ou d’autres dates.': ['Someone just booked the last units at this point on these dates. Choose another point or other dates.', 'Alguien acaba de reservar los últimos aparatos de este punto en esas fechas. Elige otro punto u otras fechas.'],
+};
+function traduire(msg, lang, code) {
+  if (lang !== 'en' && lang !== 'es') return msg;
+  const k = lang === 'en' ? 0 : 1;
+  if (TRAD[msg]) return TRAD[msg][k];
+  let m = /^Durée : entre (\d+) et (\d+) jours\.$/.exec(msg);
+  if (m) return lang === 'en' ? `Length: between ${m[1]} and ${m[2]} days.` : `Duración: entre ${m[1]} y ${m[2]} días.`;
+  m = /^Il reste (\d+) appareils? à ce point sur ces dates\.$/.exec(msg);
+  if (m) return lang === 'en' ? `Only ${m[1]} unit${m[1] > 1 ? 's' : ''} left at this point on these dates.` : `Solo queda${m[1] > 1 ? 'n' : ''} ${m[1]} aparato${m[1] > 1 ? 's' : ''} en este punto en esas fechas.`;
+  if (code === 'hors_saison') return lang === 'en' ? 'Click & Collect runs from 16 May to 30 September (return by 30 September).' : 'El Click & Collect funciona del 16 de mayo al 30 de septiembre (devolución hasta el 30 de septiembre).';
+  return msg;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  {
+    const lang = req.body && typeof req.body === 'object' ? req.body.lang : null;
+    const json = res.json.bind(res);
+    res.json = (o) => json(o && typeof o.error === 'string' ? { ...o, error: traduire(o.error, lang, o.code) } : o);
+  }
 
   const ip = getClientIp(req);
   try {
