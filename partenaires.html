@@ -143,17 +143,16 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
   <section id="e-envoye" class="centre" hidden>
     <div class="rond"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
     <h1>C’est envoyé.</h1>
-    <p class="sous" id="v-texte">Regardez votre boîte mail.</p>
+    <p class="sous" id="v-texte" hidden></p>
     <div class="carte">
       <div class="mail">
         <span class="av" aria-hidden="true">L<em>’A</em></span>
         <div style="flex:1;min-width:0">
-          <div class="de"><span>Loc’Air Partenaires</span><small>à l’instant</small></div>
-          <div class="obj" id="v-objet">Votre point de retrait Loc’Air</div>
-          <div class="pj"><span>📎 Présentation</span><span>📎 Convention</span></div>
+          <div class="de"><span>Loc’Air Partenaires</span></div>
+          <div class="obj" id="v-objet" style="margin:0">Votre point de retrait Loc’Air</div>
         </div>
       </div>
-      <div class="a-qui"><span>Envoyé à <b id="v-email">—</b></span><button type="button" class="petit" id="v-corriger">Corriger</button></div>
+      <div class="a-qui"><b id="v-email">—</b><button type="button" class="petit" id="v-corriger">Corriger</button></div>
       <div class="corr" id="v-corr" hidden>
         <input id="v-nouvel" type="email" inputmode="email" autocomplete="email" placeholder="vous@commerce.fr" aria-label="Bon e-mail">
         <button type="button" id="v-envoyer">Envoyer</button>
@@ -161,17 +160,8 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
       <div class="msg" id="v-msg" role="status" hidden></div>
     </div>
     <a class="btn" id="v-ouvrir" href="#" target="_blank" rel="noopener" hidden>Ouvrir ma messagerie</a>
-    <ul class="etapes" style="margin-top:22px">
-      <li class="fait"><i>✓</i>E-mail envoyé</li>
-      <li><i>2</i>Vous lisez chez vous, sans pression</li>
-      <li><i>3</i>Si ça vous va : « Signer en ligne », dans l’e-mail</li>
-    </ul>
-    <div class="carte" style="text-align:left">
-      <div class="resume"><span>Climatiseurs</span><b id="v-capa">—</b></div>
-      <div class="resume"><span>Dépose</span><b>10 – 15 mai 2027</b></div>
-      <div class="resume"><span>Votre part</span><b>20 % de chaque location</b></div>
-    </div>
-    <p class="aide">Pas reçu ? Regardez dans les spams, ou <button type="button" class="petit" id="v-renvoyer" style="font-size:13px">renvoyer l’e-mail</button>.</p>
+    <p class="aide" style="margin-top:16px">Pas reçu ? <button type="button" class="petit" id="v-renvoyer" style="font-size:13px">Renvoyer</button></p>
+    <span id="v-capa" hidden></span>
   </section>
 
   <!-- 3 · La signature (ouverte depuis l'e-mail : ?signer=1) -->
@@ -328,8 +318,7 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
     // L'adresse qu'il vient de taper, en entier (sur son propre téléphone) ;
     // sinon celle du serveur, masquée.
     afficherEmail($('a-email').value.trim() || f.email);
-    if (ok === false){ $('v-texte').textContent = 'L’e-mail n’est pas encore parti.'; message('Touchez « renvoyer l’e-mail » ci-dessous, ou Loc’Air vous l’envoie dans la journée.'); }
-    else { $('v-texte').textContent = 'Regardez votre boîte mail.'; message(''); }
+    if (ok === false) message('Pas encore parti. Touchez « Renvoyer ».'); else message('');
     ecran('e-envoye');
     if (navigator.vibrate) navigator.vibrate([12, 60, 12]);
   }
@@ -339,14 +328,14 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adr)){ message('Cet e-mail ne semble pas complet.'); return; }
     b.disabled = true; message('');
     api({action:'accepter', s:S, capacite:capa || (fiche && fiche.capacite), email:adr})
-      .then(function(j){ $('a-email').value = adr; $('v-corr').hidden = true; afficherEmail(adr); message(j.email_envoye ? 'C’est renvoyé à la bonne adresse ✓' : 'Enregistré. Loc’Air vous l’envoie dans la journée.', j.email_envoye); })
+      .then(function(j){ $('a-email').value = adr; $('v-corr').hidden = true; afficherEmail(adr); message(j.email_envoye ? 'Envoyé ✓' : 'Enregistré. Loc’Air vous l’envoie dans la journée.', j.email_envoye); })
       .catch(function(x){ message(x.message); })
       .then(function(){ b.disabled = false; });
   });
   $('v-renvoyer').addEventListener('click', function(){
     var b = this; b.disabled = true;
     api({action:'renvoyer', s:S})
-      .then(function(){ message('C’est renvoyé ✓ Regardez aussi dans les spams.', true); })
+      .then(function(){ message('Renvoyé ✓ Regardez aussi les spams.', true); })
       .catch(function(x){ message(x.message); })
       .then(function(){ b.disabled = false; });
   });
