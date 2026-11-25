@@ -1,4 +1,7 @@
-const PDFDocument = require('pdfkit');
+// Chargé seulement quand un PDF est vraiment fabriqué (pdfkit pèse ≈ 0,1 s
+// au démarrage d'une fonction : inutile pour les appels sans PDF).
+let _PDFKit;
+function PDFDocument(...a) { _PDFKit = _PDFKit || require('pdfkit'); return new _PDFKit(...a); }
 const { SELLER } = require('./legal');
 const { calcTieredPrice, DEFAULT_PRICING_CONFIG } = require('./pricing');
 const { buildContratContent } = require('./contratContent');

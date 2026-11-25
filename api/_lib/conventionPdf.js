@@ -4,7 +4,10 @@
 // Texte = convention V11 (24/11/2026) avec les deux décisions du
 // propriétaire écrites dans CLAUDE.md : vol ou casse dans la boutique payés
 // par Loc'Air (article 6) et saison 2027.
-const PDFDocument = require('pdfkit');
+// Chargé seulement quand un PDF est vraiment fabriqué (pdfkit pèse ≈ 0,1 s
+// au démarrage d'une fonction : inutile pour les appels sans PDF).
+let _PDFKit;
+function PDFDocument(...a) { _PDFKit = _PDFKit || require('pdfkit'); return new _PDFKit(...a); }
 
 const BLEU = '#1A5EDB', ENCRE = '#0E1726', GRIS = '#4B5873', CLAIR = '#EFF4FD', TRAIT = '#D5DEEE';
 const M = 50, PW = 595.28, W = PW - 2 * M;
