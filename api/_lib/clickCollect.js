@@ -71,6 +71,22 @@ function picDeJours(lignes, debut, fin) {
 // options.avecAttente (true par défaut) : compter aussi les paiements en
 // cours (moins de 30 min). false = seulement le confirmé (signal de prix).
 const CHAMPS_OCC = 'id, point_retrait_id, quantite, statut, source, created_at, date_debut, date_fin';
+
+// Appareils en retard (retirés, pas rendus, location finie) : décision du
+// propriétaire du 25/11/2026 — chacun bloque sa place au point aujourd'hui et
+// demain, pour ne pas vendre un appareil qui n'est pas revenu. Rendues sous
+// forme de lignes fictives (du jour à après-demain). Colonnes absentes : rien.
+async function lignesEnRetard(supabase, pointIds) {
+  const auj = require('./dates').todayParis();
+  try {
+    const { data, error } = await supabase.from('reservations').select('point_retrait_id, quantite, source, date_fin')
+      .in('point_retrait_id', pointIds).in('statut', ['confirmee', 'remboursee', 'annulee'])
+      .not('remis_at', 'is', null).is('rendu_at', null).lt('date_fin', auj).limit(500);
+    if (error || !Array.isArray(data)) return [];
+    return data.filter((r) => r.source !== 'site_prolongation')
+      .map((r) => ({ point_retrait_id: r.point_retrait_id, quantite: r.quantite || 1, date_debut: auj, date_fin: addDaysISO(auj, 2), retard: true }));
+  } catch (e) { return []; }
+}
 async function occupationParPoint(supabase, points, debut, fin, options = {}) {
   // Stock modifiable depuis l'admin : relu ici, avant toute comparaison au stock.
   await require('./stockPoints').chargerStocks(supabase).catch(() => {});
@@ -84,7 +100,8 @@ async function occupationParPoint(supabase, points, debut, fin, options = {}) {
     .in('point_retrait_id', points.map((p) => p.id)).in('statut', ['confirmee', 'en_attente']);
   const { data, error } = await chevauche(q, debut, fin);
   if (!error) {
-    points.forEach((p) => { res[p.id] = picDeJours((data || []).filter((r) => r.point_retrait_id === p.id && garder(r)), debut, fin); });
+    const retard = await lignesEnRetard(supabase, points.map((p) => p.id));
+    points.forEach((p) => { res[p.id] = picDeJours((data || []).filter((r) => r.point_retrait_id === p.id && garder(r)).concat(retard.filter((r) => r.point_retrait_id === p.id)), debut, fin); });
     return res;
   }
   if (!colonnePointAbsente(error)) throw new Error(error.message || 'lecture des réservations impossible');
@@ -121,7 +138,8 @@ async function tientDansLeStock(supabase, point, debut, fin, id, avecAttente = t
   // la nôtre compte toujours (même si elle vient d'être créée)
   const lignes = data.filter((r) => r.id === id || (compte(r, limiteAttente, avecAttente) && (!avecAttente || r.id < id)));
   if (!lignes.some((r) => r.id === id)) return true;
-  return picDeJours(lignes, debut, fin) <= (point.stock || 0);
+  const retard = await lignesEnRetard(supabase, [point.id]);
+  return picDeJours(lignes.concat(retard), debut, fin) <= (point.stock || 0);
 }
 
 // Prix d'une location Click & Collect, avec la règle du prix fort.
