@@ -90,7 +90,7 @@ ${table}
     title: `Merci ${esc(prenom)} !`,
     intro: 'Votre demande de point de retrait est bien reçue.',
     bodyHtml: `
-      <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">On vous appelle.</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">On passe chez vous signer la convention, sur papier. Prévoyez votre SIRET et votre RIB.</p></div>
+      <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">On vous appelle.</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">Puis vous recevez la présentation et la convention par e-mail. Vous signez en ligne, quand vous voulez.</p></div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0" style="margin:4px 0 18px;border-collapse:separate"><tr>
         ${chiffre('20&nbsp;%', 'de chaque location, viré entre le 1er et le 5 du mois')}${chiffre('0&nbsp;€', 'à encaisser : le client paie en ligne')}${chiffre('0', 'engagement : vous arrêtez quand vous voulez')}
       </tr></table>

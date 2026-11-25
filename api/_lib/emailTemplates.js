@@ -54,35 +54,40 @@ function wrap({ headColor = '#1A5EDB', title, intro, bodyHtml, ctaHref, ctaLabel
     <!--[if !mso]><!-->
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 4px"><tr>
       <td align="center" bgcolor="#1A5EDB" style="border-radius:100px;background-color:#1A5EDB">
-        <a href="${ctaHref}" target="_blank" style="display:inline-block;padding:15px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:.04em;line-height:1;color:#ffffff!important;text-decoration:none!important;border-radius:100px;mso-hide:all">${ctaLabel}</a>
+        <a href="${ctaHref}" target="_blank" style="display:inline-block;padding:17px 34px;font-family:'DM Sans',Arial,Helvetica,sans-serif;font-size:16px;font-weight:900;letter-spacing:0;line-height:1;color:#ffffff!important;text-decoration:none!important;border-radius:100px;mso-hide:all">${ctaLabel}</a>
       </td>
     </tr></table>
     <!--<![endif]-->` : '';
+  // Style « Mur bleu » (25/11/2026), le même que les e-mails commerçants
+  // (api/_lib/emailPartenaire.js) : bandeau bleu en biais, logo, gros titre
+  // en majuscules, corps clair, cartes à bord fin, pied encre.
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..900&display=swap" rel="stylesheet">
   <style>
-    body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#F4F7FC;margin:0;padding:0;-webkit-font-smoothing:antialiased}
-    .wrap{max-width:560px;margin:24px auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(26,94,219,.12)}
-    .brand{display:inline-flex;flex-direction:column;align-items:center;gap:5px;margin:0 0 18px;text-decoration:none}
-    .head .brand-n{color:#ffffff;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;font-size:30px;font-weight:900;letter-spacing:-.04em;letter-spacing:-.02em;margin:0;line-height:1}
-    .brand-t{display:none;color:rgba(255,255,255,.65);font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;margin:0;line-height:1}
-    .head{background:${headColor};background-image:linear-gradient(160deg,#2468E8 0%,#1A5EDB 45%,#0D3FA0 100%);padding:32px 32px 28px;text-align:center}
-    .head h1{color:#fff;font-size:22px;line-height:1.3;margin:0 0 8px;font-weight:800;letter-spacing:-.02em}
-    .head p{color:rgba(255,255,255,.75);font-size:14px;margin:0;font-weight:400;line-height:1.5}
-    .body{padding:32px 32px 28px;font-size:15px;color:#0E1726;line-height:1.7}
+    body{font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#F2F6FD;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:600px;margin:24px auto;background:#FBFCFE;border-radius:24px;overflow:hidden}
+    .head{background:${headColor};background-image:linear-gradient(115deg,${headColor} 0%,${headColor} 62%,#0D3FA0 62%,#0D3FA0 100%);padding:32px 36px 38px;text-align:left}
+    .head .brand-n{color:#ffffff;font-family:'DM Sans',Arial,sans-serif;font-size:24px;font-weight:900;letter-spacing:-.04em;margin:0 0 30px;line-height:1}
+    .head .brand-n em{font-style:italic}
+    .head h1{color:#fff;font-family:'DM Sans',Arial,sans-serif;font-size:34px;line-height:1;margin:0;font-weight:900;letter-spacing:-.035em;text-transform:uppercase}
+    .head p{color:#DCE7FB;font-size:16px;margin:14px 0 0;font-weight:400;line-height:1.45}
+    .body{padding:30px 36px 32px;font-size:15.5px;color:#0E1726;line-height:1.6}
     .body p{margin:0 0 14px}
     .body p:last-child{margin-bottom:0}
-    .box{background:#EFF4FD;border-left:3px solid #1A5EDB;border-radius:10px;padding:16px 20px;margin:20px 0}
+    .box{background:#ffffff;border:2px solid #E3E9F4;border-radius:18px;padding:16px 20px;margin:0 0 20px}
     .box a{text-decoration:none;color:#0E1726}
-    .lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#999;margin:0 0 6px;display:block}
-    .ref{font-size:20px;font-weight:800;letter-spacing:-.02em;color:#0E1726;margin:0}
-    @media (max-width:480px){ .wrap{margin:0;border-radius:0} .head{padding:26px 20px 22px} .body{padding:24px 20px 26px} }
+    .lbl{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#1A5EDB;margin:0 0 6px;display:block}
+    .ref{font-size:26px;font-weight:900;letter-spacing:-.03em;color:#0E1726;margin:0;line-height:1.1}
+    .pied{background:#0E1726;padding:22px 36px 24px;font-size:12.5px;line-height:1.6;color:#9FB0CC}
+    .pied b{color:#ffffff}.pied a{color:#BFD6FF;text-decoration:none}
+    @media (max-width:480px){ .wrap{margin:0;border-radius:0} .head{padding:26px 22px 30px} .head h1{font-size:27px} .body{padding:24px 22px 26px} .pied{padding:20px 22px} }
   </style></head><body>
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${preheader}</div>
   <div class="wrap">
-    <div class="head"><div class="brand"><p class="brand-n">Loc&#x2019;Air</p><p class="brand-t">Sp&#xe9;cialiste du confort thermique</p></div><h1>${title}</h1>${intro ? `<p>${intro}</p>` : ''}</div>
+    <div class="head"><p class="brand-n">Loc<em>&#x2019;Air</em></p><h1>${title}</h1>${intro ? `<p>${intro}</p>` : ''}</div>
     <div class="body">${bodyHtml}${btnHtml}</div>
+    <div class="pied"><b>Loc&#x2019;Air · Location de climatiseurs</b><br>06 63 79 87 56 · <a href="mailto:contact@locair.fr">contact@locair.fr</a> · <a href="https://www.locair.fr">locair.fr</a></div>
   </div></body></html>`;
 }
 
