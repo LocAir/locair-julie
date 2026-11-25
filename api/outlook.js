@@ -64,6 +64,7 @@ module.exports = async function handler(req, res) {
 
   if (action === 'test') {
     const r = await outlook.sendOutlookEmail({
+      forcer: true,
       to: outlook.BOITE,
       subject: 'Essai : le site envoie bien depuis Outlook',
       html: '<p>Bonjour,</p><p>Cet e-mail est parti du site locair.fr, depuis votre boîte Outlook partenaires. Tout marche.</p><p>Loc’Air</p>',
