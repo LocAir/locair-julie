@@ -51,8 +51,10 @@ function makeChatHandler({ systemPrompt, sessionPrefix, logTag }) {
       const LIMITE = 'Cette conversation a atteint sa limite. Écrivez-nous sur WhatsApp ou appelez le 06 63 79 87 56. 🙏';
       try {
         const ip = getClientIp(req);
-        if (await isRateLimited(supabase, `chat-s:${key}`, 100, 1440) || await isRateLimited(supabase, `chat-ip:${ip}`, 60, 60)) return res.json({ reply: LIMITE });
-        await Promise.all([recordFailedAttempt(supabase, `chat-s:${key}`), recordFailedAttempt(supabase, `chat-ip:${ip}`)]);
+        // + plafond global du site (toutes adresses) : la facture de l'IA ne
+        // peut pas s'envoler si quelqu'un change d'adresse en boucle.
+        if (await isRateLimited(supabase, `chat-s:${key}`, 100, 1440) || await isRateLimited(supabase, `chat-ip:${ip}`, 60, 60) || await isRateLimited(supabase, 'chat-global', 2000, 1440)) return res.json({ reply: LIMITE });
+        await Promise.all([recordFailedAttempt(supabase, `chat-s:${key}`), recordFailedAttempt(supabase, `chat-ip:${ip}`), recordFailedAttempt(supabase, 'chat-global')]);
       } catch (_e) { /* ne jamais couper le chat pour un souci de limitation */ }
 
       const messages = [...history, { role: 'user', content: text }];
