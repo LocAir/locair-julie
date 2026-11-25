@@ -96,6 +96,15 @@ input::placeholder{color:#9AA8C2}
 .corr input{min-height:46px}
 .corr button{flex:none;border:0;border-radius:100px;background:var(--vif);color:#fff;font:800 15px 'DM Sans',sans-serif;padding:0 16px;cursor:pointer}
 .msg-ok{background:#E6F4EC;color:var(--ok)}
+.ent{display:grid;gap:8px;margin-top:8px}
+.ent button{display:block;width:100%;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:14px;padding:11px 14px;font:700 15px 'DM Sans',sans-serif;color:var(--ink);cursor:pointer}
+.ent button small{display:block;font-weight:500;font-size:13px;color:var(--ink-2);margin-top:2px}
+.ent button:active{border-color:var(--vif);background:var(--vif-c)}
+.ent-conf{margin-top:10px;border:2px solid var(--vif);border-radius:16px;padding:14px 16px;background:var(--vif-c)}
+.ent-conf .resume{border-color:#D4E1F7}
+.ent-conf .resume b{text-align:right;max-width:62%}
+.ent-q{font-weight:900;font-size:17px;margin:0 0 2px}
+.ent-ok{margin:8px 0 0;font-size:13.5px;color:var(--ok);font-weight:700}
 .pied a{color:var(--vif);font-weight:700;text-decoration:none}
 [hidden]{display:none!important}
 .hp{position:absolute;left:-9999px}
@@ -134,6 +143,19 @@ input::placeholder{color:#9AA8C2}
       <p class="q" style="margin-top:22px">Vos coordonnées</p>
       <label for="a-commerce">Nom du commerce</label>
       <input id="a-commerce" autocomplete="organization" placeholder="Tabac du Port">
+      <!-- Annuaire officiel (25/11/2026) : on propose sa fiche, il confirme. -->
+      <div class="ent" id="ent-liste" hidden></div>
+      <div class="ent-conf" id="ent-conf" hidden>
+        <p class="ent-q">C’est bien vous ?</p>
+        <p class="aide" style="margin:0 0 8px">D’après l’annuaire officiel des entreprises.</p>
+        <div class="resume"><span>Société</span><b id="ec-nom"></b></div>
+        <div class="resume"><span>SIRET</span><b id="ec-siret"></b></div>
+        <div class="resume"><span>Adresse</span><b id="ec-adr"></b></div>
+        <div class="resume" id="ec-dir-l"><span>Gérant</span><b id="ec-dir"></b></div>
+        <button type="button" class="btn ok" id="ec-oui" style="margin-top:12px">Oui, c’est exact</button>
+        <button type="button" class="lien" id="ec-non" style="background:none;border:0;width:100%;cursor:pointer;font:700 15px 'DM Sans',sans-serif">Non, ce n’est pas moi</button>
+      </div>
+      <p class="ent-ok" id="ent-ok" hidden><span id="eo-txt"></span> <button type="button" class="petit" id="eo-mod">Modifier</button></p>
       <label for="a-tel-commerce">Téléphone du commerce <span style="font-weight:500;color:var(--ink-2)">(s’il y en a un)</span></label>
       <input id="a-tel-commerce" type="tel" inputmode="tel" autocomplete="off" placeholder="04 93 00 00 00">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -290,6 +312,51 @@ input::placeholder{color:#9AA8C2}
     });
   });
   document.querySelectorAll('#e-accord input').forEach(function(x){ x.addEventListener('input', function(){ x.classList.remove('invalide'); }); });
+  // ── Annuaire officiel : propositions sous « Nom du commerce », il confirme.
+  var entreprise = null, entT = null, entQ = '', propositions = [];
+  function espacerSiret(x){ return String(x).replace(/^(\d{3})(\d{3})(\d{3})(\d{5})$/, '$1 $2 $3 $4'); }
+  function fermerEnt(){ $('ent-liste').hidden = true; $('ent-conf').hidden = true; }
+  $('a-commerce').addEventListener('input', function(){
+    if (entreprise) return;
+    clearTimeout(entT); var q = this.value.trim();
+    if (q.length < 3){ fermerEnt(); return; }
+    entT = setTimeout(function(){
+      entQ = q;
+      api({action:'entreprises', s:S, q:q}).then(function(j){
+        if (entreprise || q !== entQ) return;
+        propositions = j.resultats || [];
+        var l = $('ent-liste'); l.innerHTML = '';
+        propositions.slice(0, 3).forEach(function(e, i){
+          var bt = document.createElement('button'); bt.type = 'button';
+          bt.textContent = e.enseigne || e.nom;
+          var sm = document.createElement('small'); sm.textContent = (e.enseigne && e.nom ? e.nom + ' · ' : '') + e.adresse; bt.appendChild(sm);
+          bt.addEventListener('click', function(){ montrerConf(e); });
+          l.appendChild(bt);
+        });
+        l.hidden = !propositions.length; $('ent-conf').hidden = true;
+      }).catch(function(){});
+    }, 450);
+  });
+  var aConfirmer = null;
+  function montrerConf(e){
+    aConfirmer = e;
+    $('ec-nom').textContent = e.nom + (e.enseigne ? ' (' + e.enseigne + ')' : '');
+    $('ec-siret').textContent = espacerSiret(e.siret);
+    $('ec-adr').textContent = e.adresse || '—';
+    $('ec-dir-l').hidden = !e.dirigeant;
+    if (e.dirigeant) $('ec-dir').textContent = e.dirigeant.prenom + ' ' + e.dirigeant.nom;
+    $('ent-liste').hidden = true; $('ent-conf').hidden = false;
+  }
+  $('ec-oui').addEventListener('click', function(){
+    var e = aConfirmer; if (!e) return;
+    entreprise = e; $('a-commerce').value = e.enseigne || e.nom;
+    if (e.dirigeant){ if (!$('a-prenom').value.trim()) $('a-prenom').value = e.dirigeant.prenom; if (!$('a-nom').value.trim()) $('a-nom').value = e.dirigeant.nom; }
+    $('eo-txt').textContent = '✓ SIRET ' + espacerSiret(e.siret) + ' confirmé.';
+    $('ent-conf').hidden = true; $('ent-ok').hidden = false;
+    if (navigator.vibrate) navigator.vibrate(10);
+  });
+  $('ec-non').addEventListener('click', function(){ aConfirmer = null; fermerEnt(); });
+  $('eo-mod').addEventListener('click', function(){ entreprise = null; $('ent-ok').hidden = true; $('a-commerce').focus(); $('a-commerce').dispatchEvent(new Event('input')); });
   $('a-autre').addEventListener('click', function(){ $('a-autre-box').hidden = false; $('a-n').focus(); });
   $('a-n').addEventListener('input', function(){
     var n = parseInt(this.value, 10);
@@ -305,7 +372,7 @@ input::placeholder{color:#9AA8C2}
     if (manque){ erreur($('a-err'), manque[1]); $(manque[0]).classList.add('invalide'); $(manque[0]).focus(); return; }
     if (!SIGNER && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('a-email').value.trim())){ erreur($('a-err'), 'Votre e-mail, pour recevoir la présentation et la convention.'); $('a-email').classList.add('invalide'); $('a-email').focus(); return; }
     b.disabled = true;
-    api({action:'accepter', s:S, capacite:capa, email:$('a-email').value, enseigne:$('a-commerce').value, prenom:$('a-prenom').value, nom:$('a-nom').value, tel:$('a-tel').value, tel_commerce:$('a-tel-commerce').value})
+    api({action:'accepter', s:S, capacite:capa, email:$('a-email').value, enseigne:$('a-commerce').value, prenom:$('a-prenom').value, nom:$('a-nom').value, tel:$('a-tel').value, tel_commerce:$('a-tel-commerce').value, siret: entreprise ? entreprise.siret : '', adresse_officielle: entreprise ? entreprise.adresse : ''})
       .then(function(j){ fiche = j.fiche; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } envoye(j.fiche); if (j.a_envoyer) envoyerDocs(); })
       .catch(function(x){ b.disabled = false; erreur($('a-err'), x.message); });
   });

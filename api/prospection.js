@@ -33,6 +33,30 @@ const pasDeTable = (e) => e && (e.code === '42P01' || /prospection_points/.test(
 const MSG_TABLE = 'La table de prospection n’existe pas encore : collez le SQL du 25/11 dans Supabase (SQL Editor).';
 const PUBLIC_COLS = 'id, session_token, statut, enseigne, gerant, email, tel, adresse, zone, capacite, accepte_at, signataire, signe_at';
 
+// Recherche dans l'annuaire officiel (Alpes-Maritimes, entreprises actives).
+// Renvoie au plus 4 fiches simples ; [] si l'annuaire ne répond pas.
+const titre = (t) => String(t || '').toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase());
+async function chercherEntreprises(q) {
+  try {
+    const url = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(q)}&departement=06&etat_administratif=A&per_page=4`;
+    const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.results || []).slice(0, 4).map((e) => {
+      const etab = (e.matching_etablissements || []).find((x) => x && x.siret && x.etat_administratif !== 'F') || e.siege || {};
+      const dir = (e.dirigeants || []).find((d) => d && d.type_dirigeant === 'personne physique' && d.nom);
+      const enseigne = ((etab.liste_enseignes || [])[0] || (e.siege && (e.siege.liste_enseignes || [])[0]) || '');
+      return {
+        siret: String(etab.siret || (e.siege && e.siege.siret) || '').replace(/\D/g, ''),
+        nom: titre(e.nom_complet || e.nom_raison_sociale || ''),
+        enseigne: titre(enseigne),
+        adresse: titre(String(etab.adresse || (e.siege && e.siege.adresse) || '')),
+        dirigeant: dir ? { prenom: titre(String(dir.prenoms || '').split(/[\s,]+/)[0]), nom: titre(dir.nom) } : null,
+      };
+    }).filter((x) => /^\d{14}$/.test(x.siret));
+  } catch (_) { return []; }
+}
+
 async function ficheParToken(supabase, s) {
   const tok = clip(s, 80);
   if (!/^[a-f0-9]{32}$/.test(tok)) return { fiche: null };
@@ -90,7 +114,7 @@ module.exports = async (req, res) => {
     }
 
     // ══ CÔTÉ COMMERÇANT (lien de session, sans compte) ══════════════════════
-    if (['voir', 'accepter', 'signer', 'renvoyer', 'envoyer_docs'].includes(action)) {
+    if (['voir', 'accepter', 'signer', 'renvoyer', 'envoyer_docs', 'entreprises'].includes(action)) {
       const ip = getClientIp(req);
       if (await isRateLimited(supabase, `prospection-pub:${ip}`, 30, 10).catch(() => false)) return res.status(429).json({ error: 'Trop d’essais. Réessayez dans quelques minutes.' });
       const { fiche: f, error } = await ficheParToken(supabase, b.s);
@@ -100,6 +124,19 @@ module.exports = async (req, res) => {
         return res.status(404).json({ error: 'Ce lien n’est plus valable. Appelez le 06 63 79 87 56.' });
       }
       if (action === 'voir') return res.json({ ok: true, fiche: publicFiche(f) });
+
+      // Annuaire officiel des entreprises (gratuit, recherche-entreprises.api.gouv.fr) :
+      // le commerçant tape le nom de son commerce, on propose sa fiche officielle
+      // (SIRET, adresse, dirigeant) ; il CONFIRME que c'est exact avant qu'on
+      // l'utilise (demandé par le propriétaire le 25/11/2026).
+      if (action === 'entreprises') {
+        const q = clip(b.q, 80).trim();
+        if (q.length < 3) return res.json({ ok: true, resultats: [] });
+        const cle = `prosp-annuaire:${getClientIp(req)}`;
+        if (await isRateLimited(supabase, cle, 40, 15)) return res.json({ ok: true, resultats: [] });
+        await recordFailedAttempt(supabase, cle);
+        return res.json({ ok: true, resultats: await chercherEntreprises(q) });
+      }
 
       // 2e temps de « OK » : envoi des documents. On « réserve » l'envoi
       // (docs_envoyes_at posé seulement s'il était vide) pour ne jamais
@@ -146,6 +183,9 @@ module.exports = async (req, res) => {
         const gerant = [clip(b.prenom, 60), clip(b.nom, 60)].filter(Boolean).join(' ') || clip(b.gerant, 120); if (gerant) patch.gerant = gerant;
         const tel = clip(b.tel, 30); if (tel.replace(/\D/g, '').length >= 9) patch.tel = tel;
         const telCom = clip(b.tel_commerce, 30); if (telCom.replace(/\D/g, '').length >= 9) patch.tel_commerce = telCom;
+        // Fiche de l'annuaire confirmée par le commerçant (« C'est exact »).
+        const siret = String(b.siret || '').replace(/\D/g, '');
+        if (/^\d{14}$/.test(siret)) { patch.siret = siret; const adr = clip(b.adresse_officielle, 200); if (adr) patch.adresse = adr; }
         // E-mail corrigé après un premier envoi (« Pas le bon e-mail ? ») :
         // on renvoie à la nouvelle adresse, 3 fois par jour au plus.
         const emailChange = !!f.email && email !== String(f.email).toLowerCase();
@@ -158,6 +198,11 @@ module.exports = async (req, res) => {
         if (!emailEnvoye) patch.docs_envoyes_at = null;
         let { data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle();
         // Colonne tel_commerce pas encore créée (SQL du 25/11 pas collé) : on garde le numéro dans les notes.
+        if (e2 && patch.siret && /siret/.test(String(e2.message || ''))) {
+          patch.notes = [patch.notes || f.notes, `SIRET : ${patch.siret}`].filter(Boolean).join(' · ').slice(0, 500);
+          delete patch.siret;
+          ({ data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle());
+        }
         if (e2 && patch.tel_commerce && /tel_commerce/.test(String(e2.message || ''))) {
           delete patch.tel_commerce;
           patch.notes = [f.notes, `Tél. du commerce : ${telCom}`].filter(Boolean).join(' · ').slice(0, 500);
