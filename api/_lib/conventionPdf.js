@@ -124,7 +124,7 @@ function generateConventionPdf(fiche, signaturePng) {
       ['Dirigeant', f.gerant || f.signataire || vide],
       ['Portable du dirigeant', f.tel || vide],
       ['E-mail', f.email || vide],
-      ['SIRET', vide],
+      ['SIRET', (f.siret || ((String(f.notes || '').match(/SIRET : (\d{14})/) || [])[1] || '')).replace(/^(\d{3})(\d{3})(\d{3})(\d{5})$/, '$1 $2 $3 $4') || vide],
       ['Stock fixe (sans rotation)', f.capacite ? `${f.capacite} climatiseur${f.capacite > 1 ? 's' : ''} (modifiable d’un commun accord)` : '____ climatiseurs'],
       ['Mise en service', 'Dépose du 10 au 15 mai 2027'],
     ]);

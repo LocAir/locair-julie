@@ -454,7 +454,11 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
    (+ son téléphone, facultatif), **prénom, nom, portable du gérant,
    e-mail** (obligatoires ; les deux numéros vont dans la convention,
    colonne `tel_commerce`, `migration_2026-11-25_prospection_tel_commerce.sql`) — le
-   téléphone propose de tout remplir d'un toucher (champs `autocomplete`) —, touche
+   téléphone propose de tout remplir d'un toucher (champs `autocomplete`) ;
+   en tapant le nom du commerce, l'**annuaire officiel** (recherche-entreprises,
+   gratuit, action `entreprises`) propose sa fiche : il **confirme** « Oui,
+   c'est exact » (SIRET, adresse, gérant) ou « Non, ce n'est pas moi » ; le
+   SIRET confirmé va dans la convention (colonne `siret`) —, touche
    « OK — Recevoir par e-mail ». La présentation + la convention
    pré-remplie partent tout de suite (bouton « Signer en ligne »). Le
    prospecteur le voit tout de suite.
