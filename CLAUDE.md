@@ -344,7 +344,11 @@ tant qu'il n'est pas rendu, il bloque sa place au point aujourd'hui et
 demain (`lignesEnRetard`, `api/_lib/clickCollect.js`). Retour pas validé au
 comptoir : bouton **« Débloquer »** (Admin → Points de retrait → À faire et
 liste Retards ; gérant seulement, raison obligatoire, gardée sur la
-réservation) = appareil noté rendu, place libérée. Contrôle quotidien (« À faire ») : « Stock
+réservation) = appareil noté rendu, place libérée. **Retour sans incident** (décidé le
+25/11/2026) : l'appareil reste disponible et peut repartir ; « à
+reconditionner » n'est qu'une note pour le passage de l'agent (tous les 7 à
+10 jours). **Avec un incident** (panne, casse : reprise ouverte au point),
+il bloque sa place jusqu'à la fin de la reprise (`lignesEnPanne`). Contrôle quotidien (« À faire ») : « Stock
 dépassé » quand les locations prévues sur 60 jours dépassent le stock d'un
 point, « Flotte dépassée » quand les points annoncent plus de climatiseurs
 que la flotte de la cellule ; selon
