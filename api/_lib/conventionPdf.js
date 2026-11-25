@@ -21,7 +21,7 @@ const LOCAIR = [
 const ESSENTIEL = [
   ['Dépose & saison', 'Dépose entre le 10 et le 15 mai 2027, saison active de fin mai à fin septembre (environ 120 jours), sans livraison à domicile.'],
   ['Rémunération', '20 % des locations encaissées (hors annulations remboursées), sans minimum garanti ; 0 € fixe à la charge du partenaire.'],
-  ['Stock & rangement', 'Stock fixe chez le commerçant (pas de rotation ni de transfert), nombre fixé à la signature et modifiable d’un commun accord, rangé contre un mur sous housse bleue unie sans logo, gaine d’évacuation au-dessus ; retrait et retour au même point.'],
+  ['Stock & rangement', 'Stock fixe chez le commerçant (pas de rotation ni de transfert), nombre fixé à la signature et modifiable d’un commun accord, rangé sous housse bleue unie sans logo, gaine d’évacuation au-dessus ; retrait et retour au même point.'],
   ['Entretien & pannes', 'Passage de l’agent Loc’Air tous les 10 jours ; appareil en panne repris et remplacé par Loc’Air.'],
   ['Vol ou casse', 'Dans la boutique : Loc’Air paie, sauf faute grave du partenaire.'],
   ['Résiliation', 'Libre à tout moment par écrit (e-mail ou SMS) avec 7 jours de préavis.'],
@@ -45,7 +45,7 @@ const ARTICLES = [
     'Le partenaire n’encaisse aucun règlement au comptoir, ne gère aucune caution et ne fait signer aucun contrat au client.',
   ]],
   ['Article 4 — Rangement, retrait (identité) & retour (code commerçant)', [
-    'Les appareils sont maintenus à l’intérieur, rangés contre un mur, protégés par une housse bleue unie sans logo, avec la gaine d’évacuation au-dessus.',
+    'Les appareils sont maintenus à l’intérieur, protégés par une housse bleue unie sans logo, avec la gaine d’évacuation au-dessus.',
     'Au retrait : le client montre l’écran de confirmation et une pièce d’identité à son nom ; le partenaire la regarde seulement (sans copie ni conservation) et remet l’appareil avec sa housse et sa gaine.',
     'Au retour : le client rapporte l’appareil (avec gaine et housse) au même point. Le partenaire récupère l’appareil et communique son code commerçant pour que le client valide le retour sur son téléphone. Accessoire manquant, dégradation ou salissure visible : le partenaire reprend l’appareil et prévient Loc’Air tout de suite (photo par WhatsApp, e-mail ou au 06 63 79 87 56).',
   ]],

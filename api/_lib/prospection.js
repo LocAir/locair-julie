@@ -14,7 +14,7 @@ const TEL = '06 63 79 87 56';
 const PRESENTATION = { name: 'Loc-Air-presentation-point-de-retrait.pdf', url: `${SITE}/documents/locair-devenez-point-de-retrait.pdf` };
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const lienSigner = (f) => `${SITE}/partenaires?s=${encodeURIComponent(f.session_token)}`;
+const lienSigner = (f) => `${SITE}/partenaires?s=${encodeURIComponent(f.session_token)}&signer=1`;
 const prenomDe = (s) => (String(s || '').trim().split(/\s+/)[0] || '').toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 
 // Trois chiffres, une ligne chacun (ADN Loc'Air : le moins de mots possible).
@@ -52,7 +52,7 @@ function emailSignee(f) {
     title: p ? `Merci ${esc(p)} !` : 'Merci !',
     intro: 'Votre convention est signée. Elle est en pièce jointe.',
     bodyHtml: `
-      <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">Dépose du 10 au 15 mai 2027</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">${f.capacite ? `${f.capacite} climatiseurs` : 'Vos climatiseurs'}, contre un mur, sous housse bleue. On vous appelle avant.</p></div>
+      <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">Dépose du 10 au 15 mai 2027</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">${f.capacite ? `${f.capacite} climatiseurs` : 'Vos climatiseurs'}, sous housse bleue. On vous appelle avant.</p></div>
       <p style="font-size:14px;color:#4B5873;margin:0">À préparer : votre SIRET et votre RIB (pour le virement de vos 20 %).</p>
       ${contact}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
@@ -76,7 +76,7 @@ const MODELE_AVANT_PASSAGE = {
     '',
     'Le réseau est limité à 8 à 10 commerces entre Nice et Cannes, un seul par quartier :',
     '• 20 % de chaque location, 0 € à payer, rien à encaisser, aucune caution.',
-    '• 3 à 5 appareils contre un mur, sous housse bleue unie, gaine au-dessus. Entretien par notre agent tous les 10 jours.',
+    '• 3 à 5 appareils sous housse bleue unie, gaine au-dessus. Entretien par notre agent tous les 10 jours.',
     '',
     'Si vous avez la place, répondez à ce message ou appelez-moi au 06 63 79 87 56.',
     '',

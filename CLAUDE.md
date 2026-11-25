@@ -67,9 +67,10 @@ mission → 1 · Le client réserve (le site) → 2 · Au comptoir (retrait :
 recevez (affiche QR, flyer, climatiseurs, espace partenaire) → 4 · Ce que
 vous gagnez (20 %) → 5 · L'essentiel (6 règles de la convention) → **la
 démo (test du QR code) → puis la signature** (« On signe ensemble ? », en
-dernier). **Signature** (changé le 25/11/2026 par le propriétaire) : sur
-l'écran du commerçant, du doigt, avec l'appli terrain (voir « Prospection
-terrain des points de retrait ») ; le papier en 2 exemplaires reste possible
+dernier). **Signature** (changé le 25/11/2026 par le propriétaire) : jamais
+sur place ; le commerçant reçoit la présentation + la convention par e-mail
+et signe chez lui, en ligne, du doigt (voir « Prospection terrain des points
+de retrait ») ; le papier en 2 exemplaires reste possible
 (admin → Terrain → « Signé sur papier ») ; prévoir SIRET, RIB, horaires.
 La page `/contrat-point-retrait` reste une simple demande de rappel. Les autres diapos restent dans les
 fichiers, hors de l'ordre. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
@@ -352,7 +353,7 @@ il bloque sa place jusqu'à la fin de la reprise (`lignesEnPanne`). Contrôle qu
 dépassé » quand les locations prévues sur 60 jours dépassent le stock d'un
 point, « Flotte dépassée » quand les points annoncent plus de climatiseurs
 que la flotte de la cellule ; selon
-la place, ≈ 40 × 40 cm chacun, sans rotation), rangés contre un mur sous
+la place, ≈ 40 × 40 cm chacun, sans rotation), rangés sous
 **housse bleue unie sans logo**, gaine au-dessus ; retrait et retour **au
 même point** ; agent Loc'Air **tous les 10 jours** ; 20 % virés **entre le
 1er et le 5 du mois suivant** ; résiliation libre par email ou SMS avec
@@ -422,18 +423,20 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
    seulement, rien d'autre de l'admin, voir `checkProspecteur` dans
    `api/_lib/auth.js`), choisit sa zone (Nice, Antibes / Juan-les-Pins,
    Cannes) et touche « Nouvelle visite » : QR code de session.
-2. **3 · 4 · 5 + OK** : le commerçant scanne avec son téléphone
+2. **3 · 4 · 5 + e-mail** : le commerçant scanne avec son téléphone
    (`/partenaires?s=…`), lit les règles, choisit **3, 4 ou 5
    climatiseurs** (gros boutons ; « Un autre nombre ? » de 1 à 20 ; stock
-   modifiable ensuite dans l'admin), met son e-mail s'il veut, touche
-   « OK — J'accepte ». Le prospecteur le voit tout de suite.
-3. **1 photo + GPS** (emplacement contre le mur, ou devanture) : la fiche
+   modifiable ensuite dans l'admin), tape son e-mail (obligatoire), touche
+   « OK — Recevoir par e-mail ». La présentation + la convention
+   pré-remplie partent tout de suite (bouton « Signer en ligne »). Le
+   prospecteur le voit tout de suite.
+3. **1 photo + GPS** (emplacement prévu, ou devanture) : la fiche
    est créée, sans saisie obligatoire. Pas de « OK » (gérant absent) :
    fiche « À repasser » ; « Saisie rapide » = boutique + tél./e-mail.
-4. **Signature** : du doigt sur le téléphone du commerçant (convention
-   signée en PDF, copie par e-mail au commerçant et à Loc'Air), ou
-   « Il veut relire » : e-mail avec la présentation + la convention
-   pré-remplie + bouton « Signer en ligne ».
+4. **Il signe chez lui** (décidé le 25/11/2026 : démarche progressive,
+   **on ne parle pas de signature sur place**) : il étudie l'e-mail chez
+   lui, puis « Signer en ligne » → `/partenaires?s=…&signer=1` → signature
+   du doigt (convention signée en PDF, copie au commerçant et à Loc'Air).
 5. **Point signé** : compte dans l'objectif (8–10 points, 40 clims).
    Il faut encore l'ajouter à `api/_lib/pointsRetrait.js` et créer le
    commerçant (onglet Partenaires), comme avant.
