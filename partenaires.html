@@ -306,7 +306,7 @@ input::placeholder{color:#9AA8C2}
     if (!SIGNER && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('a-email').value.trim())){ erreur($('a-err'), 'Votre e-mail, pour recevoir la présentation et la convention.'); $('a-email').classList.add('invalide'); $('a-email').focus(); return; }
     b.disabled = true;
     api({action:'accepter', s:S, capacite:capa, email:$('a-email').value, enseigne:$('a-commerce').value, prenom:$('a-prenom').value, nom:$('a-nom').value, tel:$('a-tel').value, tel_commerce:$('a-tel-commerce').value})
-      .then(function(j){ fiche = j.fiche; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } envoye(j.fiche, j.email_envoye); })
+      .then(function(j){ fiche = j.fiche; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } envoye(j.fiche); if (j.a_envoyer) envoyerDocs(); })
       .catch(function(x){ b.disabled = false; erreur($('a-err'), x.message); });
   });
 
@@ -340,13 +340,17 @@ input::placeholder{color:#9AA8C2}
     ecran('e-envoye');
     if (navigator.vibrate) navigator.vibrate([12, 60, 12]);
   }
+  // L'e-mail part en arrière-plan : l'écran « C'est envoyé » est déjà affiché.
+  function envoyerDocs(){
+    return api({action:'envoyer_docs', s:S}).then(function(){ return true; }).catch(function(x){ message(x.message); return false; });
+  }
   $('v-corriger').addEventListener('click', function(){ $('v-corr').hidden = false; $('v-nouvel').value = $('a-email').value.trim(); $('v-nouvel').focus(); });
   $('v-envoyer').addEventListener('click', function(){
     var b = this, adr = $('v-nouvel').value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adr)){ message('Cet e-mail ne semble pas complet.'); return; }
     b.disabled = true; message('');
     api({action:'accepter', s:S, capacite:capa || (fiche && fiche.capacite), email:adr})
-      .then(function(j){ $('a-email').value = adr; $('v-corr').hidden = true; afficherEmail(adr); message(j.email_envoye ? 'Envoyé ✓' : 'Enregistré. Loc’Air vous l’envoie dans la journée.', j.email_envoye); })
+      .then(function(j){ $('a-email').value = adr; $('v-corr').hidden = true; afficherEmail(adr); message('Envoyé ✓', true); return j.a_envoyer ? envoyerDocs() : true; })
       .catch(function(x){ message(x.message); })
       .then(function(){ b.disabled = false; });
   });
