@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
   const point = getPointRetrait(String(q.point || '').slice(0, 60));
   const debut = String(q.debut || '').slice(0, 10);
   const jours = parseInt(q.jours, 10);
-  if (!point || !isValidDate(debut) || debut < todayParis() || !Number.isFinite(jours) || jours < 1 || jours > 90) {
+  if (!point || !isValidDate(debut) || debut < todayParis() || debut > addDays(todayParis(), require('./_lib/clickCollect').AVANCE_MAX_JOURS) || !Number.isFinite(jours) || jours < 1 || jours > 90) {
     return res.status(400).json({ error: 'Paramètres invalides' });
   }
   try {
