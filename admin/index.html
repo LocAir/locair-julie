@@ -20,8 +20,6 @@
 <!-- Leaflet (carte en direct) chargé en non-bloquant : la carte ne sert
      qu'à l'ouverture d'un suivi transporteur, jamais à l'écran de connexion
      affiché en premier — inutile de retarder le premier affichage pour ça. -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'"/>
-<noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/></noscript>
 <style>
 :root{
   /* Palette de la marque Loc'Air (voir MARQUE.md) — style « Marine premium »,
@@ -1247,7 +1245,22 @@ tr.bulk-selected td{background:var(--blue-lt)}
 <!-- input caché pour l'upload des fichiers vidéo tutoriel (onglet Tutoriels) -->
 <input type="file" id="tuto-media-input" accept="video/*" class="hidden"/>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script>
+// Carte (Leaflet, ≈ 150 Ko) : chargée seulement à l'ouverture de la carte en
+// direct d'un livreur, plus à chaque ouverture de l'admin (25/11/2026).
+var _leafletP = null;
+function chargerLeaflet(){
+  if (window.L && window.L.map) return Promise.resolve();
+  if (_leafletP) return _leafletP;
+  _leafletP = new Promise(function(ok, ko){
+    var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(c);
+    var sc = document.createElement('script'); sc.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    sc.onload = function(){ ok(); }; sc.onerror = function(){ _leafletP = null; ko(new Error('Carte indisponible')); };
+    document.head.appendChild(sc);
+  });
+  return _leafletP;
+}
+</script>
 <script>
 const API = (p) => '/api/' + p;
 // localStorage plutôt que sessionStorage : le mot de passe admin ne périme
@@ -13609,6 +13622,7 @@ async function openLiveMap(transporteurId, transporteurNom, adresse){
     </div>`;
   document.body.appendChild(overlay);
 
+  try { await chargerLeaflet(); } catch (e) { const eta = document.getElementById('map-eta'); if (eta) eta.textContent = 'Carte indisponible. Réessayez.'; return; }
   LIVE_DEST_COORDS = await geocodeAddress(adresse + ', France');
 
   setTimeout(() => {
