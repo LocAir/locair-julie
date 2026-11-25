@@ -3,7 +3,7 @@
 // signée sur /partenaires, avec la signature du commerçant.
 // Texte = convention V11 (24/11/2026) avec les deux décisions du
 // propriétaire écrites dans CLAUDE.md : vol ou casse dans la boutique payés
-// par Loc'Air sauf faute grave (article 6) et saison 2027.
+// par Loc'Air (article 6) et saison 2027.
 const PDFDocument = require('pdfkit');
 
 const BLEU = '#1A5EDB', ENCRE = '#0E1726', GRIS = '#4B5873', CLAIR = '#EFF4FD', TRAIT = '#D5DEEE';
@@ -23,7 +23,7 @@ const ESSENTIEL = [
   ['Rémunération', '20 % des locations encaissées (hors annulations remboursées), sans minimum garanti ; 0 € fixe à la charge du partenaire.'],
   ['Stock & rangement', 'Stock fixe chez le commerçant (pas de rotation ni de transfert), nombre fixé à la signature et modifiable d’un commun accord, rangé sous housse bleue unie sans logo, gaine d’évacuation au-dessus ; retrait et retour au même point.'],
   ['Entretien & pannes', 'Passage de l’agent Loc’Air tous les 10 jours ; appareil en panne repris et remplacé par Loc’Air.'],
-  ['Vol ou casse', 'Dans la boutique : Loc’Air paie, sauf faute grave du partenaire.'],
+  ['Vol ou casse', 'Dans la boutique : Loc’Air paie.'],
   ['Résiliation', 'Libre à tout moment par écrit (e-mail ou SMS) avec 7 jours de préavis.'],
 ];
 
@@ -56,7 +56,7 @@ const ARTICLES = [
   ['Article 6 — Propriété, appareils défectueux & responsabilités', [
     'Les climatiseurs, housses, gaines et le stock tampon restent la propriété exclusive de Loc’Air (puis de la société d’exploitation après transfert). Le partenaire s’interdit tout prêt, sous-location, cession ou déplacement hors du point sans accord écrit de Loc’Air.',
     'Appareil en panne : récupération simple par le partenaire sans diagnostic, mise à l’écart, puis reprise, échange ou remplacement par Loc’Air lors des passages ou via le stock tampon.',
-    'Règle du 0 € : aucun frais n’est à la charge du partenaire. Vol ou casse d’un appareil dans la boutique : Loc’Air paie, sauf faute grave du partenaire. Les incidents survenant chez le client ou pendant son transport relèvent de la location du client.',
+    'Règle du 0 € : aucun frais n’est à la charge du partenaire. Vol ou casse d’un appareil dans la boutique : Loc’Air paie. Les incidents survenant chez le client ou pendant son transport relèvent de la location du client.',
     'Chaque partie maintient une assurance couvrant son activité et ses locaux (dont la RC Pro de Loc’Air).',
   ]],
   ['Article 7 — Transfert à la société d’exploitation', [
@@ -117,9 +117,11 @@ function generateConventionPdf(fiche, signaturePng) {
     const yB = bloc(M + colW + 16, 'PARTENAIRE POINT DE RETRAIT', [
       ['Commerce / enseigne', f.enseigne || vide],
       ['Adresse & accès', f.adresse || (f.zone ? `${f.zone} — adresse à compléter` : vide)],
+      ['Téléphone du commerce', f.tel_commerce || ((String(f.notes || '').match(/Tél\. du commerce : ([^·]+)/) || [])[1] || '').trim() || vide],
       ['Dirigeant', f.gerant || f.signataire || vide],
+      ['Portable du dirigeant', f.tel || vide],
+      ['E-mail', f.email || vide],
       ['SIRET', vide],
-      ['Téléphone / e-mail', [f.tel, f.email].filter(Boolean).join(' · ') || vide],
       ['Stock fixe (sans rotation)', f.capacite ? `${f.capacite} climatiseur${f.capacite > 1 ? 's' : ''} (modifiable d’un commun accord)` : '____ climatiseurs'],
       ['Mise en service', 'Dépose du 10 au 15 mai 2027'],
     ]);

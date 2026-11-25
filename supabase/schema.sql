@@ -1104,6 +1104,7 @@ create table if not exists prospection_points (
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+alter table prospection_points add column if not exists tel_commerce text; -- téléphone de l'établissement (25/11/2026)
 create index if not exists prospection_points_statut_idx on prospection_points (statut, created_at desc);
 alter table prospection_points enable row level security;
 

@@ -75,7 +75,7 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
     <div class="carte">
       <ul class="points">
         <li><i>€</i><span><b>20 %</b> de chaque location, viré entre le 1er et le 5 du mois.</span></li>
-        <li><i>0</i><span><b>0 € à payer</b>, sauf faute grave. Rien à encaisser, aucune caution.</span></li>
+        <li><i>0</i><span><b>0 € à payer</b>. Rien à encaisser, aucune caution.</span></li>
         <li><i>✓</i><span>Le client <b>réserve et paie en ligne</b>. Vous donnez et reprenez l’appareil.</span></li>
         <li><i>▮</i><span><b>Sous housse bleue unie</b> sans logo, gaine au-dessus.</span></li>
         <li><i>⟳</i><span><b>Entretien</b> par notre agent tous les 10 jours.</span></li>
@@ -96,14 +96,16 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
       <p class="q" style="margin-top:22px">Vos coordonnées</p>
       <label for="a-commerce">Nom du commerce</label>
       <input id="a-commerce" autocomplete="organization" placeholder="Tabac du Port">
+      <label for="a-tel-commerce">Téléphone du commerce <span style="font-weight:500;color:var(--ink-2)">(s’il y en a un)</span></label>
+      <input id="a-tel-commerce" type="tel" inputmode="tel" autocomplete="off" placeholder="04 93 00 00 00">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label for="a-prenom">Prénom</label><input id="a-prenom" autocomplete="given-name" placeholder="Marie"></div>
         <div><label for="a-nom">Nom</label><input id="a-nom" autocomplete="family-name" placeholder="Dupont"></div>
       </div>
+      <label for="a-tel">Votre portable</label>
+      <input id="a-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
       <label for="a-email">E-mail <span style="font-weight:500;color:var(--ink-2)">— on vous envoie tout</span></label>
       <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="vous@commerce.fr">
-      <label for="a-tel">Téléphone</label>
-      <input id="a-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
       <p class="aide">Votre téléphone propose de tout remplir : touchez la suggestion au-dessus du clavier.</p>
       <button class="btn" id="a-ok" type="button" disabled>OK — Recevoir par e-mail</button>
       <p class="aide centre" style="margin-top:10px">Rien à signer maintenant. Vous lisez tranquillement chez vous.</p>
@@ -240,12 +242,13 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
   });
   $('a-ok').addEventListener('click', function(){
     var b = this; erreur($('a-err'));
-    // Dans l'ordre : commerce, prénom, nom, e-mail (tous obligatoires).
+    // Dans l'ordre : commerce (+ son téléphone, facultatif), prénom, nom, portable, e-mail.
     var manque = [['a-commerce','Le nom du commerce.'],['a-prenom','Votre prénom.'],['a-nom','Votre nom.']].filter(function(c){ return !$(c[0]).value.trim(); })[0];
+    if (!manque && $('a-tel').value.replace(/\D/g, '').length < 9) manque = ['a-tel', 'Votre portable.'];
     if (manque){ erreur($('a-err'), manque[1]); $(manque[0]).focus(); return; }
     if (!SIGNER && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('a-email').value.trim())){ erreur($('a-err'), 'Votre e-mail, pour recevoir la présentation et la convention.'); $('a-email').focus(); return; }
     b.disabled = true;
-    api({action:'accepter', s:S, capacite:capa, email:$('a-email').value, enseigne:$('a-commerce').value, prenom:$('a-prenom').value, nom:$('a-nom').value, tel:$('a-tel').value})
+    api({action:'accepter', s:S, capacite:capa, email:$('a-email').value, enseigne:$('a-commerce').value, prenom:$('a-prenom').value, nom:$('a-nom').value, tel:$('a-tel').value, tel_commerce:$('a-tel-commerce').value})
       .then(function(j){ fiche = j.fiche; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } envoye(j.fiche, j.email_envoye); })
       .catch(function(x){ b.disabled = false; erreur($('a-err'), x.message); });
   });

@@ -283,8 +283,8 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    (dépose du 10 au 15 mai ; une offre de
    stockage hivernal payée au commerçant est à l'étude : ne pas en
    parler par écrit tant qu'elle n'est pas décidée) ; vol ou casse dans
-   la boutique (pas par un client) : Loc'Air paie, sauf faute grave du
-   commerçant ; un seul point de retrait par quartier (le premier qui
+   la boutique (pas par un client) : Loc'Air paie, **toujours** (« sauf
+   faute grave » retiré le 25/11/2026 par le propriétaire) ; un seul point de retrait par quartier (le premier qui
    signe a l'exclusivité) ; saison 2027 de fin mai à fin septembre ;
    parrainage (changé le 22/11/2026) : **50 € au parrain ET 50 € au
    nouveau commerçant**, versés à la main avec le virement qui suit la
@@ -359,8 +359,8 @@ même point** ; agent Loc'Air **tous les 10 jours** ; 20 % virés **entre le
 1er et le 5 du mois suivant** ; résiliation libre par email ou SMS avec
 **7 jours de préavis**. **Retrait : le client montre l'écran vert et sa
 pièce d'identité**, que le commerçant regarde seulement (pas de copie, rien
-à cocher). **Vol ou casse dans la boutique : Loc'Air paie, sauf faute
-grave** (décision du propriétaire du 24/11/2026 : l'article 6 de la
+à cocher). **Vol ou casse dans la boutique : Loc'Air paie, sans
+exception** (« sauf faute grave » retiré le 25/11/2026 ; décision du propriétaire du 24/11/2026 : l'article 6 de la
 convention, qui met ces vols à la charge du commerçant, est à corriger ; la
 « mise en service …/2026 » aussi, c'est la saison 2027).
 
@@ -426,8 +426,10 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
 2. **3 · 4 · 5 + e-mail** : le commerçant scanne avec son téléphone
    (`/partenaires?s=…`), lit les règles, choisit **3, 4 ou 5
    climatiseurs** (gros boutons ; « Un autre nombre ? » de 1 à 20 ; stock
-   modifiable ensuite dans l'admin), remplit dans l'ordre **commerce,
-   prénom, nom, e-mail** (obligatoires) et téléphone (facultatif) — le
+   modifiable ensuite dans l'admin), remplit dans l'ordre **commerce**
+   (+ son téléphone, facultatif), **prénom, nom, portable du gérant,
+   e-mail** (obligatoires ; les deux numéros vont dans la convention,
+   colonne `tel_commerce`, `migration_2026-11-25_prospection_tel_commerce.sql`) — le
    téléphone propose de tout remplir d'un toucher (champs `autocomplete`) —, touche
    « OK — Recevoir par e-mail ». La présentation + la convention
    pré-remplie partent tout de suite (bouton « Signer en ligne »). Le
@@ -467,8 +469,8 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
   présentation change. Expéditeur contact@locair.fr (Brevo n'accepte pas
   un expéditeur outlook.com), réponses vers partenaires.locair@outlook.com.
 - **Convention générée :** texte V11 avec les décisions du propriétaire
-  (article 6 : vol ou casse dans la boutique payés par Loc'Air sauf faute
-  grave ; saison 2027 ; stock 3 à 5).
+  (article 6 : vol ou casse dans la boutique payés par Loc'Air, sans
+  exception ; saison 2027 ; stock 3 à 5).
 - **E-mails aux commerçants rencontrés** (après visite, signature,
   relance) : autorisés par le propriétaire le 25/11/2026. **Relance du
   lendemain** (`relancerProspection`, `cron-daily.js`) : une seule fois,
