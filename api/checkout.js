@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const { getSupabase }         = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { isValidDate, addDays, todayParis, expressPossible } = require('./_lib/dates');
+const { isValidDate, addDays, todayParis, expressPossible, heureParis } = require('./_lib/dates');
 const { calcTieredPrice, getPricingConfig,
         getProPricing, getProForfaitCents, isOffrePro,
         remiseQuantitePct, isSiretValide } = require('./_lib/pricing');
@@ -196,6 +196,18 @@ module.exports = async (req, res) => {
   // L'Express, c'est livré AUJOURD'HUI sous 2 h : jamais facturé pour un
   // autre jour, ni sur l'offre rafraîchisseur pro (forfait de 120 € déjà
   // compris, Express non prévu dans l'offre B2B).
+  // Livraison normale (sans Express) : commandée avant 20 h → au plus tôt
+  // demain, sinon après-demain (règle du site, même calcul que la page ;
+  // 2 min de marge pour une page ouverte à 19 h 59). Au plus un an à l'avance.
+  if (data.express !== true) {
+    const auPlusTot = addDays(todayParis(), heureParis(new Date(Date.now() - 120000)) < 20 ? 1 : 2);
+    if (dateDebut < auPlusTot) {
+      return res.status(400).json({ error: `Livraison au plus tôt le ${auPlusTot.split('-').reverse().join('/')} (commande avant 20 h → demain). Pour aujourd'hui, choisissez l'Express.` });
+    }
+    if (dateDebut > addDays(todayParis(), 365)) {
+      return res.status(400).json({ error: 'Date de livraison invalide' });
+    }
+  }
   if (data.express === true && (dateDebut !== todayParis() || pro)) {
     return res.status(400).json({ error: pro ? "L'Express n'est pas proposé pour cette offre. Appelez le 06 63 79 87 56." : "L'Express, c'est une livraison aujourd'hui. Choisissez la date d'aujourd'hui ou une livraison normale." });
   }
