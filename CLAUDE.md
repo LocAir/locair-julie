@@ -90,17 +90,27 @@ fonctionnement. `main` est la branche déployée en production (Vercel).
 
 ## Migrations SQL
 
-Cette session n'a aucun accès à la base Supabase de production (pas
-d'identifiants) — un changement de schéma (nouvelle colonne/table dans
-`supabase/schema.sql` ou `supabase/migration_2026-07-09.sql`) ne prend jamais
-effet tout seul en prod, même après merge et déploiement du code. Le code déjà
-vécu ça en cassant Réservations/Livraisons (colonne `reservations.masquee`
-utilisée par le code déployé mais absente de la vraie base).
+**Depuis le 25/11/2026, l'agent est relié à la base Supabase** (connecteur
+Supabase, projet « LocAir's Project », id `ynnohdfxitfimzmolion`). Le
+propriétaire l'a demandé : **ne plus lui demander de coller du SQL**.
 
-Donc : avant de merger une PR qui touche au schéma, prévenir explicitement le
-propriétaire et lui donner le SQL exact à coller dans Supabase → SQL Editor.
-Ne jamais supposer que la migration a été appliquée juste parce que le code
-est en prod.
+Un changement de schéma (nouvelle colonne/table) ne prend jamais effet tout
+seul en prod, même après merge et déploiement du code. Le code a déjà vécu ça
+en cassant Réservations/Livraisons (colonne `reservations.masquee` utilisée
+par le code déployé mais absente de la vraie base).
+
+Donc, pour chaque PR qui touche au schéma :
+1. Écrire le fichier `supabase/migration_AAAA-MM-JJ_<sujet>.sql` et mettre à
+   jour `supabase/schema.sql` (toujours `if not exists`, jamais destructif).
+2. **Avant de merger**, appliquer ce SQL soi-même avec `apply_migration`,
+   puis vérifier (liste des tables / colonnes) qu'il est bien là.
+3. Dire au propriétaire, en une ligne, que la base est à jour.
+- Rien de destructif (suppression de table, de colonne ou de données) sans
+  son accord écrit.
+- Si le connecteur ne répond pas : revenir à l'ancienne méthode (lui donner
+  le SQL exact à coller dans Supabase → SQL Editor).
+- Vérifié le 25/11/2026 : toutes les tables et colonnes du dépôt existent
+  dans la vraie base.
 
 ## Offre B2B (Loc'Air Pro)
 
