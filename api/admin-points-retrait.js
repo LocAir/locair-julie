@@ -77,6 +77,32 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, ancien, nouveau, commercant_prevenu: prevenu });
     }
 
+    // Retour pas validé au comptoir (appareil en retard qui bloque sa place) :
+    // le gérant le note rendu à la main, avec la raison (25/11/2026).
+    if (b.action === 'rendu_manuel') {
+      if (!roleHasAccess(a.role, 'partenaires') && a.role !== 'administrateur') return res.status(403).json({ error: 'Réservé au gérant.' });
+      const id = Number(b.reservation_id);
+      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Réservation inconnue' });
+      const raison = String(b.raison || '').trim().slice(0, 300);
+      if (raison.length < 3) return res.status(400).json({ error: 'Écrivez la raison (ex. rapporté, retour oublié au comptoir).' });
+      const { data: r, error: e0 } = await supabase.from('reservations').select('id, ref, statut, source_channel, remis_at, rendu_at, point_retrait_id, instructions_acces').eq('id', id).maybeSingle();
+      if (e0) throw e0;
+      if (!r || r.source_channel !== 'click_collect') return res.status(404).json({ error: 'Location Click & Collect introuvable.' });
+      if (r.rendu_at) return res.status(200).json({ ok: true, deja: true });
+      if (!r.remis_at) return res.status(409).json({ error: 'Cet appareil n’a jamais été retiré : rien à débloquer.' });
+      const maintenant = new Date().toISOString();
+      const trace = `[Rendu noté à la main le ${todayParis()} par ${a.nom || a.role} : ${raison}]`;
+      const patch = { rendu_at: maintenant, instructions_acces: ((r.instructions_acces ? r.instructions_acces + '\n' : '') + trace).slice(0, 2000) };
+      if (r.statut === 'confirmee') patch.statut = 'terminee'; // remboursée/annulée : statut gardé
+      const { data: maj, error: e1 } = await supabase.from('reservations').update(patch).eq('id', r.id).is('rendu_at', null).select('id');
+      if (e1) throw e1;
+      if (maj && maj.length) {
+        await supabase.from('reservations').update({ rendu_at: maintenant, statut: 'terminee' })
+          .eq('reservation_origine_id', r.id).eq('statut', 'confirmee').then(() => {}, () => {});
+      }
+      return res.status(200).json({ ok: true, ref: r.ref });
+    }
+
     if (b.action === 'passage') {
       const id = String(b.point_id || '');
       if (!POINTS_RETRAIT.some((p) => p.id === id)) return res.status(400).json({ error: 'Point inconnu' });
@@ -299,6 +325,18 @@ module.exports = async (req, res) => {
       stockHistorique = (h || []).map((x) => ({ ...x, point: (POINTS_RETRAIT.find((p) => p.id === x.point_id) || {}).nom || x.point_id }));
     }
 
+    // Remboursée ou annulée mais appareil encore chez le client : c'est un
+    // retard à suivre (et il bloque sa place), pas une location oubliée.
+    {
+      const { data: dehorsR } = await supabase.from('reservations').select(CHAMPS)
+        .eq('source_channel', 'click_collect').in('statut', ['remboursee', 'annulee'])
+        .not('remis_at', 'is', null).is('rendu_at', null).limit(200).then((x) => x, () => ({ data: [] }));
+      (dehorsR || []).forEach((r) => {
+        const p = POINTS_RETRAIT.find((x) => x.id === r.point_retrait_id);
+        if (!p || p.test) return;
+        aujourdhui.retards.push(Object.assign(ligne(r, p), { jours_retard: Math.max(0, Math.round((Date.parse(auj) - Date.parse(r.date_fin)) / 864e5)), rembourse: true }));
+      });
+    }
     const tri = (l) => l.sort((x, y) => x.point.localeCompare(y.point) || x.client.localeCompare(y.client));
     tri(aujourdhui.retraits); tri(aujourdhui.retours); aujourdhui.retards.sort((x, y) => y.jours_retard - x.jours_retard);
 
