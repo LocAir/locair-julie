@@ -18,7 +18,7 @@ const prenomDe = (s) => (String(s || '').trim().split(/\s+/)[0] || '').toLowerCa
 
 // Mise en page dans le style de la présentation commerçants (25/11/2026) :
 // bandeau bleu + gros titre, « 20 % » géant en vert, cartes, un seul bouton.
-const { layoutPartenaire, vingt, cartes, pieces, surtitre } = require('./emailPartenaire');
+const { layoutPartenaire, cartes, pieces, surtitre, accent } = require('./emailPartenaire');
 
 // Email 1 — après la visite, l'appel ou l'envoi rapide : présentation +
 // convention pré-remplie + lien pour signer (quand il veut, sans pression).
@@ -32,14 +32,14 @@ function emailDocuments(f, { relance, interet } = {}) {
       : `${bonjour} merci pour notre échange. Voici les deux documents.`;
   const html = layoutPartenaire({
     preheader: '20 % de chaque location, 0 € à payer. La présentation et la convention sont jointes.',
-    titre: f.enseigne ? `${esc(f.enseigne)}, devenez point de retrait.` : 'Devenez point de retrait.',
+    eyebrow: f.enseigne ? `${esc(f.enseigne)} · Saison 2027` : 'Point de retrait · Saison 2027',
+    titre: `Gagnez ${accent('20&nbsp;%')} sur chaque location.`,
     intro,
     corps: `
-      ${vingt()}
       ${cartes([
-        { n: '0&nbsp;€', t: 'à payer, aucune caution', vert: true },
-        { n: '7&nbsp;jours', t: 'de préavis pour arrêter' },
-        { n: '10–15&nbsp;mai', t: 'dépose des climatiseurs' },
+        { n: '20&nbsp;%', t: 'de chaque location', ton: 'bleu' },
+        { n: '0&nbsp;€', t: 'à payer, aucune caution', ton: 'encre' },
+        { n: '7&nbsp;j', t: 'de préavis pour arrêter', ton: 'clair' },
       ])}
       ${surtitre('En pièce jointe')}
       ${pieces([
@@ -58,13 +58,13 @@ function emailSignee(f) {
   const html = layoutPartenaire({
     preheader: 'Votre convention signée est jointe. Prochaine étape : la dépose, du 10 au 15 mai 2027.',
     eyebrow: 'Convention signée',
-    titre: p ? `Merci ${esc(p)}, bienvenue chez Loc’Air.` : 'Merci, bienvenue chez Loc’Air.',
-    intro: 'Votre convention signée est en pièce jointe.',
+    titre: `Bienvenue chez ${accent('Loc’Air')}.`,
+    intro: `${p ? `Merci ${esc(p)} ! ` : 'Merci ! '}Votre convention signée est en pièce jointe.`,
     corps: `
       ${surtitre('Prochaine étape')}
       ${cartes([
-        { n: '10–15 mai', t: `dépose de ${f.capacite ? f.capacite + ' climatiseurs' : 'vos climatiseurs'}, on vous appelle avant` },
-        { n: '20&nbsp;%', t: 'de chaque location, viré du 1er au 5', vert: true },
+        { n: '10–15&nbsp;mai', t: `dépose de ${f.capacite ? f.capacite + ' climatiseurs' : 'vos climatiseurs'}`, ton: 'bleu' },
+        { n: '20&nbsp;%', t: 'viré du 1er au 5 du mois', ton: 'encre' },
       ])}
       ${surtitre('À préparer')}
       ${pieces([['Votre SIRET', ''], ['Votre RIB', 'pour le virement de vos 20 %']]).replace(/📎/g, '✓')}`,
