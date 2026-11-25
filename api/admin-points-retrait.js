@@ -12,7 +12,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { POINTS_RETRAIT, pointFermeLe, CELLULES, getCellule, pointMortCellule, COMMISSION_POINT_PCT } = require('./_lib/pointsRetrait');
-const { codeRetour, numeroComptoir, occupationParPoint } = require('./_lib/clickCollect');
+const { codeRetour, numeroComptoir, occupationParPoint, lignesEnRetard, lignesEnPanne } = require('./_lib/clickCollect');
 const { chargerStocks } = require('./_lib/stockPoints');
 const { encaisseCents } = require('./_lib/encaisse');
 const { todayParis, addDays, debutJourParisISO } = require('./_lib/dates');
@@ -278,11 +278,18 @@ module.exports = async (req, res) => {
     // Seulement les vrais points ouverts (ni exemple, ni test).
     const jours = Array.from({ length: 7 }, (_, k) => addDays(auj, k));
     const parVille = {};
-    POINTS_RETRAIT.filter((p) => !p.test && !p.exemple).forEach((p) => {
+    // Mêmes règles que le stock vendu en ligne : un appareil en retard bloque
+    // aujourd'hui et demain, un appareil abîmé en attente de reprise bloque.
+    const reelsRem = POINTS_RETRAIT.filter((p) => !p.test && !p.exemple);
+    const bloques = reelsRem.length ? (await lignesEnRetard(supabase, reelsRem.map((p) => p.id)).catch(() => []))
+      .concat(await lignesEnPanne(supabase, reelsRem).catch(() => [])) : [];
+    reelsRem.forEach((p) => {
       const v = parVille[p.ville] || (parVille[p.ville] = { ville: p.ville, cellule: p.cellule, points: 0, places: 0, pris: 0 });
       v.points += 1; v.places += (p.stock || 0) * jours.length;
       resas.filter((r) => r.point_retrait_id === p.id && r.source !== 'site_prolongation' && r.statut === 'confirmee' && !r.rendu_at)
-        .forEach((r) => jours.forEach((j) => { if ((r.date_debut <= j && r.date_fin > j) || (r.remis_at && j === auj)) v.pris += qte(r); }));
+        .forEach((r) => jours.forEach((j) => { if ((r.date_debut <= j && r.date_fin > j) || (r.remis_at && j === auj && r.date_fin >= auj)) v.pris += qte(r); }));
+      bloques.filter((r) => r.point_retrait_id === p.id)
+        .forEach((r) => jours.forEach((j) => { if (r.date_debut <= j && j < r.date_fin) v.pris += r.quantite || 1; }));
     });
     const remplissage = Object.values(parVille).map((v) => {
       const pct = v.places ? Math.min(100, Math.round(v.pris / v.places * 100)) : 0;
