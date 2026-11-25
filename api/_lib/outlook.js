@@ -136,9 +136,10 @@ async function enBase64(a) {
 }
 
 // Renvoie { ok: true } ou { ok: false, error } — ne jette jamais.
-async function sendOutlookEmail({ to, subject, html, attachments }) {
+async function sendOutlookEmail({ to, subject, html, attachments, forcer = false }) {
   if (!configure() || !to) return { ok: false, error: 'Outlook pas configuré' };
-  if (Date.now() < _pauseJusqua) return { ok: false, error: 'Outlook en pause après un échec récent' };
+  // « Essai » (forcer) tente toujours : la pause ne sert qu'aux envois automatiques.
+  if (!forcer && Date.now() < _pauseJusqua) return { ok: false, error: 'Outlook en pause après un échec récent' };
   let supabase;
   try { supabase = getSupabase(); } catch (e) { return { ok: false, error: e.message }; }
   try {
