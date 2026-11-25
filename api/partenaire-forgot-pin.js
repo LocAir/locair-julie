@@ -22,6 +22,11 @@ module.exports = async (req, res) => {
   // transporteur-forgot-pin.js.
   const genericResponse = { ok: true, message: "Si ce compte existe, un email vient d'être envoyé." };
   if (!email) return res.status(200).json(genericResponse);
+  // Au plus 3 nouveaux codes par heure pour un même e-mail (toutes adresses
+  // confondues) : sinon on pouvait changer le code de quelqu'un en boucle et
+  // le bloquer hors de son espace. Même réponse, pour ne rien révéler.
+  if (await isRateLimited(supabase, `forgot-partenaire-email:${email.slice(0, 120)}`, 3, 60)) return res.status(200).json(genericResponse);
+  await recordFailedAttempt(supabase, `forgot-partenaire-email:${email.slice(0, 120)}`).catch(() => {});
 
   try {
     const { data: partenaire } = await supabase
