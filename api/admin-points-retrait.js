@@ -218,6 +218,14 @@ module.exports = async (req, res) => {
       }).filter((x) => !x.test);
     }
 
+    // Remboursées/annulées mais appareil encore chez le client, et appareils
+    // abîmés en attente de reprise : ils prennent une place au point (mêmes
+    // règles que le stock vendu en ligne).
+    const { data: dehorsR } = await supabase.from('reservations').select(CHAMPS)
+      .eq('source_channel', 'click_collect').in('statut', ['remboursee', 'annulee'])
+      .not('remis_at', 'is', null).is('rendu_at', null).limit(200).then((x) => x, () => ({ data: [] }));
+    const enPanne = await lignesEnPanne(supabase, POINTS_RETRAIT).catch(() => []);
+
     const points = POINTS_RETRAIT.map((p) => {
       // Les lignes « prolongation » ne sont pas des appareils en plus : la
       // location d'origine porte déjà la nouvelle date de fin (webhook.js).
@@ -227,7 +235,9 @@ module.exports = async (req, res) => {
       // Occupé aujourd'hui = réservé sur aujourd'hui, ou retiré et pas encore rendu.
       const occupe = actives.filter((r) => (r.date_debut <= auj && r.date_fin > auj) || (r.remis_at && !r.rendu_at))
         .reduce((s, r) => s + qte(r), 0);
-      const dehors = actives.filter((r) => r.remis_at).reduce((s, r) => s + qte(r), 0);
+      const dehorsRemb = (dehorsR || []).filter((r) => r.point_retrait_id === p.id).reduce((s, r) => s + qte(r), 0);
+      const abimes = enPanne.filter((r) => r.point_retrait_id === p.id).length;
+      const dehors = actives.filter((r) => r.remis_at).reduce((s, r) => s + qte(r), 0) + dehorsRemb;
       const aVenir = actives.filter((r) => !r.remis_at && r.date_debut > auj).reduce((s, r) => s + qte(r), 0);
       const recond = lesSiennes.filter((r) => r.etat_retour === 'a_reconditionner').length;
       if (!p.test) { dehorsTotal += dehors; aReconditionner += recond; }
@@ -262,7 +272,7 @@ module.exports = async (req, res) => {
         a_virer_cents: p.test || p.exemple ? 0 : aVirer,
         id: p.id, nom: p.nom, ville: p.ville, adresse: p.adresse, horaires: p.horaires,
         exemple: !!p.exemple, test: !!p.test, ferme_aujourdhui: pointFermeLe(p, auj),
-        stock: p.stock || 0, stock_code: p.stock_code, stock_modifie: !!p.stock_modifie, libres: Math.max(0, (p.stock || 0) - occupe), dehors, a_venir: aVenir, a_reconditionner: recond,
+        stock: p.stock || 0, stock_code: p.stock_code, stock_modifie: !!p.stock_modifie, libres: Math.max(0, (p.stock || 0) - occupe - dehorsRemb - abimes), dehors, abimes, a_venir: aVenir, a_reconditionner: recond,
         commission_pct: p.commission_pct,
         dernier_passage: dernierPassage[p.id] || null,
         jours_sans_passage: dernierPassage[p.id] ? Math.round((Date.parse(auj) - Date.parse(dernierPassage[p.id])) / 864e5) : null,
@@ -338,9 +348,6 @@ module.exports = async (req, res) => {
     // Remboursée ou annulée mais appareil encore chez le client : c'est un
     // retard à suivre (et il bloque sa place), pas une location oubliée.
     {
-      const { data: dehorsR } = await supabase.from('reservations').select(CHAMPS)
-        .eq('source_channel', 'click_collect').in('statut', ['remboursee', 'annulee'])
-        .not('remis_at', 'is', null).is('rendu_at', null).limit(200).then((x) => x, () => ({ data: [] }));
       (dehorsR || []).forEach((r) => {
         const p = POINTS_RETRAIT.find((x) => x.id === r.point_retrait_id);
         if (!p || p.test) return;
