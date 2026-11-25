@@ -77,7 +77,7 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
         <li><i>€</i><span><b>20 %</b> de chaque location, viré entre le 1er et le 5 du mois.</span></li>
         <li><i>0</i><span><b>0 € à payer</b>, sauf faute grave. Rien à encaisser, aucune caution.</span></li>
         <li><i>✓</i><span>Le client <b>réserve et paie en ligne</b>. Vous donnez et reprenez l’appareil.</span></li>
-        <li><i>▮</i><span>Contre un mur, <b>sous housse bleue unie</b> sans logo, gaine au-dessus.</span></li>
+        <li><i>▮</i><span><b>Sous housse bleue unie</b> sans logo, gaine au-dessus.</span></li>
         <li><i>⟳</i><span><b>Entretien</b> par notre agent tous les 10 jours.</span></li>
         <li><i>→</i><span><b>Sans engagement</b> : vous arrêtez avec 7 jours de préavis.</span></li>
         <li><i>⇄</i><span>Contrat transférable à la société d’exploitation Loc’Air.</span></li>
@@ -93,14 +93,27 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
       <button type="button" class="lien" id="a-autre" style="background:none;border:0;width:100%;cursor:pointer;font:700 15px 'DM Sans',sans-serif">Un autre nombre ?</button>
       <div id="a-autre-box" hidden><label for="a-n">Nombre de climatiseurs</label><input id="a-n" type="number" inputmode="numeric" min="1" max="20" placeholder="Ex. 2 ou 6"></div>
       <p class="aide">Stock fixe, sans rotation, environ 40 × 40 cm par appareil. Il peut évoluer ensuite, d’un commun accord.</p>
-      <label for="a-email">E-mail <span style="font-weight:500;color:var(--ink-2)">(facultatif — pour recevoir la convention)</span></label>
+      <label for="a-email">Votre e-mail <span style="font-weight:500;color:var(--ink-2)">— on vous envoie tout</span></label>
       <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="vous@commerce.fr">
-      <button class="btn" id="a-ok" type="button" disabled>OK — J’accepte</button>
+      <button class="btn" id="a-ok" type="button" disabled>OK — Recevoir par e-mail</button>
+      <p class="aide centre" style="margin-top:10px">Rien à signer maintenant. Vous lisez tranquillement chez vous.</p>
       <div class="msg msg-err" id="a-err" role="alert" hidden></div>
     </div>
   </section>
 
-  <!-- 2 · La signature -->
+  <!-- 2 · Documents envoyés (sur place : pas de signature, décidé le 25/11/2026) -->
+  <section id="e-envoye" class="centre" hidden>
+    <div class="rond"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h1>C’est noté.</h1>
+    <p class="sous" id="v-texte">La présentation et la convention arrivent par e-mail.</p>
+    <div class="carte" style="text-align:left">
+      <div class="resume"><span>Climatiseurs</span><b id="v-capa">—</b></div>
+      <div class="resume"><span>Dépose</span><b>10 – 15 mai 2027</b></div>
+    </div>
+    <p class="sous">Lisez tranquillement chez vous.</p>
+  </section>
+
+  <!-- 3 · La signature (ouverte depuis l'e-mail : ?signer=1) -->
   <section id="e-signer" hidden>
     <h1>Signez ici.</h1>
     <p class="sous">15 secondes, avec le doigt.</p>
@@ -119,7 +132,6 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
       <p class="aide">En signant, j’accepte la convention de partenariat Loc’Air — « Lu et approuvé, bon pour accord ».</p>
       <button class="btn" id="s-ok" type="button" disabled>Signer</button>
       <div class="msg msg-err" id="s-err" role="alert" hidden></div>
-      <p class="aide centre" style="margin-top:12px">Vous préférez relire d’abord ? Ce lien reste valable : signez quand vous voulez.</p>
     </div>
   </section>
 
@@ -170,7 +182,8 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
   var $ = function(id){ return document.getElementById(id); };
   var S = (new URLSearchParams(location.search).get('s') || '').toLowerCase();
   var fiche = null, capa = 0;
-  function ecran(id){ ['e-accord','e-signer','e-fini','e-demande','e-merci'].forEach(function(e){ $(e).hidden = e !== id; }); window.scrollTo(0,0); }
+  var SIGNER = new URLSearchParams(location.search).get('signer') === '1';
+  function ecran(id){ ['e-accord','e-envoye','e-signer','e-fini','e-demande','e-merci'].forEach(function(e){ $(e).hidden = e !== id; }); window.scrollTo(0,0); }
   function api(body){
     return fetch('/api/prospection', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)})
       .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error || 'Erreur. Réessayez.'); return j; }); });
@@ -180,7 +193,7 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
     fiche = f;
     if (f.signe){ $('f-capa').textContent = (f.capacite || '—') + ' climatiseur' + (f.capacite > 1 ? 's' : ''); $('f-pdf').href = '/api/prospection?s=' + S; if (f.email) $('f-texte').textContent = 'Une copie part sur ' + f.email + '.'; return ecran('e-fini'); }
     if (f.enseigne) $('a-enseigne').textContent = f.enseigne + ' · climatiseurs en Click & Collect.';
-    if (f.capacite){ capa = f.capacite; preparerSignature(); return ecran('e-signer'); }
+    if (f.capacite){ capa = f.capacite; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } return envoye(f); }
     ecran('e-accord');
   }
 
@@ -215,13 +228,22 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
     capa = n >= 1 && n <= 20 ? n : 0; $('a-ok').disabled = !capa;
   });
   $('a-ok').addEventListener('click', function(){
-    var b = this; b.disabled = true; erreur($('a-err'));
+    var b = this; erreur($('a-err'));
+    if (!SIGNER && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('a-email').value.trim())){ erreur($('a-err'), 'Votre e-mail, pour recevoir la présentation et la convention.'); $('a-email').focus(); return; }
+    b.disabled = true;
     api({action:'accepter', s:S, capacite:capa, email:$('a-email').value})
-      .then(function(j){ fiche = j.fiche; preparerSignature(); ecran('e-signer'); })
+      .then(function(j){ fiche = j.fiche; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } envoye(j.fiche, j.email_envoye); })
       .catch(function(x){ b.disabled = false; erreur($('a-err'), x.message); });
   });
 
-  // ── 2 · Signature au doigt
+  // ── 2 · Documents envoyés : il étudie chez lui, il signera depuis l'e-mail
+  function envoye(f, ok){
+    $('v-capa').textContent = (f.capacite || capa) + ' climatiseur' + ((f.capacite || capa) > 1 ? 's' : '');
+    $('v-texte').textContent = ok === false ? 'L’e-mail n’est pas parti. Loc’Air vous l’envoie dans la journée.' : 'Tout arrive sur ' + (f.email || 'votre e-mail') + '.';
+    ecran('e-envoye');
+  }
+
+  // ── 3 · Signature au doigt (depuis le lien de l'e-mail)
   var toile = $('s-toile'), ctx, trace = false, encre = false;
   function preparerSignature(){
     $('s-enseigne').textContent = (fiche && fiche.enseigne) || 'Votre commerce';

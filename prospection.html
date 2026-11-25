@@ -14,7 +14,8 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
 <!-- Appli terrain des prospecteurs (25/11/2026). Compte d'équipe (rôle
      « prospecteur » ou plus). Parcours : QR de session → OK du commerçant
-     (3/4/5) → 1 photo + GPS → signature du doigt (ou convention par e-mail).
+     (3/4/5) + e-mail → 1 photo + GPS. Pas de signature sur place : la présentation et la
+     convention partent par e-mail, il signe chez lui depuis l'e-mail (décidé le 25/11/2026).
      Gérant absent : photo + GPS → « À repasser ». Guide : /guide-prospecteur.
      Serveur : api/prospection.js. -->
 <script src="/adstay/vendor/qrcode-generator-1.4.4.js" defer></script>
@@ -118,7 +119,7 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
   <!-- Photo + GPS -->
   <section id="e-photo" hidden>
     <h1 id="p-titre">1 photo, c’est tout.</h1>
-    <p class="sous" id="p-sous">L’emplacement contre le mur (ou la devanture).</p>
+    <p class="sous" id="p-sous">L’emplacement prévu (ou la devanture).</p>
     <div class="carte">
       <input id="p-file" type="file" accept="image/*" capture="environment" hidden>
       <button class="btn" id="p-prendre" type="button">📷 Prendre la photo</button>
@@ -130,22 +131,6 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
       </div>
       <button class="btn vert" id="p-ok" type="button" disabled>Enregistrer</button>
       <div class="msg" id="p-err" hidden></div>
-    </div>
-  </section>
-
-  <!-- Signature -->
-  <section id="e-sign" hidden>
-    <h1>La signature.</h1>
-    <p class="sous" id="s-sous">Le commerçant signe sur son téléphone.</p>
-    <div class="carte">
-      <div class="etat attente" id="s-etat"><span class="point"></span><span>En attente de la signature…</span></div>
-      <button class="btn blanc" id="s-mail" type="button">✉️ Il veut relire → envoyer par e-mail</button>
-      <div id="s-mailbox" hidden>
-        <label for="s-email">E-mail du commerçant</label><input id="s-email" type="email" inputmode="email">
-        <button class="btn" id="s-envoyer" type="button">Envoyer présentation + convention</button>
-      </div>
-      <button class="btn" id="s-fin" type="button" hidden>Terminé ✓</button>
-      <div class="msg" id="s-err" hidden></div>
     </div>
   </section>
 
@@ -184,7 +169,7 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
   var LIB = {signe:'Signé', en_attente_signature:'À signer', a_repasser:'À repasser', refuse:'Pas cette fois'};
   var token = '', zone = '', fiche = null, sondage = null, photoPath = null, gps = null, absent = false;
   try { token = localStorage.getItem('prosp_token') || localStorage.getItem('a_token') || ''; zone = localStorage.getItem('prosp_zone') || ''; } catch(e){}
-  var ECRANS = ['e-login','e-accueil','e-qr','e-photo','e-sign','e-rapide','e-modele','e-fini'];
+  var ECRANS = ['e-login','e-accueil','e-qr','e-photo','e-rapide','e-modele','e-fini'];
   function ecran(id){ ECRANS.forEach(function(e){ $(e).hidden = e !== id; }); $('b-accueil').hidden = id === 'e-login' || id === 'e-accueil'; window.scrollTo(0,0); }
   function erreur(id, t){ $(id).textContent = t || ''; $(id).hidden = !t; }
   function api(body){
@@ -254,7 +239,7 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
       if (fiche.capacite){
         arreter(); if (navigator.vibrate) navigator.vibrate([30,60,30]);
         $('q-etat').className = 'etat ok';
-        $('q-etat').innerHTML = '<span>✓ OK : ' + fiche.capacite + ' climatiseurs' + (fiche.email ? ' · ' + esc(fiche.email) : '') + '</span>';
+        $('q-etat').innerHTML = '<span>✓ OK : ' + fiche.capacite + ' climatiseurs · documents envoyés' + (fiche.email ? ' à ' + esc(fiche.email) : '') + '</span>';
         $('q-photo').disabled = false;
       }
     }).catch(function(){});
@@ -273,7 +258,7 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
   function ouvrirPhoto(){
     arreter(); photoPath = null; gps = null;
     $('p-titre').textContent = absent ? 'Gérant absent.' : '1 photo, c’est tout.';
-    $('p-sous').textContent = absent ? 'Photo de la devanture : la fiche passe « À repasser ».' : 'L’emplacement prévu, contre le mur.';
+    $('p-sous').textContent = absent ? 'Photo de la devanture : la fiche passe « À repasser ».' : 'L’emplacement prévu dans la boutique.';
     $('p-infos').hidden = !absent; $('p-enseigne').value = (fiche && fiche.enseigne) || ''; $('p-contact').value = ''; $('p-apercu').hidden = true; $('p-gps').hidden = true; $('p-ok').disabled = true; erreur('p-err');
     ecran('e-photo');
   }
@@ -316,31 +301,12 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
     api(corps).then(function(j){
       fiche = j.fiche;
       if (fiche.statut === 'a_repasser'){ return fin('Fiche « À repasser » ✓', (fiche.email || fiche.tel) ? 'La présentation et la convention partent demain matin.' : 'Laisse la fiche mémo avec le QR code.'); }
-      // Le commerçant a dit OK : place à la signature (son téléphone passe tout seul à l'écran de signature).
-      $('s-email').value = fiche.email || ''; $('s-mailbox').hidden = true; $('s-fin').hidden = true;
-      $('s-etat').className = 'etat attente'; $('s-etat').innerHTML = '<span class="point"></span><span>En attente de la signature…</span>';
-      ecran('e-sign'); arreter(); sondage = setInterval(suivreSignature, 2500);
+      // Le commerçant a dit OK : la présentation et la convention sont déjà
+      // parties par e-mail. Il signera chez lui, depuis l'e-mail.
+      fin('Visite enregistrée ✓', 'Présentation + convention envoyées' + (fiche.email ? ' à ' + fiche.email : '') + '. Il signe quand il veut, depuis l’e-mail.');
     }).catch(function(x){ b.disabled = false; erreur('p-err', x.message); });
   });
 
-  // ── Signature : option A (sur place) ou B (e-mail)
-  function suivreSignature(){
-    api({action:'etat', id:fiche.id}).then(function(j){
-      fiche = j.fiche;
-      if (fiche.statut === 'signe'){
-        arreter(); if (navigator.vibrate) navigator.vibrate([30,60,30,60,30]);
-        $('s-etat').className = 'etat ok'; $('s-etat').innerHTML = '<span>✍️ SIGNÉ · ' + fiche.capacite + ' climatiseurs</span>';
-        $('s-mail').hidden = true; $('s-mailbox').hidden = true; $('s-fin').hidden = false;
-      }
-    }).catch(function(){});
-  }
-  $('s-mail').addEventListener('click', function(){ $('s-mailbox').hidden = false; $('s-email').focus(); });
-  $('s-envoyer').addEventListener('click', function(){
-    var b = this; b.disabled = true; erreur('s-err');
-    api({action:'envoyer', id:fiche.id, email:$('s-email').value}).then(function(){ arreter(); fin('Envoyé ✓', 'Présentation + convention pré-remplie, avec le lien pour signer.'); })
-      .catch(function(x){ erreur('s-err', x.message); }).then(function(){ b.disabled = false; });
-  });
-  $('s-fin').addEventListener('click', function(){ fin('Point signé ✓', 'Il compte dans l’objectif de la Cellule 1. Dépose du 10 au 15 mai.'); });
 
   // ── Saisie rapide
   $('a-rapide').addEventListener('click', function(){ ['r-enseigne','r-tel','r-email'].forEach(function(i){ $(i).value = ''; }); erreur('r-err'); ecran('e-rapide'); });

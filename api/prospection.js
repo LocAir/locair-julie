@@ -105,8 +105,11 @@ module.exports = async (req, res) => {
         if (f.statut === 'signe') return res.json({ ok: true, fiche: publicFiche(f) });
         const capacite = Number(b.capacite);
         if (!capaciteOk(capacite)) return res.status(400).json({ error: 'Choisissez le nombre de climatiseurs (1 à 20).' });
-        const email = clip(b.email, 160).toLowerCase();
-        if (email && !emailOk(email)) return res.status(400).json({ error: 'E-mail incorrect.' });
+        // Démarche progressive (décidé le 25/11/2026) : pas de signature sur
+        // place. Le commerçant reçoit la présentation + la convention par
+        // e-mail, l'étudie chez lui et signe depuis l'e-mail quand il veut.
+        const email = clip(b.email, 160).toLowerCase() || String(f.email || '');
+        if (!email || !emailOk(email)) return res.status(400).json({ error: 'Votre e-mail, pour recevoir la présentation et la convention.' });
         const patch = { capacite, statut: 'en_attente_signature', accepte_at: new Date().toISOString(), updated_at: new Date().toISOString() };
         if (email) patch.email = email;
         const enseigne = clip(b.enseigne, 120); if (enseigne) patch.enseigne = enseigne;
@@ -114,7 +117,15 @@ module.exports = async (req, res) => {
         const { data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle();
         if (e2) throw e2;
         pushToAdmin(supabase, { title: `✅ OK commerçant — ${patch.enseigne || f.enseigne || 'point ' + f.id}`, body: `${capacite} climatiseurs${email ? ' · ' + email : ''}`, tag: `prospection-ok-${f.id}` }).catch(() => {});
-        return res.json({ ok: true, fiche: publicFiche(data || { ...f, ...patch }) });
+        // Envoi des documents tout de suite (une seule fois, même si le
+        // commerçant retouche « OK »).
+        let emailEnvoye = !!f.docs_envoyes_at;
+        if (!emailEnvoye) {
+          const { data: complete } = await supabase.from('prospection_points').select('*').eq('id', f.id).maybeSingle();
+          const r = await envoyerDocuments(complete || { ...f, ...patch }).catch(() => ({ ok: false }));
+          if (r && r.ok) { emailEnvoye = true; await supabase.from('prospection_points').update({ docs_envoyes_at: new Date().toISOString() }).eq('id', f.id).then(() => {}, () => {}); }
+        }
+        return res.json({ ok: true, fiche: publicFiche(data || { ...f, ...patch }), email_envoye: emailEnvoye });
       }
 
       // signer
@@ -164,7 +175,7 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase.from('prospection_points').insert(ligne).select('*').single();
       if (pasDeTable(error)) return res.status(503).json({ error: MSG_TABLE });
       if (error) throw error;
-      return res.json({ ok: true, fiche: data, lien: lienSigner(data) });
+      return res.json({ ok: true, fiche: data, lien: `https://www.locair.fr/partenaires?s=${data.session_token}` }); // QR sur place : le choix, jamais la signature
     }
 
     const id = parseInt(b.id, 10);
