@@ -58,7 +58,8 @@ function categorie(c) { return CATS[c] ? c : 'autre'; }
 // appareils abîmés qui attendent d'être repris (missions ouvertes au point).
 async function appareilsLibresAuPoint(supabase, point) {
   const jour = todayParis();
-  const occ = await occupationParPoint(supabase, [point], jour, addDays(jour, 1), { avecAttente: false }).catch(() => ({}));
+  // avecPannes: false : les appareils abîmés en attente sont retirés juste en dessous.
+  const occ = await occupationParPoint(supabase, [point], jour, addDays(jour, 1), { avecAttente: false, avecPannes: false }).catch(() => ({}));
   const enAttente = await missionsOuvertesAuPoint(supabase, point);
   const stock = Number.isInteger(point.stock) ? point.stock : STOCK_PAR_DEFAUT; // 0 = point vidé (admin) : rien à échanger
   return stock - (occ[point.id] || 0) - enAttente.length;

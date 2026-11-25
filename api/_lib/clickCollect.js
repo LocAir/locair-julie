@@ -76,6 +76,23 @@ const CHAMPS_OCC = 'id, point_retrait_id, quantite, statut, source, created_at, 
 // propriétaire du 25/11/2026 — chacun bloque sa place au point aujourd'hui et
 // demain, pour ne pas vendre un appareil qui n'est pas revenu. Rendues sous
 // forme de lignes fictives (du jour à après-demain). Colonnes absentes : rien.
+// Appareil abîmé laissé au point (panne, casse) en attente de reprise
+// (mission « changement » ouverte au point, voir _lib/panne.js) : il ne peut
+// pas repartir chez un client. Décision du propriétaire du 25/11/2026 : un
+// appareil rendu sans incident reste disponible (« à reconditionner » n'est
+// qu'une note pour le passage de l'agent) ; avec un incident, il bloque sa
+// place jusqu'à la fin de la reprise.
+const MISSIONS_OUVERTES = ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme'];
+async function lignesEnPanne(supabase, points) {
+  try {
+    const adr = points.map((p) => `${p.nom} — ${p.adresse}`);
+    const { data, error } = await supabase.from('livraisons').select('adresse_libre')
+      .eq('type', 'changement').in('statut', MISSIONS_OUVERTES).in('adresse_libre', adr).limit(200);
+    if (error || !Array.isArray(data)) return [];
+    return data.map((m) => { const p = points.find((x) => `${x.nom} — ${x.adresse}` === m.adresse_libre); return p ? { point_retrait_id: p.id, quantite: 1, date_debut: '0000-01-01', date_fin: '9999-12-31', panne: true } : null; }).filter(Boolean);
+  } catch (e) { return []; }
+}
+
 async function lignesEnRetard(supabase, pointIds) {
   const auj = require('./dates').todayParis();
   try {
@@ -100,7 +117,8 @@ async function occupationParPoint(supabase, points, debut, fin, options = {}) {
     .in('point_retrait_id', points.map((p) => p.id)).in('statut', ['confirmee', 'en_attente']);
   const { data, error } = await chevauche(q, debut, fin);
   if (!error) {
-    const retard = await lignesEnRetard(supabase, points.map((p) => p.id));
+    const retard = (await lignesEnRetard(supabase, points.map((p) => p.id)))
+      .concat(options.avecPannes === false ? [] : await lignesEnPanne(supabase, points));
     points.forEach((p) => { res[p.id] = picDeJours((data || []).filter((r) => r.point_retrait_id === p.id && garder(r)).concat(retard.filter((r) => r.point_retrait_id === p.id)), debut, fin); });
     return res;
   }
@@ -138,7 +156,7 @@ async function tientDansLeStock(supabase, point, debut, fin, id, avecAttente = t
   // la nôtre compte toujours (même si elle vient d'être créée)
   const lignes = data.filter((r) => r.id === id || (compte(r, limiteAttente, avecAttente) && (!avecAttente || r.id < id)));
   if (!lignes.some((r) => r.id === id)) return true;
-  const retard = await lignesEnRetard(supabase, [point.id]);
+  const retard = (await lignesEnRetard(supabase, [point.id])).concat(await lignesEnPanne(supabase, [point]));
   return picDeJours(lignes.concat(retard), debut, fin) <= (point.stock || 0);
 }
 
