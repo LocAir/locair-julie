@@ -4,7 +4,10 @@
 // (adresse, horaires), les dates, le prix payé et les consignes.
 // GET /api/cc-confirmation?t=<id>.<code> — même code que le QR code de
 // retrait (clickCollect.codeRemise), donc seul le client qui a payé l'a.
-const PDFDocument = require('pdfkit');
+// Chargé seulement quand un PDF est vraiment fabriqué (pdfkit pèse ≈ 0,1 s
+// au démarrage d'une fonction : inutile pour les appels sans PDF).
+let _PDFKit;
+function PDFDocument(...a) { _PDFKit = _PDFKit || require('pdfkit'); return new _PDFKit(...a); }
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual } = require('./_lib/auth');
 const { codeRemise, numeroComptoir } = require('./_lib/clickCollect');
