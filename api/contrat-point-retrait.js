@@ -14,7 +14,9 @@ const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/rate
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // « MARIE CORNIGLIONE » → « Marie » ; « jean-pierre dupont » → « Jean-Pierre »
-const prenomPropre = (s) => (String(s || '').trim().split(/\s+/)[0] || '').toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) || 'et bienvenue';
+// Lettres, tiret et apostrophe seulement (30 max) : le prénom va dans l'objet
+// d'un e-mail envoyé à l'adresse tapée, jamais une adresse web ou un message.
+const prenomPropre = (s) => (String(s || '').trim().split(/\s+/)[0] || '').replace(/[^\p{L}'’-]/gu, '').slice(0, 30).toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) || 'et bienvenue';
 // Texte simple : pas d'objet (« [object Object] »), pas de retour à la ligne (sujet d'email).
 const clip = (s, n) => (typeof s === 'string' || typeof s === 'number' ? String(s) : '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
 
@@ -108,7 +110,12 @@ ${table}
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
     // contact des commerçants (convention) : affiché sous le bouton
   });
-  await sendBrevoEmail({ to: d.email, subject: `${prenom}, votre point de retrait Loc’Air`, html, senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com' }).catch(() => {});
+  // Au plus 2 confirmations par jour vers une même adresse (toutes adresses IP
+  // confondues) : le formulaire ne doit pas servir à écrire à des inconnus.
+  const cleMail = `contrat-pr-mail:${String(d.email || '').toLowerCase().slice(0, 120)}`;
+  const tropDeMails = await isRateLimited(supabase, cleMail, 2, 1440).catch(() => false);
+  if (!tropDeMails) await recordFailedAttempt(supabase, cleMail).catch(() => {});
+  if (!tropDeMails) await sendBrevoEmail({ to: d.email, subject: `${prenom}, votre point de retrait Loc’Air`, html, senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com' }).catch(() => {});
 
   return res.status(200).json({ ok: true });
 };
