@@ -351,6 +351,11 @@ reliée (admin → accueil → Envoi rapide → « Relier Outlook » ; variables
 Vercel `MS_CLIENT_ID`, `MS_CLIENT_SECRET` ; table `outlook_connexion`,
 `supabase/migration_2026-11-25_outlook.sql`). Sinon, ou si Outlook refuse,
 Brevo prend le relais depuis contact@locair.fr : l'e-mail part toujours.
+**Relié et testé le 25/11/2026** (appli Azure « Loc'air site », adresse de
+retour exacte `https://locair.fr/api/outlook`, nom d'expéditeur « Loc'Air
+Partenaires »). L'agent a aussi accès à Vercel (équipe `loc-air`, projet
+`locair-julie`, id `prj_LSmjqEtiKrRx1gXiSorTLXYBpNUv`) : erreurs en ligne,
+variables, relance du site.
 Nouvel e-mail aux commerçants = toujours avec ce `replyTo`. Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
 septembre** (≈ 120 jours), stock fixe par point (souvent 3, 4 ou 5, mais
 **pas rigide**, décidé le 25/11/2026 : nombre fixé à la signature, de 1 à
