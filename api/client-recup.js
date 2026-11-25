@@ -39,7 +39,9 @@ module.exports = async (req, res) => {
   const today = todayParis();
   const auPlusTot = addDays(today, heureParis() < 20 ? 1 : 2);
   if (newDate < auPlusTot) {
-    return res.status(400).json({ error: `Au plus tôt le ${fmtDate(auPlusTot, 'fr')}.`, au_plus_tot: auPlusTot });
+    const lg = body.lang === 'en' || body.lang === 'es' ? body.lang : 'fr';
+    const pre = { fr: 'Au plus tôt le', en: 'At the earliest on', es: 'Como pronto el' }[lg];
+    return res.status(400).json({ error: `${pre} ${fmtDate(auPlusTot, lg)}.`, au_plus_tot: auPlusTot });
   }
 
   const creneau = String(body.creneau || '').trim();
