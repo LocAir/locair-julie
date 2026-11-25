@@ -59,7 +59,7 @@ function layoutPartenaire({ preheader = '', eyebrow = 'Point de retrait · Saiso
 <meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;800;900&display=swap" rel="stylesheet">
 <title>Loc’Air</title>
-<style>@media (max-width:480px){.pad{padding-left:22px!important;padding-right:22px!important}.crt{padding:12px 10px!important}.crt-n{font-size:19px!important}.titre{font-size:33px!important}}</style></head>
+<style>@media (max-width:480px){.pad{padding-left:22px!important;padding-right:22px!important}.crt{padding:12px 10px!important}.crt-n{font-size:19px!important}.titre{font-size:30px!important}}</style></head>
 <body style="margin:0;padding:0;background:${C.brume};-webkit-font-smoothing:antialiased">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.brume}"><tr><td align="center" style="padding:24px 12px">
@@ -67,7 +67,7 @@ function layoutPartenaire({ preheader = '', eyebrow = 'Point de retrait · Saiso
   <tr><td class="pad" style="background:${C.bleu};background-image:linear-gradient(115deg,${C.bleu} 0%,${C.bleu} 62%,${C.bleuD} 62%,${C.bleuD} 100%);padding:32px 36px 40px">
     <p style="margin:0 0 34px;font-family:${F};font-size:24px;font-weight:900;letter-spacing:-.04em;color:#FFFFFF">Loc<em>’Air</em></p>
     ${surtitre(eyebrow, '#CFE0FF')}
-    <h1 class="titre" style="margin:0;font-family:${F};font-size:42px;line-height:.98;font-weight:900;letter-spacing:-.04em;text-transform:uppercase;color:#FFFFFF">${titre}</h1>
+    <h1 class="titre" style="margin:0;font-family:${F};font-size:38px;line-height:1.05;font-weight:900;letter-spacing:-.035em;color:#FFFFFF">${titre}</h1>
     ${intro ? `<p style="margin:14px 0 0;font-family:${F};font-size:16.5px;line-height:1.45;color:#DCE7FB">${intro}</p>` : ''}
   </td></tr>
   <tr><td class="pad" style="padding:30px 36px 32px">
