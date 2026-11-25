@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
           const r = await sendBrevoEmail({
             to: part.email, senderName: 'Loc’Air Partenaires', replyTo: 'partenaires.locair@outlook.com',
             subject: `Votre stock Loc’Air passe à ${nouveau} climatiseur${nouveau > 1 ? 's' : ''}`,
-            html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Votre stock change</h2><p>Comme convenu ensemble, le stock de <b>${String(p.nom).replace(/[<>&]/g, '')}</b> passe de <b>${ancien}</b> à <b>${nouveau}</b> climatiseur${nouveau > 1 ? 's' : ''}, à partir d’aujourd’hui.</p><p>Rien d’autre ne change : mêmes règles, mêmes 20 %.</p><p style="color:#4B5873;font-size:13px">Une question : 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`,
+            html: require('./_lib/emailPartenaire').layoutPartenaire({ eyebrow: `${String(p.nom).replace(/[<>&]/g, '')} · Stock`, titre: `Votre stock passe à <em style="font-style:italic;color:#BFD6FF">${nouveau}</em> climatiseur${nouveau > 1 ? 's' : ''}.`, intro: `Comme convenu ensemble, à partir d’aujourd’hui (avant : ${ancien}).`, corps: `<p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:16px;color:#0E1726">Rien d’autre ne change : mêmes règles, mêmes 20 %.</p>` }),
           }).catch(() => ({ ok: false }));
           prevenu = !!r.ok;
         }
@@ -131,12 +131,14 @@ module.exports = async (req, res) => {
       const dateFr = new Date(date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
       const sirFmt = siret.length === 14 ? `${siret.slice(0, 3)} ${siret.slice(3, 6)} ${siret.slice(6, 9)} ${siret.slice(9)}` : siret.replace(/(\d{3})(?=\d)/g, '$1 ');
       const sms = `Loc'Air : comme prévu à l'article 7 de notre convention, elle est transférée à ${nom} (SIRET ${sirFmt}) à partir du ${dateFr}. Rien ne change pour vous : mêmes règles, mêmes 20 %, mêmes contacts. Une question ? 06 63 79 87 56`;
-      const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
-<h2 style="color:#1A5EDB;margin:0 0 12px">Loc’Air devient ${nom.replace(/[<>&]/g, '')}</h2>
-<p>Comme prévu à l’<b>article 7</b> de notre convention de partenariat, la convention, le matériel et vos virements sont transférés à :</p>
-<p style="margin:14px 0;padding:14px 16px;background:#EFF4FD;border-radius:12px"><b>${nom.replace(/[<>&]/g, '')}</b><br>SIRET / RCS : ${sirFmt}<br>À partir du <b>${dateFr}</b></p>
-<p><b>Rien ne change pour vous</b> : mêmes règles, mêmes 20 %, mêmes contacts, même espace partenaire. Vos relevés et vos virements viendront de ${nom.replace(/[<>&]/g, '')}.</p>
-<p style="color:#4B5873;font-size:13px">Loc’Air · 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`;
+      const nomH = nom.replace(/[<>&]/g, '');
+      const html = require('./_lib/emailPartenaire').layoutPartenaire({
+        eyebrow: 'Convention · article 7',
+        titre: `Loc’Air devient <em style="font-style:italic;color:#BFD6FF">${nomH}</em>.`,
+        intro: `À partir du ${dateFr}. Rien ne change pour vous.`,
+        corps: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;background:#FFFFFF;border:2px solid #E3E9F4;border-radius:18px;margin:0 0 18px"><tr><td style="padding:16px 18px;font-family:'DM Sans',Arial,sans-serif;font-size:15px;line-height:1.5;color:#0E1726"><b style="font-size:18px">${nomH}</b><br>SIRET / RCS : ${sirFmt}<br>À partir du <b>${dateFr}</b></td></tr></table>
+<p style="margin:0;font-family:'DM Sans',Arial,sans-serif;font-size:15.5px;line-height:1.5;color:#0E1726">Mêmes règles, mêmes 20 %, mêmes contacts, même espace partenaire. Vos relevés et vos virements viendront de ${nomH}.</p>`,
+      });
       if (b.etape !== 'envoyer') return res.status(200).json({ apercu: true, destinataires: dest.map((p) => p.nom), sms, html });
       const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
       const cle = `transfert_${siret}`;
