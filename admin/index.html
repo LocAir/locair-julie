@@ -2927,11 +2927,13 @@ async function ckOutlookEtat(){
     if(!r.ok) return;
     // Bloqué = la dernière erreur est plus récente que le dernier envoi réussi.
     const tErr = e.derniere_erreur ? Date.parse(String(e.derniere_erreur).slice(0, 16) + ':00Z') : 0;
-    const bloque = e.relie && tErr && (!e.dernier_envoi_at || tErr > Date.parse(e.dernier_envoi_at));
+    // Safari ne lit pas « 2026-11-25 15:47:49+00 » : on le remet au format ISO.
+    const tEnv = e.dernier_envoi_at ? Date.parse(String(e.dernier_envoi_at).replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00')) : 0;
+    const bloque = e.relie && tErr && (!tEnv || tErr > tEnv);
     if(bloque){
       el.innerHTML = '<span style="color:#B42318;font-weight:700">⚠️ Outlook bloqué' + (/abuse|suspend/i.test(e.derniere_erreur) ? ' par Microsoft (compte à vérifier sur account.microsoft.com)' : '') + '.</span> Les e-mails partent de contact@locair.fr. <a href="#" onclick="ckOutlookRelier();return false"><b>Relier Outlook</b></a> · <a href="#" onclick="ckOutlookTest();return false">Essai</a>';
     } else if(e.relie){
-      el.innerHTML = '✓ Envoyé depuis <b>' + escHtml(e.boite) + '</b> · <a href="#" onclick="ckOutlookTest();return false">Essai</a>';
+      el.innerHTML = '✓ Envoyé depuis <b>' + escHtml(e.boite) + '</b> · <a href="#" onclick="ckOutlookTest();return false">Essai</a> · <a href="#" onclick="ckOutlookRelier();return false">Relier à nouveau</a>';
     } else if(e.table_manquante){
       el.textContent = 'Outlook : il manque la table outlook_connexion (SQL à coller dans Supabase).';
     } else if(!e.configure){
