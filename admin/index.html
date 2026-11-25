@@ -11612,7 +11612,7 @@ async function loadPointsRetrait(silent){
   }catch(e){ zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>'; }
 }
 function prListe(titre, icone, cls, lignes, vide){
-  const li = lignes.map(l => `<li><span><b>${escHtml(l.client)}${l.quantite>1?' × '+l.quantite:''}</b><small>${escHtml(l.point)} · n° ${escHtml(l.numero)}${l.jours_retard?' · '+l.jours_retard+' j de retard':''}</small></span>${l.tel?`<a href="tel:${escHtml(String(l.tel).replace(/\s/g,''))}">Appeler</a>`:''}</li>`).join('');
+  const li = lignes.map(l => `<li><span><b>${escHtml(l.client)}${l.quantite>1?' × '+l.quantite:''}</b><small>${escHtml(l.point)} · n° ${escHtml(l.numero)}${l.jours_retard!=null&&cls==='rouge'?' · '+l.jours_retard+' j de retard'+(l.rembourse?' · remboursé':''):''}</small></span>${l.tel?`<a href="tel:${escHtml(String(l.tel).replace(/\s/g,''))}">Appeler</a>`:''}${cls==='rouge'?`<button type="button" onclick="prRenduManuel(${Number(l.id)}, ${escAttr(JSON.stringify(l.client))}, this)">Débloquer</button>`:''}</li>`).join('');
   return `<div class="pr-col ${cls}"><h3><i aria-hidden="true">${icone}</i>${titre}<em>${lignes.length}</em></h3>${lignes.length?`<ul>${li}</ul>`:`<p class="pr-rien">${vide}</p>`}</div>`;
 }
 function prCarte(p){
@@ -11638,6 +11638,20 @@ function prCarte(p){
       ${!p.exemple && PR_DATA.stock_table ? `<button type="button" onclick="prStock(${escAttr(JSON.stringify(p.id))}, ${p.stock}, ${escAttr(JSON.stringify(p.nom))})">Stock</button>` : ''}
     </div>
   </div>`;
+}
+/* Retour pas validé au comptoir : l'appareil en retard bloque sa place au
+   point. Le gérant le note rendu à la main (raison obligatoire). */
+async function prRenduManuel(id, client, bt){
+  const raison = prompt(`Débloquer la place : l’appareil de ${client} est-il bien revenu au point ?\nÉcris la raison (ex. rapporté, retour oublié au comptoir) :`, '');
+  if(raison === null) return;
+  bt.disabled = true;
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'rendu_manuel', reservation_id:id, raison})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || 'Échec');
+    showToast('Retour noté · place débloquée ✓', 'success');
+    loadPointsRetrait(true);
+  }catch(e){ bt.disabled = false; showToast(e.message || 'Échec. Réessaie.', 'error'); }
 }
 async function prPassage(id, bt){
   bt.disabled = true;
@@ -11728,8 +11742,8 @@ function prAFaireListe(d){
       s:`${escHtml(x.client)} · ${escHtml(x.description||'')}${panne?' · remplacer avec la micro-box ('+mb+' dispo)':''}${x.jours?' · depuis '+x.jours+' j':''}`,
       b:`<button type="button" onclick="switchAdminTab('incidents')">Traiter</button>`});
   });
-  (d.aujourdhui.retards||[]).forEach(l => L.push({n:'urgent', i:'!', t:`Retard · ${escHtml(l.client)}`, s:`${escHtml(l.point)} · ${l.jours_retard} j de retard`,
-    b: l.tel ? `<button type="button" onclick="location.href='tel:${escHtml(String(l.tel).replace(/\s/g,''))}'">Appeler</button>` : ''}));
+  (d.aujourdhui.retards||[]).forEach(l => L.push({n:'urgent', i:'!', t:`Retard · ${escHtml(l.client)}`, s:`${escHtml(l.point)} · ${l.jours_retard} j de retard${l.rembourse?' · remboursé':''} · bloque sa place`,
+    b: (l.tel ? `<button type="button" onclick="location.href='tel:${escHtml(String(l.tel).replace(/\s/g,''))}'">Appeler</button> ` : '') + `<button type="button" onclick="prRenduManuel(${Number(l.id)}, ${escAttr(JSON.stringify(l.client))}, this)">Débloquer</button>`}));
   (d.aujourdhui.non_retires||[]).forEach(l => L.push({n:'jour', i:'?', t:`Jamais venu · ${escHtml(l.client)}`, s:`${escHtml(l.point)} · location finie le ${escHtml(String(l.date_fin||'').split('-').reverse().join('/'))}, appareil jamais retiré`,
     b: l.tel ? `<button type="button" onclick="location.href='tel:${escHtml(String(l.tel).replace(/\s/g,''))}'">Appeler</button>` : ''}));
   reels.filter(p => p.a_virer_cents > 0).forEach(p => L.push({n: jour > 5 ? 'urgent' : 'jour', i:'€',

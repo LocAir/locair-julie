@@ -341,7 +341,10 @@ bouton « Stock » de la carte du point, raison obligatoire, historique gardé
 le chiffre de `pointsRetrait.js` n'est que la valeur de départ), e-mail de
 confirmation au commerçant. **Appareil en retard** (décidé le 25/11/2026) :
 tant qu'il n'est pas rendu, il bloque sa place au point aujourd'hui et
-demain (`lignesEnRetard`, `api/_lib/clickCollect.js`). Contrôle quotidien (« À faire ») : « Stock
+demain (`lignesEnRetard`, `api/_lib/clickCollect.js`). Retour pas validé au
+comptoir : bouton **« Débloquer »** (Admin → Points de retrait → À faire et
+liste Retards ; gérant seulement, raison obligatoire, gardée sur la
+réservation) = appareil noté rendu, place libérée. Contrôle quotidien (« À faire ») : « Stock
 dépassé » quand les locations prévues sur 60 jours dépassent le stock d'un
 point, « Flotte dépassée » quand les points annoncent plus de climatiseurs
 que la flotte de la cellule ; selon
