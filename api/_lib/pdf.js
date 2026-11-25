@@ -49,14 +49,14 @@ function fmtDate(d) {
   if (!d) return '—';
   const date = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
 }
 
 function fmtDateHeure(d) {
   if (!d) return '—';
   const date = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 }
 
 function eur(cents) {

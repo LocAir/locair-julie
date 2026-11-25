@@ -54,7 +54,7 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
   const appareils = (reservAppareils || []).map(r => r.appareil).filter(Boolean);
 
   const now = new Date();
-  const annee = now.getUTCFullYear();
+  const annee = Number(require('./dates').todayParis().slice(0, 4)); // année à Nice (pas à Londres) : le 1er janvier entre 0 h et 1 h
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
   // recalculés en dur dans le contrat/la facture.
   const pricing = await getPricingConfig(supabase);
@@ -204,7 +204,7 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
   const avenantNumero = (avenantsExistants || []).length + 1;
 
   const now = new Date();
-  const annee = now.getUTCFullYear();
+  const annee = Number(require('./dates').todayParis().slice(0, 4)); // année à Nice (pas à Londres) : le 1er janvier entre 0 h et 1 h
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
   // recalculés en dur dans l'avenant/la facture.
   const pricing = await getPricingConfig(supabase);
@@ -326,7 +326,7 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
   if (!resa) return;
 
   const now = new Date();
-  const annee = now.getUTCFullYear();
+  const annee = Number(require('./dates').todayParis().slice(0, 4)); // année à Nice (pas à Londres) : le 1er janvier entre 0 h et 1 h
   const { data: numeroSeq, error: numeroErr } = await supabase.rpc('next_invoice_number', { p_annee: annee });
   if (numeroErr) throw numeroErr;
   const numero = invoiceNumber(annee, numeroSeq);
