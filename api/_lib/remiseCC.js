@@ -56,8 +56,11 @@ function R(status, body) { return { status, body }; }
 
 async function agir(supabase, r, partenaireId, action) {
     if (r.statut === 'en_attente') return R(409, { error: 'Le paiement de cette réservation n’est pas encore confirmé. Ne remettez pas l’appareil.' });
-    if (r.statut === 'annulee' || r.statut === 'remboursee') return R(409, { error: 'Cette réservation est annulée ou remboursée. Ne remettez pas l’appareil.' });
-    if (r.statut !== 'confirmee' && r.statut !== 'terminee') return R(409, { error: 'Cette réservation n’est pas active. Appelez Loc’Air : 06 63 79 87 56.' });
+    // Annulée ou remboursée : jamais de retrait. Mais si l'appareil est déjà
+    // chez le client (remboursé après le retrait), il doit pouvoir le rendre.
+    const dehorsRembourse = (r.statut === 'annulee' || r.statut === 'remboursee') && !!r.remis_at && !r.rendu_at;
+    if ((r.statut === 'annulee' || r.statut === 'remboursee') && !(dehorsRembourse && (action === 'rendre' || action === 'voir'))) return R(409, { error: 'Cette réservation est annulée ou remboursée. Ne remettez pas l’appareil.' });
+    if (r.statut !== 'confirmee' && r.statut !== 'terminee' && !dehorsRembourse) return R(409, { error: 'Cette réservation n’est pas active. Appelez Loc’Air : 06 63 79 87 56.' });
 
     // Fin réelle de la location : la date de la réservation d'origine est
     // mise à jour à chaque prolongation payée (webhook.js).
@@ -105,8 +108,9 @@ async function agir(supabase, r, partenaireId, action) {
       if (e.rendu) return R(200, { ok: true, deja: true, reservation: fiche });
       if (!e.peut_rendre) return R(409, { error: `Le retrait est prévu le ${dateFrCourte(r.date_debut)} : l’appareil n’est pas encore parti.` });
       const maintenant = new Date().toISOString();
+      // Remboursée : le statut reste « remboursee » (pas de commission qui revient).
       const { data: maj, error } = await supabase.from('reservations')
-        .update({ rendu_at: maintenant, rendu_par_partenaire_id: partenaireId, statut: 'terminee' })
+        .update(dehorsRembourse ? { rendu_at: maintenant, rendu_par_partenaire_id: partenaireId } : { rendu_at: maintenant, rendu_par_partenaire_id: partenaireId, statut: 'terminee' })
         .eq('id', r.id).is('rendu_at', null).select('id');
       if (error) {
         console.error('[partenaire-remise rendre]', error.message);
