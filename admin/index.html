@@ -2925,6 +2925,7 @@ async function ckOutlookEtat(){
     const r = await fetch(API('outlook'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'etat'})});
     const e = await r.json();
     if(!r.ok) return;
+    if(!e.envoi_outlook){ el.innerHTML = '✓ Envoyé depuis <b>partenaires@locair.fr</b> · réponses dans ta boîte Outlook'; return; }
     // Bloqué = la dernière erreur est plus récente que le dernier envoi réussi.
     const tErr = e.derniere_erreur ? Date.parse(String(e.derniere_erreur).slice(0, 16) + ':00Z') : 0;
     // Safari ne lit pas « 2026-11-25 15:47:49+00 » : on le remet au format ISO.

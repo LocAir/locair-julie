@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
   if (!auth.ok) return res.status(401).json({ error: 'Non autorisé' });
   const action = String((req.body || {}).action || 'etat');
 
-  if (action === 'etat') return res.json({ ok: true, ...(await outlook.etat(supabase)), boite: outlook.BOITE });
+  if (action === 'etat') return res.json({ ok: true, ...(await outlook.etat(supabase)), boite: outlook.BOITE, envoi_outlook: process.env.OUTLOOK_ENVOI === 'on' });
 
   if (auth.role !== 'administrateur') return res.status(403).json({ error: 'Réservé au gérant.' });
 
