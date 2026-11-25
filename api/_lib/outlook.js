@@ -17,7 +17,13 @@ const { getSupabase } = require('./supabase');
 const BOITE = 'partenaires.locair@outlook.com';
 const TENANT = process.env.MS_TENANT || 'consumers'; // compte outlook.com = compte personnel
 const SCOPES = 'offline_access User.Read Mail.Send';
-const TIMEOUT_MS = 20000;
+const TIMEOUT_MS = 10000;
+// Après un échec, on laisse Outlook de côté 10 minutes : les envois
+// suivants partent directement par Brevo. Sans ça, une boîte Outlook lente
+// ferait attendre chaque e-mail du cron quotidien (relevés, relances)
+// jusqu'à dépasser la limite de 60 s de Vercel.
+const PAUSE_APRES_ECHEC_MS = 10 * 60 * 1000;
+let _pauseJusqua = 0;
 
 function configure() {
   return Boolean(process.env.MS_CLIENT_ID && process.env.MS_CLIENT_SECRET);
@@ -98,6 +104,7 @@ async function relier(code, supabase) {
   });
   if (error) throw new Error(error.message);
   _cache = { token: j.access_token, exp: Date.now() + (Number(j.expires_in) || 3600) * 1000 };
+  _pauseJusqua = 0;
   return compte;
 }
 
@@ -131,6 +138,7 @@ async function enBase64(a) {
 // Renvoie { ok: true } ou { ok: false, error } — ne jette jamais.
 async function sendOutlookEmail({ to, subject, html, attachments }) {
   if (!configure() || !to) return { ok: false, error: 'Outlook pas configuré' };
+  if (Date.now() < _pauseJusqua) return { ok: false, error: 'Outlook en pause après un échec récent' };
   let supabase;
   try { supabase = getSupabase(); } catch (e) { return { ok: false, error: e.message }; }
   try {
@@ -166,6 +174,7 @@ async function sendOutlookEmail({ to, subject, html, attachments }) {
     return { ok: true, via: 'outlook' };
   } catch (e) {
     console.error('[Outlook]', e.message);
+    if (e.message !== 'Outlook pas relié') _pauseJusqua = Date.now() + PAUSE_APRES_ECHEC_MS;
     await noter(supabase, { derniere_erreur: `${new Date().toISOString().slice(0, 16)} · ${e.message}`.slice(0, 400) });
     return { ok: false, error: e.message };
   }
