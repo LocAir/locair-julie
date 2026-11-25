@@ -351,6 +351,12 @@ reliée (admin → accueil → Envoi rapide → « Relier Outlook » ; variables
 Vercel `MS_CLIENT_ID`, `MS_CLIENT_SECRET` ; table `outlook_connexion`,
 `supabase/migration_2026-11-25_outlook.sql`). Sinon, ou si Outlook refuse,
 Brevo prend le relais depuis contact@locair.fr : l'e-mail part toujours.
+**Changé le 25/11/2026 au soir (accord du propriétaire) :** Microsoft a
+bloqué puis bridé la boîte gratuite (e-mails « partis » mais jamais reçus).
+Les e-mails partenaires partent donc de **partenaires@locair.fr par Brevo**
+(nom « Loc’Air Partenaires », réponses vers partenaires.locair@outlook.com ;
+repli contact@locair.fr si Brevo refuse l'adresse). L'envoi par Outlook ne
+se fait plus que si la variable Vercel `OUTLOOK_ENVOI=on`.
 **Relié et testé le 25/11/2026** (appli Azure « Loc'air site », adresse de
 retour exacte `https://locair.fr/api/outlook`, nom d'expéditeur « Loc'Air
 Partenaires »). L'agent a aussi accès à Vercel (équipe `loc-air`, projet

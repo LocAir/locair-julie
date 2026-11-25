@@ -33,27 +33,37 @@ const BREVO_TIMEOUT_MS = 20000;
 // jusqu'ici marqué comme un envoi réussi, sans aucune trace de l'échec.
 // `replyTo` (optionnel) : adresse qui reçoit les réponses (ex. partenaires.locair@outlook.com
 // pour les commerçants, voir CLAUDE.md). L'expéditeur reste contact@locair.fr.
-// Décidé le 25/11/2026 : tout e-mail « partenaires » (réponses vers
-// partenaires.locair@outlook.com) part de la boîte Outlook elle-même quand
-// elle est reliée (api/_lib/outlook.js). En cas de souci, Brevo prend le
-// relais : l'e-mail part quand même, depuis contact@locair.fr.
+// E-mails « partenaires » (réponses vers partenaires.locair@outlook.com) :
+// décidé le 25/11/2026 au soir, ils partent de partenaires@locair.fr par
+// Brevo (notre domaine, bonne réputation : ils arrivent en boîte de
+// réception). La boîte Outlook gratuite avait été bloquée par Microsoft, puis
+// ses e-mails n'arrivaient pas. Les réponses vont toujours dans Outlook.
+// L'envoi depuis Outlook reste possible avec la variable Vercel OUTLOOK_ENVOI=on.
+const EXPEDITEUR_PARTENAIRES = 'partenaires@locair.fr';
 async function sendBrevoEmail(opts) {
   const { to, replyTo, scheduledAt } = opts || {};
-  if (to && !scheduledAt && replyTo) {
+  const partenaire = !!replyTo && /^partenaires\.locair@outlook\.com$/i.test(String(replyTo).trim());
+  if (to && !scheduledAt && partenaire && process.env.OUTLOOK_ENVOI === 'on') {
     const outlook = require('./outlook');
-    if (outlook.configure() && outlook.estAdressePartenaires(replyTo)) {
+    if (outlook.configure()) {
       const r = await outlook.sendOutlookEmail(opts);
       if (r.ok) return r;
     }
   }
+  if (partenaire) {
+    const r = await envoyerParBrevo({ ...opts, senderEmail: EXPEDITEUR_PARTENAIRES, senderName: opts.senderName || 'Loc’Air Partenaires' });
+    // Adresse pas encore acceptée par Brevo : on n'en perd pas l'e-mail.
+    if (!r.ok && /sender|expéditeur|not valid|invalid/i.test(String(r.error || ''))) return envoyerParBrevo(opts);
+    return r;
+  }
   return envoyerParBrevo(opts || {});
 }
 
-async function envoyerParBrevo({ to, subject, html, attachments, senderName, scheduledAt, replyTo }) {
+async function envoyerParBrevo({ to, subject, html, attachments, senderName, senderEmail, scheduledAt, replyTo }) {
   if (!process.env.BREVO_API_KEY || !to) return { ok: false, error: 'BREVO_API_KEY ou destinataire manquant' };
   try {
     const body = {
-      sender:      { name: senderName || "Loc'Air", email: 'contact@locair.fr' },
+      sender:      { name: senderName || "Loc'Air", email: senderEmail || 'contact@locair.fr' },
       to:          [{ email: to }],
       subject,
       htmlContent: html,
