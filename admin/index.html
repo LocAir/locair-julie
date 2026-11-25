@@ -1032,6 +1032,13 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .ck-kpi b{display:block;font:900 30px var(--body);letter-spacing:-.04em;line-height:1}
 .ck-kpi span{display:block;font-size:13px;color:var(--grey);margin-top:6px}
 .ck-reseau{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(11,30,68,.05);cursor:pointer}
+.ck-envoi{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(11,30,68,.05);margin:0 0 12px}
+.ck-envoi-l{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-top:10px}
+.ck-envoi input{width:100%;min-width:0;box-sizing:border-box;border:1.5px solid #DDE6F5;border-radius:12px;padding:11px 12px;font:500 15px var(--body);background:#F4F7FC}
+.ck-envoi button{border:0;border-radius:100px;background:#1A5EDB;color:#fff;font:800 15px var(--body);padding:12px 20px;cursor:pointer;white-space:nowrap}
+.ck-envoi button:disabled{opacity:.5}
+.ck-envoi small{display:block;color:var(--grey);font-size:12.5px;margin-top:8px}
+@media (max-width:600px){.ck-envoi-l{grid-template-columns:1fr 1fr}.ck-envoi-l input:first-child{grid-column:1/-1}.ck-envoi-l button{grid-column:1/-1}}
 .ck-r1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .ck-r1 b{font:900 26px var(--body);letter-spacing:-.03em}
 .ck-jauge{height:10px;background:#EEF1F6;border-radius:100px;overflow:hidden;margin:10px 0 8px}
@@ -2845,7 +2852,7 @@ function cockpitHtml(d, al, pr){
   if(vir) ajoute('jour', `${vir} virement${vir>1?'s':''} à faire`, 'Transporteurs et partenaires', 'Virer', "switchAdminTab('virements')");
   if(pr && pr.points && typeof prAFaireListe === 'function'){
     // Les urgences du Click & Collect (stock dépassé, passage agent, 20 % à virer…)
-    prAFaireListe(pr).forEach(x => items.push({n: x.n, t: x.t, s: x.s, b: x.b ? x.b.replace('<button type="button"', '<button type="button" class="ck-btn cl"') : ''}));
+    prAFaireListe(pr).forEach(x => items.push({n: x.n, t: x.t, s: x.s, b: x.b ? x.b.split('<button type="button"').join('<button type="button" class="ck-btn cl"') : ''}));
   }
   const ordre = {urgent:0, jour:1, info:2};
   // À urgence égale, une panne ou un signalement passe avant le reste.
@@ -2853,7 +2860,7 @@ function cockpitHtml(d, al, pr){
   const poids = (x) => critique(x) ? 0 : ordre[x.n] * 10 + 1;
   items.sort((a, b) => poids(a) - poids(b));
   const top = items.slice(0, 4);
-  top.forEach(x => { if(critique(x)){ x.n = 'urgent'; x.b = (x.b||'').replace('class="ck-btn cl"', 'class="ck-btn"'); } });
+  top.forEach(x => { if(critique(x)){ x.n = 'urgent'; x.b = (x.b||'').split('class="ck-btn cl"').join('class="ck-btn"'); } });
   const couleur = {urgent:'ck-rouge', jour:'ck-orange', info:'ck-bleu'};
   const jour = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', timeZone:'Europe/Paris'});
   const prenom = (NOM_COMPTE || '').split(/\s+/)[0];
@@ -2869,6 +2876,16 @@ function cockpitHtml(d, al, pr){
     ${top.length ? `<p class="ck-titre">À faire aujourd’hui</p>
     <div class="ck-afaire">${top.map(x => `<div class="ck-act ${couleur[x.n]||''}"><b>${x.t}</b><small>${x.s}</small>${x.b||''}</div>`).join('')}</div>
     ${items.length > 4 ? `<button type="button" class="ck-plus" onclick="PR_ONGLET='afaire';switchAdminTab('pointsretrait')">Voir les ${items.length} choses à faire →</button>` : ''}` : ''}
+    <div class="ck-envoi">
+      <p class="ck-titre" style="margin:0">✉️ Envoi rapide</p>
+      <div class="ck-envoi-l">
+        <input id="ck-env-email" type="email" inputmode="email" placeholder="E-mail" autocomplete="off" aria-label="E-mail">
+        <input id="ck-env-prenom" placeholder="Prénom" autocomplete="off" aria-label="Prénom (facultatif)">
+        <input id="ck-env-commerce" placeholder="Commerce" autocomplete="off" aria-label="Commerce (facultatif)">
+        <button type="button" id="ck-env-ok" onclick="ckEnvoiRapide(this)">Envoyer</button>
+      </div>
+      <small id="ck-env-info">« Merci pour votre intérêt pour Loc’Air » + présentation + convention + bouton « Signer en ligne ».</small>
+    </div>
     <div class="ck-kpis">
       <div class="ck-kpi"><b>${eurosMilliers(d.ca_euros)}</b><span>Chiffre · ${({jour:'aujourd’hui','7j':'7 jours','30j':'30 jours',mois:'ce mois'})[CURRENT_DASHBOARD_PERIODE]||'période'}</span></div>
       <div class="ck-kpi"><b>${(d.unites_occupees||0) + (r ? r.dehors||0 : 0)}</b><span>Climatiseurs chez des clients</span></div>
@@ -2881,6 +2898,20 @@ function cockpitHtml(d, al, pr){
       <small>${cel.points_ouverts} point${cel.points_ouverts>1?'s':''} ouvert${cel.points_ouverts>1?'s':''} · ${cel.micro_box} en micro-box${cel.pub ? ' · pub ' + ({normale:'normale', baisser:'à baisser', pause:'en pause'})[cel.pub] : ''}</small>
     </div>` : ''}
   </div>`;
+}
+// Envoi rapide (accueil) : quelqu'un rencontré par hasard reçoit tous les
+// supports d'un coup. La fiche apparaît dans Points de retrait → Terrain.
+async function ckEnvoiRapide(btn){
+  const email = document.getElementById('ck-env-email').value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Tape un e-mail valide.', 'error'); document.getElementById('ck-env-email').focus(); return; }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    await ptApi({action:'envoi_rapide', email, prenom:document.getElementById('ck-env-prenom').value, enseigne:document.getElementById('ck-env-commerce').value});
+    showToast('Envoyé à ' + email + ' ✓', 'success');
+    ['ck-env-email','ck-env-prenom','ck-env-commerce'].forEach(i => { document.getElementById(i).value = ''; });
+    document.getElementById('ck-env-info').textContent = 'Dernier envoi : ' + email + ' ✓ · suivi dans Points de retrait → Terrain.';
+  }catch(e){ showToast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Envoyer';
 }
 async function loadDashboard(periode, silent){
   CURRENT_DASHBOARD_PERIODE = periode;

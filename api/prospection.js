@@ -233,6 +233,37 @@ module.exports = async (req, res) => {
       return res.json({ ok: true, fiche: data });
     }
 
+    // Envoi rapide (accueil de l'admin, 25/11/2026) : quelqu'un rencontré par
+    // hasard (dans la rue, au téléphone) → « Merci pour votre intérêt pour
+    // Loc'Air » + tous les supports (présentation + convention + bouton
+    // « Signer en ligne »). La personne entre dans le suivi Terrain.
+    if (action === 'envoi_rapide') {
+      const em = clip(b.email, 160).toLowerCase();
+      if (!em || !emailOk(em)) return res.status(400).json({ error: 'E-mail incorrect.' });
+      const prenom = clip(b.prenom, 60), enseigne = clip(b.enseigne, 120);
+      // Même e-mail déjà suivi (pas encore signé) : on réutilise sa fiche.
+      const { data: deja } = await supabase.from('prospection_points').select('*').eq('email', em).neq('statut', 'signe').order('id', { ascending: false }).limit(1);
+      let f = deja && deja[0];
+      if (f) {
+        const maj = { updated_at: new Date().toISOString() };
+        if (prenom && !f.gerant) maj.gerant = prenom;
+        if (enseigne && !f.enseigne) maj.enseigne = enseigne;
+        if (f.statut === 'refuse' || f.statut === 'session') maj.statut = 'en_attente_signature';
+        const { data: g } = await supabase.from('prospection_points').update(maj).eq('id', f.id).select('*').single();
+        f = g || { ...f, ...maj };
+      } else {
+        const ligne = { session_token: crypto.randomBytes(16).toString('hex'), statut: 'en_attente_signature', email: em, gerant: prenom || null, enseigne: enseigne || null, zone: ZONES.includes(b.zone) ? b.zone : null, prospecteur: qui, notes: 'Envoi rapide' };
+        const { data, error } = await supabase.from('prospection_points').insert(ligne).select('*').single();
+        if (pasDeTable(error)) return res.status(503).json({ error: MSG_TABLE });
+        if (error) throw error;
+        f = data;
+      }
+      const r = await envoyerDocuments(f, { interet: true }).catch(() => ({ ok: false }));
+      if (!r || !r.ok) return res.status(502).json({ error: 'L’e-mail n’est pas parti. Réessayez.' });
+      await supabase.from('prospection_points').update({ docs_envoyes_at: new Date().toISOString() }).eq('id', f.id).then(() => {}, () => {});
+      return res.json({ ok: true, email: em });
+    }
+
     // Option B — envoyer la présentation + la convention pré-remplie (lien pour signer).
     if (action === 'envoyer') {
       const f = await lireFiche();

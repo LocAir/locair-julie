@@ -25,13 +25,15 @@ const chiffres = () => {
 const contact = `<p style="font-size:13px;color:#4B5873;margin:18px 0 0">Une question : ${TEL} · <a href="mailto:${REPLY}" style="color:#1A5EDB">${REPLY}</a></p>`;
 
 // Email 1 — après la visite ou l'appel : présentation + convention pré-remplie + lien pour signer.
-function emailDocuments(f, { relance } = {}) {
+function emailDocuments(f, { relance, interet } = {}) {
   const p = prenomDe(f.gerant || f.signataire);
   const html = wrap({
     title: p ? `Bonjour ${esc(p)},` : 'Bonjour,',
-    intro: relance
-      ? `Suite à notre passage chez ${esc(f.enseigne || 'vous')} : voici les deux documents.`
-      : 'Merci pour notre échange. Voici les deux documents.',
+    intro: interet
+      ? 'Merci pour votre intérêt pour Loc’Air. Des climatiseurs en Click &amp; Collect chez des commerçants, de Nice à Cannes : voici tous les documents.'
+      : relance
+        ? `Suite à notre passage chez ${esc(f.enseigne || 'vous')} : voici les deux documents.`
+        : 'Merci pour notre échange. Voici les deux documents.',
     bodyHtml: `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px">
         <tr><td style="padding:4px 10px 4px 0;font-size:18px">📎</td><td style="font-size:15px"><b>La présentation</b> — 2 minutes de lecture</td></tr>
@@ -42,7 +44,7 @@ function emailDocuments(f, { relance } = {}) {
       ${contact}`,
     ctaHref: lienSigner(f), ctaLabel: 'Signer en ligne',
   });
-  return { subject: `${f.enseigne ? f.enseigne + ' — ' : ''}votre point de retrait Loc’Air`, html };
+  return { subject: interet ? 'Merci pour votre intérêt pour Loc’Air' : `${f.enseigne ? f.enseigne + ' — ' : ''}votre point de retrait Loc’Air`, html };
 }
 
 // Email 2 — convention signée.
@@ -87,11 +89,11 @@ const MODELE_AVANT_PASSAGE = {
 };
 
 // Envoie la présentation + la convention (pré-remplie, ou signée) au commerçant.
-async function envoyerDocuments(f, { signaturePng, relance } = {}) {
+async function envoyerDocuments(f, { signaturePng, relance, interet } = {}) {
   if (!f || !f.email) return { ok: false, error: 'Pas d’e-mail.' };
   const signee = !!(f.signe_at && signaturePng);
   const pdf = await generateConventionPdf(f, signee ? signaturePng : null);
-  const { subject, html } = signee ? emailSignee(f) : emailDocuments(f, { relance });
+  const { subject, html } = signee ? emailSignee(f) : emailDocuments(f, { relance, interet });
   const nomConv = `Convention-Loc-Air-${String(f.enseigne || 'point-de-retrait').replace(/[^\p{L}\p{N}]+/gu, '-').slice(0, 40)}${signee ? '-signee' : ''}.pdf`;
   return sendBrevoEmail({
     to: f.email, subject, html, replyTo: REPLY, senderName: 'Loc’Air Partenaires',
