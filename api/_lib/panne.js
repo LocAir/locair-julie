@@ -60,7 +60,7 @@ async function appareilsLibresAuPoint(supabase, point) {
   const jour = todayParis();
   const occ = await occupationParPoint(supabase, [point], jour, addDays(jour, 1), { avecAttente: false }).catch(() => ({}));
   const enAttente = await missionsOuvertesAuPoint(supabase, point);
-  const stock = point.stock || STOCK_PAR_DEFAUT;
+  const stock = Number.isInteger(point.stock) ? point.stock : STOCK_PAR_DEFAUT; // 0 = point vidé (admin) : rien à échanger
   return stock - (occ[point.id] || 0) - enAttente.length;
 }
 
