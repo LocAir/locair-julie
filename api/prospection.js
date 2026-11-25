@@ -90,7 +90,7 @@ module.exports = async (req, res) => {
     }
 
     // ══ CÔTÉ COMMERÇANT (lien de session, sans compte) ══════════════════════
-    if (['voir', 'accepter', 'signer', 'renvoyer'].includes(action)) {
+    if (['voir', 'accepter', 'signer', 'renvoyer', 'envoyer_docs'].includes(action)) {
       const ip = getClientIp(req);
       if (await isRateLimited(supabase, `prospection-pub:${ip}`, 30, 10).catch(() => false)) return res.status(429).json({ error: 'Trop d’essais. Réessayez dans quelques minutes.' });
       const { fiche: f, error } = await ficheParToken(supabase, b.s);
@@ -100,6 +100,22 @@ module.exports = async (req, res) => {
         return res.status(404).json({ error: 'Ce lien n’est plus valable. Appelez le 06 63 79 87 56.' });
       }
       if (action === 'voir') return res.json({ ok: true, fiche: publicFiche(f) });
+
+      // 2e temps de « OK » : envoi des documents. On « réserve » l'envoi
+      // (docs_envoyes_at posé seulement s'il était vide) pour ne jamais
+      // envoyer deux fois, puis on l'efface si l'envoi échoue.
+      if (action === 'envoyer_docs') {
+        if (f.statut === 'signe' || !f.capacite || !f.email) return res.status(400).json({ error: 'Rien à envoyer.' });
+        const maintenant = new Date().toISOString();
+        const { data: pris } = await supabase.from('prospection_points').update({ docs_envoyes_at: maintenant }).eq('id', f.id).is('docs_envoyes_at', null).select('id').maybeSingle();
+        if (!pris) return res.json({ ok: true, deja: true });
+        const r = await envoyerDocuments({ ...f, docs_envoyes_at: maintenant }).catch(() => ({ ok: false }));
+        if (!r || !r.ok) {
+          await supabase.from('prospection_points').update({ docs_envoyes_at: null }).eq('id', f.id).then(() => {}, () => {});
+          return res.status(502).json({ error: 'L’e-mail n’est pas encore parti. Touchez « Renvoyer ».' });
+        }
+        return res.json({ ok: true });
+      }
 
       // « Pas reçu ? Renvoyer » (écran « C'est envoyé », 25/11/2026) :
       // 3 envois en plus au maximum par fiche et par jour.
@@ -139,6 +155,7 @@ module.exports = async (req, res) => {
           if (await isRateLimited(supabase, cle, 3, 1440)) return res.status(429).json({ error: 'Trop de changements d’e-mail aujourd’hui. Appelez le 06 63 79 87 56.' });
           await recordFailedAttempt(supabase, cle);
         }
+        if (!emailEnvoye) patch.docs_envoyes_at = null;
         let { data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle();
         // Colonne tel_commerce pas encore créée (SQL du 25/11 pas collé) : on garde le numéro dans les notes.
         if (e2 && patch.tel_commerce && /tel_commerce/.test(String(e2.message || ''))) {
@@ -148,14 +165,10 @@ module.exports = async (req, res) => {
         }
         if (e2) throw e2;
         pushToAdmin(supabase, { title: `✅ OK commerçant — ${patch.enseigne || f.enseigne || 'point ' + f.id}`, body: `${capacite} climatiseurs${email ? ' · ' + email : ''}`, tag: `prospection-ok-${f.id}` }).catch(() => {});
-        // Envoi des documents tout de suite (une seule fois, même si le
-        // commerçant retouche « OK »).
-        if (!emailEnvoye) {
-          const { data: complete } = await supabase.from('prospection_points').select('*').eq('id', f.id).maybeSingle();
-          const r = await envoyerDocuments(complete || { ...f, ...patch }).catch(() => ({ ok: false }));
-          if (r && r.ok) { emailEnvoye = true; await supabase.from('prospection_points').update({ docs_envoyes_at: new Date().toISOString() }).eq('id', f.id).then(() => {}, () => {}); }
-        }
-        return res.json({ ok: true, fiche: publicFiche(data || { ...f, ...patch }), email_envoye: emailEnvoye });
+        // Rapidité (25/11/2026) : on répond tout de suite. L'e-mail (PDF +
+        // pièces jointes) part par un 2e appel « envoyer », lancé par la page
+        // pendant que le commerçant voit déjà « C'est envoyé ».
+        return res.json({ ok: true, fiche: publicFiche(data || { ...f, ...patch }), email_envoye: emailEnvoye ? true : null, a_envoyer: !emailEnvoye });
       }
 
       // signer
