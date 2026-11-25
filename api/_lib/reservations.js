@@ -331,9 +331,9 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
   const sig = await getSignature(supabase);
   const escCC = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const html = cc ? withSignature(lang === 'es'
-    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">¡Ampliación confirmada, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} día(s) más</b> · pagado ${escCC(amount)}.</p><p>Devuelve el aire acondicionado al punto <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) el <b>${escCC(cc.retour)}</b>, en su horario de apertura.</p>${refOrigine ? `<p>Tu número de pedido no cambia: <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Tu reserva: <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`
+    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">¡Ampliación confirmada, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} día(s) más</b> · pagado ${escCC(amount)}.</p><p>Devuelve el aire acondicionado al punto <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) el <b>${escCC(cc.retour)}</b>, en su horario de apertura.</p>${refOrigine ? `<p>Tu número de pedido no cambia: <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Tu reserva: <a href="https://www.locair.fr/client?lang=es">locair.fr/client</a></p></div>`
     : lang === 'en'
-    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Extension confirmed, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} extra day(s)</b> · paid ${escCC(amount)}.</p><p>Bring the air conditioner back to <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) on <b>${escCC(cc.retour)}</b>, during opening hours.</p>${refOrigine ? `<p>Your order number stays the same: <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Your booking: <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`
+    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Extension confirmed, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} extra day(s)</b> · paid ${escCC(amount)}.</p><p>Bring the air conditioner back to <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) on <b>${escCC(cc.retour)}</b>, during opening hours.</p>${refOrigine ? `<p>Your order number stays the same: <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Your booking: <a href="https://www.locair.fr/client?lang=en">locair.fr/client</a></p></div>`
     : `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Prolongation confirmée, ${escCC(prenom)} !</h2><p><b>${Number(jours) || 1} jour(s) en plus</b> · payé ${escCC(amount)}.</p><p>Rapportez le climatiseur au point <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) le <b>${escCC(cc.retour)}</b>, aux horaires d’ouverture.</p>${refOrigine ? `<p>Votre numéro de commande ne change pas : <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Votre réservation : <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`, sig)
   : withSignature(tplProlongConfirmation({
     prenom: prenom || '', nom: nom || '', jours: jours || 1,
@@ -451,7 +451,7 @@ async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}
   const ref = resa.ref || '';
   let content;
   if (lang === 'en') {
-    content = `Hello ${prenom},\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n- extend your rental, or\n- choose your collection time slot\n\nYour order number: ${ref}\n\nhttps://www.locair.fr/client\n\nHave a great day.\nAly from Loc'Air`;
+    content = `Hello ${prenom},\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n- extend your rental, or\n- choose your collection time slot\n\nYour order number: ${ref}\n\nhttps://www.locair.fr/client?lang=en\n\nHave a great day.\nAly from Loc'Air`;
   } else if (lang === 'zh') {
     content = `您好 ${prenom}，\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n- 续租，或\n- 选择取回时间段\n\n您的订单编号：${ref}\n\nhttps://www.locair.fr/client\n\n祝您愉快。\nLoc'Air的Aly`;
   } else if (lang === 'ru') {
@@ -532,7 +532,7 @@ async function sendRelanceProlongationWhatsapp(supabase, resa, { force = false }
     content = `[template:${tplName}] prenom=${prenom} ref=${ref}`;
   } else {
     if (lang === 'en') {
-      content = `Hello ${prenom} 👋\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n• Extend your rental\n• Choose your collection time slot\n\nYour order number: *${ref}*\n\nhttps://www.locair.fr/client\n\nHave a great day!\n_Aly from Loc'Air_`;
+      content = `Hello ${prenom} 👋\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n• Extend your rental\n• Choose your collection time slot\n\nYour order number: *${ref}*\n\nhttps://www.locair.fr/client?lang=en\n\nHave a great day!\n_Aly from Loc'Air_`;
     } else if (lang === 'zh') {
       content = `您好 ${prenom} 👋\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n• 续租\n• 选择取回时间段\n\n您的订单编号：*${ref}*\n\nhttps://www.locair.fr/client\n\n祝您愉快！\n_Loc'Air的Aly_`;
     } else if (lang === 'ru') {
