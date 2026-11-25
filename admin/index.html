@@ -2888,6 +2888,7 @@ function cockpitHtml(d, al, pr){
       </div>
       <button type="button" class="ck-env-qr" onclick="location.href='/prospection?visite=1'">📱 Faire scanner le QR code — il tape son e-mail lui-même</button>
       <small id="ck-env-info">« Merci pour votre intérêt pour Loc’Air » + présentation + convention + bouton « Signer en ligne ».</small>
+      <small id="ck-outlook"></small>
     </div>
     <div class="ck-kpis">
       <div class="ck-kpi"><b>${eurosMilliers(d.ca_euros)}</b><span>Chiffre · ${({jour:'aujourd’hui','7j':'7 jours','30j':'30 jours',mois:'ce mois'})[CURRENT_DASHBOARD_PERIODE]||'période'}</span></div>
@@ -2902,6 +2903,49 @@ function cockpitHtml(d, al, pr){
     </div>` : ''}
   </div>`;
 }
+// Boîte Outlook partenaires (25/11/2026) : les e-mails aux commerçants
+// partent de partenaires.locair@outlook.com quand elle est reliée
+// (api/outlook.js). Sinon, ils partent quand même, par Brevo.
+async function ckOutlookEtat(){
+  const el = document.getElementById('ck-outlook'); if(!el) return;
+  try{
+    const r = await fetch(API('outlook'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'etat'})});
+    const e = await r.json();
+    if(!r.ok) return;
+    if(e.relie){
+      el.innerHTML = '✓ Envoyé depuis <b>' + escHtml(e.boite) + '</b>' + (e.derniere_erreur ? ' · <span style="color:#B42318">dernier souci : ' + escHtml(e.derniere_erreur) + '</span>' : '') + ' · <a href="#" onclick="ckOutlookTest();return false">Essai</a>';
+    } else if(e.table_manquante){
+      el.textContent = 'Outlook : il manque la table outlook_connexion (SQL à coller dans Supabase).';
+    } else if(!e.configure){
+      el.textContent = 'Envoyé par le site (contact@locair.fr). Outlook pas encore réglé dans Vercel.';
+    } else {
+      el.innerHTML = 'Envoyé par le site (contact@locair.fr). <a href="#" onclick="ckOutlookRelier();return false"><b>Relier Outlook</b></a>';
+    }
+  }catch(_){}
+}
+async function ckOutlookRelier(){
+  try{
+    const r = await fetch(API('outlook'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'lien'})});
+    const e = await r.json();
+    if(!r.ok) throw new Error(e.error || 'Erreur');
+    location.href = e.url;
+  }catch(err){ showToast(err.message, 'error'); }
+}
+async function ckOutlookTest(){
+  try{
+    const r = await fetch(API('outlook'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'test'})});
+    const e = await r.json();
+    if(!r.ok) throw new Error(e.error || 'Erreur');
+    showToast('E-mail d’essai envoyé depuis Outlook ✓', 'success');
+  }catch(err){ showToast(err.message, 'error'); }
+  ckOutlookEtat();
+}
+(function(){
+  const q = new URLSearchParams(location.search), o = q.get('outlook');
+  if(!o) return;
+  setTimeout(() => showToast(o === 'ok' ? 'Outlook relié ✓ Les e-mails partenaires partent de ta boîte.' : 'Outlook : ' + (q.get('msg') || 'échec'), o === 'ok' ? 'success' : 'error'), 800);
+  history.replaceState(null, '', location.pathname);
+})();
 // Envoi rapide (accueil) : quelqu'un rencontré par hasard reçoit tous les
 // supports d'un coup. La fiche apparaît dans Points de retrait → Terrain.
 async function ckEnvoiRapide(btn){
@@ -2994,6 +3038,7 @@ async function loadDashboard(periode, silent){
       ${dashboardPartenairesHtml(d.partenaires)}
       ${d.agregat ? parVilleTableHtml(d.par_ville||[]) : ''}
     `;
+    ckOutlookEtat();
     // Chargée à part (pas dans le Promise.all principal) : c'est un
     // complément, pas une donnée critique — inutile de retarder l'affichage
     // du reste du tableau de bord si elle est lente.
