@@ -342,9 +342,7 @@ async function runReleveCommercants(supabase) {
     const pt = r.point_retrait_id ? getPointRetrait(r.point_retrait_id) : null;
     const pa = (partenaires || []).find((z) => z.id === r.partenaire_id);
     const pct = pt && pt.commission_pct ? pt.commission_pct : (pa && pa.taux_commission_pct) || null;
-    let ca = r.prix_total_cents || 0;
-    if (pct && r.partenaire_commission_cents < Math.round(ca * pct / 100) - 1) ca = Math.round(r.partenaire_commission_cents * 100 / pct);
-    x.ca += ca; x.com += r.partenaire_commission_cents || 0;
+    x.ca += require('./_lib/encaisse').encaisseCents(r.prix_total_cents, r.partenaire_commission_cents, pct); x.com += r.partenaire_commission_cents || 0;
   }
   const eur = (c) => (c / 100).toFixed(2).replace('.', ',') + ' €';
   let envoyes = 0;

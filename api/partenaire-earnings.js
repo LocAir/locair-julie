@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
           id: r.id, ref: r.ref,
           client: fullName.length > 30 ? fullName.slice(0, 29) + '…' : (fullName || null),
           date_debut: r.date_debut, date_fin: r.date_fin,
-          montant_cents: r.prix_total_cents || 0,
+          montant_cents: require('./_lib/encaisse').encaisseCents(r.prix_total_cents, r.partenaire_commission_cents, tauxAffiche(partenaireRow)),
           commission_cents: r.partenaire_commission_cents || 0,
           payee: r.partenaire_commission_payee,
           created_at: r.created_at,

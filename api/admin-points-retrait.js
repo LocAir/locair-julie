@@ -14,6 +14,7 @@ const { roleHasAccess } = require('./_lib/permissions');
 const { POINTS_RETRAIT, pointFermeLe, CELLULES, getCellule, pointMortCellule, COMMISSION_POINT_PCT } = require('./_lib/pointsRetrait');
 const { codeRetour, numeroComptoir, occupationParPoint } = require('./_lib/clickCollect');
 const { chargerStocks } = require('./_lib/stockPoints');
+const { encaisseCents } = require('./_lib/encaisse');
 const { todayParis, addDays, debutJourParisISO } = require('./_lib/dates');
 
 // Flotte, charges, saison et point mort : par cellule (_lib/pointsRetrait.js → CELLULES).
@@ -241,7 +242,7 @@ module.exports = async (req, res) => {
 
       // Chiffre du mois : locations payées ce mois-ci (prolongations comprises).
       const duMois = lesSiennes.concat(sesProlongations).filter((r) => String(r.created_at || '') >= debutMoisISO);
-      const caMois = duMois.reduce((s, r) => s + (r.prix_total_cents || 0), 0);
+      const caMois = duMois.reduce((s, r) => s + encaisseCents(r.prix_total_cents, r.partenaire_commission_cents, p.commission_pct), 0);
       const comMois = duMois.reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
 
       const part = partenaires.find((x) => String(x.code || '').toLowerCase() === String(p.partenaire_code || '').toLowerCase()) || null;
@@ -253,7 +254,7 @@ module.exports = async (req, res) => {
       const deSaison = lesSiennes.filter((r) => r.date_debut >= debutSaison);
       const saisonJM = deSaison.reduce((s, r) => s + qte(r) * Math.max(0, Math.round((Date.parse(r.date_fin) - Date.parse(r.date_debut)) / 864e5)), 0);
       const saisonTout = deSaison.concat(sesProlongations.filter((r) => r.date_debut >= debutSaison));
-      const saisonCA = saisonTout.reduce((s, r) => s + (r.prix_total_cents || 0), 0);
+      const saisonCA = saisonTout.reduce((s, r) => s + encaisseCents(r.prix_total_cents, r.partenaire_commission_cents, p.commission_pct), 0);
       const saisonCom = saisonTout.reduce((s, r) => s + (Number.isFinite(r.partenaire_commission_cents) ? r.partenaire_commission_cents : Math.round((r.prix_total_cents || 0) * p.commission_pct / 100)), 0);
       return {
         cellule: p.cellule,
