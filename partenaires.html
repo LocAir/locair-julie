@@ -93,8 +93,18 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
       <button type="button" class="lien" id="a-autre" style="background:none;border:0;width:100%;cursor:pointer;font:700 15px 'DM Sans',sans-serif">Un autre nombre ?</button>
       <div id="a-autre-box" hidden><label for="a-n">Nombre de climatiseurs</label><input id="a-n" type="number" inputmode="numeric" min="1" max="20" placeholder="Ex. 2 ou 6"></div>
       <p class="aide">Stock fixe, sans rotation, environ 40 × 40 cm par appareil. Il peut évoluer ensuite, d’un commun accord.</p>
-      <label for="a-email">Votre e-mail <span style="font-weight:500;color:var(--ink-2)">— on vous envoie tout</span></label>
+      <p class="q" style="margin-top:22px">Vos coordonnées</p>
+      <label for="a-commerce">Nom du commerce</label>
+      <input id="a-commerce" autocomplete="organization" placeholder="Tabac du Port">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label for="a-prenom">Prénom</label><input id="a-prenom" autocomplete="given-name" placeholder="Marie"></div>
+        <div><label for="a-nom">Nom</label><input id="a-nom" autocomplete="family-name" placeholder="Dupont"></div>
+      </div>
+      <label for="a-email">E-mail <span style="font-weight:500;color:var(--ink-2)">— on vous envoie tout</span></label>
       <input id="a-email" type="email" inputmode="email" autocomplete="email" placeholder="vous@commerce.fr">
+      <label for="a-tel">Téléphone</label>
+      <input id="a-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78">
+      <p class="aide">Votre téléphone propose de tout remplir : touchez la suggestion au-dessus du clavier.</p>
       <button class="btn" id="a-ok" type="button" disabled>OK — Recevoir par e-mail</button>
       <p class="aide centre" style="margin-top:10px">Rien à signer maintenant. Vous lisez tranquillement chez vous.</p>
       <div class="msg msg-err" id="a-err" role="alert" hidden></div>
@@ -193,6 +203,7 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
     fiche = f;
     if (f.signe){ $('f-capa').textContent = (f.capacite || '—') + ' climatiseur' + (f.capacite > 1 ? 's' : ''); $('f-pdf').href = '/api/prospection?s=' + S; if (f.email) $('f-texte').textContent = 'Une copie part sur ' + f.email + '.'; return ecran('e-fini'); }
     if (f.enseigne) $('a-enseigne').textContent = f.enseigne + ' · climatiseurs en Click & Collect.';
+    if (f.enseigne && !$('a-commerce').value) $('a-commerce').value = f.enseigne;
     if (f.capacite){ capa = f.capacite; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } return envoye(f); }
     ecran('e-accord');
   }
@@ -229,9 +240,12 @@ input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94
   });
   $('a-ok').addEventListener('click', function(){
     var b = this; erreur($('a-err'));
+    // Dans l'ordre : commerce, prénom, nom, e-mail (tous obligatoires).
+    var manque = [['a-commerce','Le nom du commerce.'],['a-prenom','Votre prénom.'],['a-nom','Votre nom.']].filter(function(c){ return !$(c[0]).value.trim(); })[0];
+    if (manque){ erreur($('a-err'), manque[1]); $(manque[0]).focus(); return; }
     if (!SIGNER && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($('a-email').value.trim())){ erreur($('a-err'), 'Votre e-mail, pour recevoir la présentation et la convention.'); $('a-email').focus(); return; }
     b.disabled = true;
-    api({action:'accepter', s:S, capacite:capa, email:$('a-email').value})
+    api({action:'accepter', s:S, capacite:capa, email:$('a-email').value, enseigne:$('a-commerce').value, prenom:$('a-prenom').value, nom:$('a-nom').value, tel:$('a-tel').value})
       .then(function(j){ fiche = j.fiche; if (SIGNER){ preparerSignature(); return ecran('e-signer'); } envoye(j.fiche, j.email_envoye); })
       .catch(function(x){ b.disabled = false; erreur($('a-err'), x.message); });
   });

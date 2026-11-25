@@ -426,7 +426,9 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
 2. **3 · 4 · 5 + e-mail** : le commerçant scanne avec son téléphone
    (`/partenaires?s=…`), lit les règles, choisit **3, 4 ou 5
    climatiseurs** (gros boutons ; « Un autre nombre ? » de 1 à 20 ; stock
-   modifiable ensuite dans l'admin), tape son e-mail (obligatoire), touche
+   modifiable ensuite dans l'admin), remplit dans l'ordre **commerce,
+   prénom, nom, e-mail** (obligatoires) et téléphone (facultatif) — le
+   téléphone propose de tout remplir d'un toucher (champs `autocomplete`) —, touche
    « OK — Recevoir par e-mail ». La présentation + la convention
    pré-remplie partent tout de suite (bouton « Signer en ligne »). Le
    prospecteur le voit tout de suite.

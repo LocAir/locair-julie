@@ -113,7 +113,9 @@ module.exports = async (req, res) => {
         const patch = { capacite, statut: 'en_attente_signature', accepte_at: new Date().toISOString(), updated_at: new Date().toISOString() };
         if (email) patch.email = email;
         const enseigne = clip(b.enseigne, 120); if (enseigne) patch.enseigne = enseigne;
-        const gerant = clip(b.gerant, 120); if (gerant) patch.gerant = gerant;
+        // Prénom + nom (page commerçant) → « Prénom Nom » ; sinon l'ancien champ gerant.
+        const gerant = [clip(b.prenom, 60), clip(b.nom, 60)].filter(Boolean).join(' ') || clip(b.gerant, 120); if (gerant) patch.gerant = gerant;
+        const tel = clip(b.tel, 30); if (tel.replace(/\D/g, '').length >= 9) patch.tel = tel;
         const { data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle();
         if (e2) throw e2;
         pushToAdmin(supabase, { title: `✅ OK commerçant — ${patch.enseigne || f.enseigne || 'point ' + f.id}`, body: `${capacite} climatiseurs${email ? ' · ' + email : ''}`, tag: `prospection-ok-${f.id}` }).catch(() => {});
@@ -240,7 +242,7 @@ module.exports = async (req, res) => {
     if (action === 'envoi_rapide') {
       const em = clip(b.email, 160).toLowerCase();
       if (!em || !emailOk(em)) return res.status(400).json({ error: 'E-mail incorrect.' });
-      const prenom = clip(b.prenom, 60), enseigne = clip(b.enseigne, 120);
+      const prenom = [clip(b.prenom, 60), clip(b.nom, 60)].filter(Boolean).join(' '), enseigne = clip(b.enseigne, 120);
       // Même e-mail déjà suivi (pas encore signé) : on réutilise sa fiche.
       const { data: deja } = await supabase.from('prospection_points').select('*').eq('email', em).neq('statut', 'signe').order('id', { ascending: false }).limit(1);
       let f = deja && deja[0];
