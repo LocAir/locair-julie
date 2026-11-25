@@ -5,7 +5,6 @@
 // Expéditeur technique contact@locair.fr (Brevo n'accepte pas une adresse
 // outlook.com comme expéditeur) ; les réponses vont à partenaires.locair@outlook.com.
 const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
-const { wrap } = require('./emailTemplates');
 const { generateConventionPdf } = require('./conventionPdf');
 
 const SITE = 'https://www.locair.fr';
@@ -17,32 +16,38 @@ const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</
 const lienSigner = (f) => `${SITE}/partenaires?s=${encodeURIComponent(f.session_token)}&signer=1`;
 const prenomDe = (s) => (String(s || '').trim().split(/\s+/)[0] || '').toLowerCase().replace(/(^|[-'’])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 
-// Trois chiffres, une ligne chacun (ADN Loc'Air : le moins de mots possible).
-const chiffres = () => {
-  const c = (n, t) => `<td width="33%" align="center" style="padding:14px 6px;background:#EFF4FD;border-radius:14px"><div style="font-size:26px;font-weight:900;color:#1A5EDB;line-height:1">${n}</div><div style="font-size:12.5px;color:#4B5873;margin-top:6px;line-height:1.3">${t}</div></td>`;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0" style="margin:4px 0 18px;border-collapse:separate"><tr>${c('20&nbsp;%', 'de chaque location, viré entre le 1er et le 5')}${c('0&nbsp;€', 'à encaisser, aucune caution')}${c('7&nbsp;jours', 'de préavis pour arrêter')}</tr></table>`;
-};
-const contact = `<p style="font-size:13px;color:#4B5873;margin:18px 0 0">Une question : ${TEL} · <a href="mailto:${REPLY}" style="color:#1A5EDB">${REPLY}</a></p>`;
+// Mise en page dans le style de la présentation commerçants (25/11/2026) :
+// bandeau bleu + gros titre, « 20 % » géant en vert, cartes, un seul bouton.
+const { layoutPartenaire, vingt, cartes, pieces, surtitre } = require('./emailPartenaire');
 
-// Email 1 — après la visite ou l'appel : présentation + convention pré-remplie + lien pour signer.
+// Email 1 — après la visite, l'appel ou l'envoi rapide : présentation +
+// convention pré-remplie + lien pour signer (quand il veut, sans pression).
 function emailDocuments(f, { relance, interet } = {}) {
   const p = prenomDe(f.gerant || f.signataire);
-  const html = wrap({
-    title: p ? `Bonjour ${esc(p)},` : 'Bonjour,',
-    intro: interet
-      ? 'Merci pour votre intérêt pour Loc’Air. Des climatiseurs en Click &amp; Collect chez des commerçants, de Nice à Cannes : voici tous les documents.'
-      : relance
-        ? `Suite à notre passage chez ${esc(f.enseigne || 'vous')} : voici les deux documents.`
-        : 'Merci pour notre échange. Voici les deux documents.',
-    bodyHtml: `
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px">
-        <tr><td style="padding:4px 10px 4px 0;font-size:18px">📎</td><td style="font-size:15px"><b>La présentation</b> — 2 minutes de lecture</td></tr>
-        <tr><td style="padding:4px 10px 4px 0;font-size:18px">📎</td><td style="font-size:15px"><b>La convention</b>${f.capacite ? ` — pré-remplie, ${f.capacite} climatiseurs` : ' — pré-remplie'}</td></tr>
-      </table>
-      ${chiffres()}
-      <p style="font-size:15px;margin:0">Pour signer : 1 minute, sur votre téléphone.</p>
-      ${contact}`,
-    ctaHref: lienSigner(f), ctaLabel: 'Signer en ligne',
+  const bonjour = p ? `Bonjour ${esc(p)},` : 'Bonjour,';
+  const intro = interet
+    ? `${bonjour} merci pour votre intérêt. Voici la présentation et la convention.`
+    : relance
+      ? `${bonjour} suite à notre passage${f.enseigne ? ` chez ${esc(f.enseigne)}` : ''}, voici les deux documents.`
+      : `${bonjour} merci pour notre échange. Voici les deux documents.`;
+  const html = layoutPartenaire({
+    preheader: '20 % de chaque location, 0 € à payer. La présentation et la convention sont jointes.',
+    titre: f.enseigne ? `${esc(f.enseigne)}, devenez point de retrait.` : 'Devenez point de retrait.',
+    intro,
+    corps: `
+      ${vingt()}
+      ${cartes([
+        { n: '0&nbsp;€', t: 'à payer, aucune caution', vert: true },
+        { n: '7&nbsp;jours', t: 'de préavis pour arrêter' },
+        { n: '10–15&nbsp;mai', t: 'dépose des climatiseurs' },
+      ])}
+      ${surtitre('En pièce jointe')}
+      ${pieces([
+        ['La présentation', '2 minutes'],
+        ['La convention', f.capacite ? `pré-remplie, ${f.capacite} climatiseurs` : 'pré-remplie'],
+      ])}`,
+    cta: { href: lienSigner(f), label: 'Signer en ligne →' },
+    note: '1 minute, sur votre téléphone. Quand vous voulez.',
   });
   return { subject: interet ? 'Merci pour votre intérêt pour Loc’Air' : `${f.enseigne ? f.enseigne + ' — ' : ''}votre point de retrait Loc’Air`, html };
 }
@@ -50,14 +55,20 @@ function emailDocuments(f, { relance, interet } = {}) {
 // Email 2 — convention signée.
 function emailSignee(f) {
   const p = prenomDe(f.signataire || f.gerant);
-  const html = wrap({
-    title: p ? `Merci ${esc(p)} !` : 'Merci !',
-    intro: 'Votre convention est signée. Elle est en pièce jointe.',
-    bodyHtml: `
-      <div class="box"><span class="lbl">Prochaine étape</span><p class="ref">Dépose du 10 au 15 mai 2027</p><p style="margin:6px 0 0;font-size:14px;color:#4B5873">${f.capacite ? `${f.capacite} climatiseurs` : 'Vos climatiseurs'}, sous housse bleue. On vous appelle avant.</p></div>
-      <p style="font-size:14px;color:#4B5873;margin:0">À préparer : votre SIRET et votre RIB (pour le virement de vos 20 %).</p>
-      ${contact}`,
-    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
+  const html = layoutPartenaire({
+    preheader: 'Votre convention signée est jointe. Prochaine étape : la dépose, du 10 au 15 mai 2027.',
+    eyebrow: 'Convention signée',
+    titre: p ? `Merci ${esc(p)}, bienvenue chez Loc’Air.` : 'Merci, bienvenue chez Loc’Air.',
+    intro: 'Votre convention signée est en pièce jointe.',
+    corps: `
+      ${surtitre('Prochaine étape')}
+      ${cartes([
+        { n: '10–15 mai', t: `dépose de ${f.capacite ? f.capacite + ' climatiseurs' : 'vos climatiseurs'}, on vous appelle avant` },
+        { n: '20&nbsp;%', t: 'de chaque location, viré du 1er au 5', vert: true },
+      ])}
+      ${surtitre('À préparer')}
+      ${pieces([['Votre SIRET', ''], ['Votre RIB', 'pour le virement de vos 20 %']]).replace(/📎/g, '✓')}`,
+    cta: { href: 'https://wa.me/33663798756', label: 'Une question ? WhatsApp' },
   });
   return { subject: `${f.enseigne ? f.enseigne + ' — ' : ''}convention Loc’Air signée`, html };
 }
