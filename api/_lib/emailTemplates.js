@@ -70,7 +70,7 @@ function wrap({ headColor = '#1A5EDB', title, intro, bodyHtml, ctaHref, ctaLabel
     .head{background:${headColor};background-image:linear-gradient(115deg,${headColor} 0%,${headColor} 62%,#0D3FA0 62%,#0D3FA0 100%);padding:32px 36px 38px;text-align:left}
     .head .brand-n{color:#ffffff;font-family:'DM Sans',Arial,sans-serif;font-size:24px;font-weight:900;letter-spacing:-.04em;margin:0 0 30px;line-height:1}
     .head .brand-n em{font-style:italic}
-    .head h1{color:#fff;font-family:'DM Sans',Arial,sans-serif;font-size:34px;line-height:1;margin:0;font-weight:900;letter-spacing:-.035em;text-transform:uppercase}
+    .head h1{color:#fff;font-family:'DM Sans',Arial,sans-serif;font-size:32px;line-height:1.08;margin:0;font-weight:900;letter-spacing:-.03em}
     .head p{color:#DCE7FB;font-size:16px;margin:14px 0 0;font-weight:400;line-height:1.45}
     .body{padding:30px 36px 32px;font-size:15.5px;color:#0E1726;line-height:1.6}
     .body p{margin:0 0 14px}
