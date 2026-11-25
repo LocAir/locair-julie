@@ -33,7 +33,23 @@ const BREVO_TIMEOUT_MS = 20000;
 // jusqu'ici marqué comme un envoi réussi, sans aucune trace de l'échec.
 // `replyTo` (optionnel) : adresse qui reçoit les réponses (ex. partenaires.locair@outlook.com
 // pour les commerçants, voir CLAUDE.md). L'expéditeur reste contact@locair.fr.
-async function sendBrevoEmail({ to, subject, html, attachments, senderName, scheduledAt, replyTo }) {
+// Décidé le 25/11/2026 : tout e-mail « partenaires » (réponses vers
+// partenaires.locair@outlook.com) part de la boîte Outlook elle-même quand
+// elle est reliée (api/_lib/outlook.js). En cas de souci, Brevo prend le
+// relais : l'e-mail part quand même, depuis contact@locair.fr.
+async function sendBrevoEmail(opts) {
+  const { to, replyTo, scheduledAt } = opts || {};
+  if (to && !scheduledAt && replyTo) {
+    const outlook = require('./outlook');
+    if (outlook.configure() && outlook.estAdressePartenaires(replyTo)) {
+      const r = await outlook.sendOutlookEmail(opts);
+      if (r.ok) return r;
+    }
+  }
+  return envoyerParBrevo(opts || {});
+}
+
+async function envoyerParBrevo({ to, subject, html, attachments, senderName, scheduledAt, replyTo }) {
   if (!process.env.BREVO_API_KEY || !to) return { ok: false, error: 'BREVO_API_KEY ou destinataire manquant' };
   try {
     const body = {

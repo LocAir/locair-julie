@@ -332,7 +332,16 @@ validé dans Stripe.
 **Convention de partenariat (V11, reçue le 24/11/2026) = référence.**
 Contact des commerçants : **partenaires.locair@outlook.com** (pages et emails
 partenaires, réponses des emails envoyés aux commerçants ; les notifications
-internes restent sur contact@locair.fr). Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
+internes restent sur contact@locair.fr). **Envoi depuis Outlook** (décidé
+le 25/11/2026 : tout ce qui touche les points de retrait et les partenaires
+part de cette boîte) : tout e-mail envoyé avec `replyTo`
+partenaires.locair@outlook.com passe par Microsoft Graph
+(`api/_lib/outlook.js`, branché dans `sendBrevoEmail`) quand la boîte est
+reliée (admin → accueil → Envoi rapide → « Relier Outlook » ; variables
+Vercel `MS_CLIENT_ID`, `MS_CLIENT_SECRET` ; table `outlook_connexion`,
+`supabase/migration_2026-11-25_outlook.sql`). Sinon, ou si Outlook refuse,
+Brevo prend le relais depuis contact@locair.fr : l'e-mail part toujours.
+Nouvel e-mail aux commerçants = toujours avec ce `replyTo`. Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
 septembre** (≈ 120 jours), stock fixe par point (souvent 3, 4 ou 5, mais
 **pas rigide**, décidé le 25/11/2026 : nombre fixé à la signature, de 1 à
 20, puis **modifiable à tout moment depuis l'admin avec l'accord du gérant** :
@@ -466,8 +475,9 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
 - **Pièces jointes :** la présentation `documents/locair-devenez-point-de-retrait.pdf`
   (les 8 diapos de la démonstration, allégées à 0,9 Mo ; Brevo refuse
   plus de 10 Mo) + la convention pré-remplie (ou signée). À refaire si la
-  présentation change. Expéditeur contact@locair.fr (Brevo n'accepte pas
-  un expéditeur outlook.com), réponses vers partenaires.locair@outlook.com.
+  présentation change. Expéditeur partenaires.locair@outlook.com quand
+  Outlook est relié (sinon contact@locair.fr par Brevo, réponses vers
+  partenaires.locair@outlook.com).
 - **Convention générée :** texte V11 avec les décisions du propriétaire
   (article 6 : vol ou casse dans la boutique payés par Loc'Air, sans
   exception ; saison 2027 ; stock 3 à 5).
