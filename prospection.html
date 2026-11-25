@@ -186,7 +186,7 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
     var b = this; b.disabled = true; erreur('l-err');
     fetch('/api/admin-user-login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin:$('l-pin').value})})
       .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.error || 'Code incorrect'); return j; }); })
-      .then(function(j){ token = j.token; try{ localStorage.setItem('prosp_token', token); }catch(e){} accueil(); })
+      .then(function(j){ token = j.token; try{ localStorage.setItem('prosp_token', token); }catch(e){} accueil(); setTimeout(preparer, 300); })
       .catch(function(x){ erreur('l-err', x.message); })
       .then(function(){ b.disabled = false; });
   });
@@ -195,7 +195,7 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
   // ── Accueil
   function zonesHtml(){
     $('a-zones').innerHTML = ZONES.map(function(z){ return '<button type="button" aria-pressed="' + (z === zone) + '" data-z="' + esc(z) + '">' + esc(z.replace(' / Juan-les-Pins', ' / JLP')) + '</button>'; }).join('');
-    $('a-zones').querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ zone = b.dataset.z; try{ localStorage.setItem('prosp_zone', zone); }catch(e){} zonesHtml(); }); });
+    $('a-zones').querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ zone = b.dataset.z; try{ localStorage.setItem('prosp_zone', zone); }catch(e){} zonesHtml(); if (pretZone !== zone){ pret = null; setTimeout(preparer, 300); } }); });
   }
   function accueil(){
     arreter(); fiche = null; photoPath = null; gps = null; absent = false;
@@ -215,9 +215,14 @@ pre{white-space:pre-wrap;font:500 14px/1.5 'DM Sans',sans-serif;background:var(-
   $('a-sortir').addEventListener('click', sortir);
 
   // ── Nouvelle visite : QR + attente du OK
+  // Rapidité : la visite suivante est préparée à l'avance (QR code instantané).
+  var pret = null, pretZone = null;
+  function preparer(){ if (!token || !zone || pret) return; pretZone = zone; pret = api({action:'ouvrir', zone:zone}); pret.catch(function(){ pret = null; }); }
+  setTimeout(preparer, 300);
   $('a-visite').addEventListener('click', function(){
     var b = this; b.disabled = true;
-    api({action:'ouvrir', zone:zone}).then(function(j){
+    var p = (pret && pretZone === zone) ? pret : api({action:'ouvrir', zone:zone}); pret = null;
+    p.then(function(j){ setTimeout(preparer, 1500);
       fiche = j.fiche; dessinerQr(j.lien);
       $('q-etat').className = 'etat attente'; $('q-etat').innerHTML = '<span class="point"></span><span>En attente du commerçant…</span>';
       $('q-photo').disabled = true; ecran('e-qr');
