@@ -94,7 +94,9 @@ module.exports = async (req, res) => {
       const trace = `[Rendu noté à la main le ${todayParis()} par ${a.nom || a.role} : ${raison}]`;
       const patch = { rendu_at: maintenant, instructions_acces: ((r.instructions_acces ? r.instructions_acces + '\n' : '') + trace).slice(0, 2000) };
       if (r.statut === 'confirmee') patch.statut = 'terminee'; // remboursée/annulée : statut gardé
-      const { data: maj, error: e1 } = await supabase.from('reservations').update(patch).eq('id', r.id).is('rendu_at', null).select('id');
+      // Revenu au point : à nettoyer avant de repartir, comme un retour au comptoir.
+      let { data: maj, error: e1 } = await supabase.from('reservations').update({ ...patch, etat_retour: 'a_reconditionner' }).eq('id', r.id).is('rendu_at', null).select('id');
+      if (e1 && /etat_retour|42703|does not exist/.test(String(e1.message) + (e1.code || ''))) ({ data: maj, error: e1 } = await supabase.from('reservations').update(patch).eq('id', r.id).is('rendu_at', null).select('id'));
       if (e1) throw e1;
       if (maj && maj.length) {
         await supabase.from('reservations').update({ rendu_at: maintenant, statut: 'terminee' })
