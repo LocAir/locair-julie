@@ -116,7 +116,14 @@ module.exports = async (req, res) => {
         // Prénom + nom (page commerçant) → « Prénom Nom » ; sinon l'ancien champ gerant.
         const gerant = [clip(b.prenom, 60), clip(b.nom, 60)].filter(Boolean).join(' ') || clip(b.gerant, 120); if (gerant) patch.gerant = gerant;
         const tel = clip(b.tel, 30); if (tel.replace(/\D/g, '').length >= 9) patch.tel = tel;
-        const { data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle();
+        const telCom = clip(b.tel_commerce, 30); if (telCom.replace(/\D/g, '').length >= 9) patch.tel_commerce = telCom;
+        let { data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle();
+        // Colonne tel_commerce pas encore créée (SQL du 25/11 pas collé) : on garde le numéro dans les notes.
+        if (e2 && patch.tel_commerce && /tel_commerce/.test(String(e2.message || ''))) {
+          delete patch.tel_commerce;
+          patch.notes = [f.notes, `Tél. du commerce : ${telCom}`].filter(Boolean).join(' · ').slice(0, 500);
+          ({ data, error: e2 } = await supabase.from('prospection_points').update(patch).eq('id', f.id).neq('statut', 'signe').select(PUBLIC_COLS).maybeSingle());
+        }
         if (e2) throw e2;
         pushToAdmin(supabase, { title: `✅ OK commerçant — ${patch.enseigne || f.enseigne || 'point ' + f.id}`, body: `${capacite} climatiseurs${email ? ' · ' + email : ''}`, tag: `prospection-ok-${f.id}` }).catch(() => {});
         // Envoi des documents tout de suite (une seule fois, même si le

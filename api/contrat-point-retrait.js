@@ -4,7 +4,7 @@
 // et le commerçant reçoit un récapitulatif. Loc'Air lui envoie ensuite le
 // convention à signer (sur papier, en rendez-vous). Seules les conditions déjà décidées sont écrites
 // (20 %, virement mensuel, entretien mensuel, nombre d'appareils selon la
-// place, reprise des appareils l'hiver, vol ou casse payés par Loc'Air sauf faute grave,
+// place, reprise des appareils l'hiver, vol ou casse payés par Loc'Air,
 // sans engagement).
 const { getSupabase } = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
@@ -97,7 +97,7 @@ ${table}
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
         ${coche('Entretien par notre agent tous les 10 jours.')}
         ${coche('Dépose des climatiseurs du 10 au 15 mai, reprise fin septembre.')}
-        ${coche('Vol ou casse en boutique : Loc’Air paie (sauf faute grave).')}
+        ${coche('Vol ou casse en boutique : Loc’Air paie.')}
         ${coche('Seul point de votre quartier : le premier qui signe a l’exclusivité.')}
         ${coche('Parrainage : 50 € pour vous et 50 € pour le commerçant que vous recommandez, virés après sa 1re location.')}
       </table>
