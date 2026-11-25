@@ -38,22 +38,26 @@ const PUBLIC_COLS = 'id, session_token, statut, enseigne, gerant, email, tel, ad
 const titre = (t) => String(t || '').toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase());
 async function chercherEntreprises(q) {
   try {
-    const url = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(q)}&departement=06&etat_administratif=A&per_page=4`;
+    const url = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(q)}&departement=06&etat_administratif=A&per_page=8`;
     const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(6000) });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 4).map((e) => {
-      const etab = (e.matching_etablissements || []).find((x) => x && x.siret && x.etat_administratif !== 'F') || e.siege || {};
+    const sansParen = (t) => String(t || '').replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    const du06 = (x) => x && /^06/.test(String(x.code_postal || (String(x.adresse || '').match(/\b(\d{5})\b/) || [])[1] || ''));
+    return (j.results || []).map((e) => {
+      // Seulement un établissement ouvert des Alpes-Maritimes (pas un siège à Lille).
+      const etab = (e.matching_etablissements || []).find((x) => x && x.siret && x.etat_administratif !== 'F' && du06(x)) || (du06(e.siege) ? e.siege : null);
+      if (!etab) return null;
       const dir = (e.dirigeants || []).find((d) => d && d.type_dirigeant === 'personne physique' && d.nom);
       const enseigne = ((etab.liste_enseignes || [])[0] || (e.siege && (e.siege.liste_enseignes || [])[0]) || '');
       return {
-        siret: String(etab.siret || (e.siege && e.siege.siret) || '').replace(/\D/g, ''),
-        nom: titre(e.nom_complet || e.nom_raison_sociale || ''),
-        enseigne: titre(enseigne),
-        adresse: titre(String(etab.adresse || (e.siege && e.siege.adresse) || '')),
-        dirigeant: dir ? { prenom: titre(String(dir.prenoms || '').split(/[\s,]+/)[0]), nom: titre(dir.nom) } : null,
+        siret: String(etab.siret || '').replace(/\D/g, ''),
+        nom: titre(sansParen(e.nom_complet || e.nom_raison_sociale || '')),
+        enseigne: titre(sansParen(enseigne)),
+        adresse: titre(String(etab.adresse || '')),
+        dirigeant: dir ? { prenom: titre(String(dir.prenoms || '').split(/[\s,]+/)[0]), nom: titre(sansParen(dir.nom)) } : null,
       };
-    }).filter((x) => /^\d{14}$/.test(x.siret));
+    }).filter((x) => x && /^\d{14}$/.test(x.siret)).slice(0, 4);
   } catch (_) { return []; }
 }
 
