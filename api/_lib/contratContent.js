@@ -15,7 +15,7 @@ function fmtDate(d) {
   if (!d) return '—';
   const date = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
 }
 
 function eur(cents) {
