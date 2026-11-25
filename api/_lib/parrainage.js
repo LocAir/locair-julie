@@ -104,4 +104,21 @@ async function premiereLocationParrainee(supabase, resa) {
   }
 }
 
-module.exports = { detecterParrainage, premiereLocationParrainee };
+// Remboursement TOTAL de la location qui avait déclenché le parrainage :
+// ce n'est plus une vraie 1re location. On l'efface (la prochaine location
+// payée redéclenchera le parrainage) et on prévient Loc'Air de ne pas verser.
+async function premiereLocationRemboursee(supabase, resa) {
+  try {
+    const { data } = await supabase.from('parrainages').update({ premiere_resa_id: null })
+      .eq('premiere_resa_id', resa.id).select('id, parrain_nom, commerce');
+    if (!data || !data.length) return;
+    const p = data[0];
+    await pushToAdmin(supabase, {
+      title: `🎁 Parrainage : 1re location remboursée`,
+      body: `${p.commerce || 'Nouveau point'} (parrain ${p.parrain_nom || '—'}) : dossier ${resa.ref || resa.id} remboursé. Ne pas verser les 50 € + 50 € maintenant : ce sera à la prochaine location payée (si c’est déjà versé, rien à refaire).`,
+      tag: `parrainage-rembourse-${p.id}`,
+    }).catch(() => {});
+  } catch (e) { console.error('[parrainage remboursement]', e.message); }
+}
+
+module.exports = { detecterParrainage, premiereLocationParrainee, premiereLocationRemboursee };
