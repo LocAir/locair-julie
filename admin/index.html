@@ -1011,6 +1011,40 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .pr-infos dt{margin:0}.pr-infos dd{margin:0;color:var(--black);font-weight:700;text-align:right}
 .pr-infos dd.manque{color:var(--amber)}
 .pr-code{font-family:var(--body);letter-spacing:.12em;border:0;background:var(--bg);border-radius:8px;padding:4px 10px;font-weight:900;color:var(--black);cursor:pointer;font-size:13px}
+/* Mode simple (« McDo », maquette Canva DAHb9tRSldg validée le 25/11/2026) :
+   4 grosses cartes, un chiffre géant, un clic = une liste, un bouton = une action. */
+.mc{margin:0 0 22px}
+.mc h2{font:900 34px var(--body);letter-spacing:-.045em;margin:0 0 18px;color:#0E1726}
+.mc-grille{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mc-tuile{position:relative;overflow:hidden;text-align:left;background:#fff;border:0;border-bottom:7px solid var(--mc);border-radius:22px;padding:22px 20px 18px;min-height:168px;cursor:pointer;box-shadow:0 1px 2px rgba(11,30,68,.05),0 14px 34px -20px rgba(11,30,68,.3);font-family:var(--body);display:flex;flex-direction:column;transition:transform .12s}
+.mc-tuile:active{transform:scale(.97)}
+.mc-tuile::before{content:"";position:absolute;top:0;left:0;border-style:solid;border-width:26px 26px 0 0;border-color:var(--mc) transparent transparent transparent}
+.mc-tuile b{font:900 64px/1 var(--body);letter-spacing:-.05em;color:var(--mc)}
+.mc-tuile span{font:900 18px/1.2 var(--body);letter-spacing:-.02em;color:var(--mc);margin-top:auto;padding-right:44px}
+.mc-tuile small{display:block;font:900 12px var(--body);letter-spacing:.1em;color:var(--mc);margin-top:4px}
+.mc-tuile svg{position:absolute;right:16px;bottom:16px;width:40px;height:40px;color:var(--mc);opacity:.9}
+.mc-bleu{--mc:#1A5EDB}.mc-encre{--mc:#0E1726}.mc-rouge{--mc:#D92D20}.mc-vert{--mc:#12B76A}
+.mc-tuile.mc-zero{--mc:#9AA6BC}
+.mc-nouv{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:16px 0 0;border:0;border-radius:100px;background:#1A5EDB;color:#fff;font:900 20px var(--body);letter-spacing:-.02em;padding:20px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(26,94,219,.7)}
+.mc-nouv:active{transform:scale(.98)}
+.mc-mode{display:block;margin:14px auto 0;background:none;border:0;color:#4B5873;font:700 14px var(--body);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.mc-feuille{position:fixed;inset:0;z-index:900;background:#F4F7FC;overflow-y:auto;padding:18px 16px 40px;animation:mcIn .18s ease-out}
+@keyframes mcIn{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.mc-feuille-in{max-width:560px;margin:0 auto}
+.mc-retour{background:#fff;border:0;border-radius:100px;padding:10px 18px;font:800 15px var(--body);color:#0E1726;cursor:pointer;box-shadow:0 1px 2px rgba(11,30,68,.08)}
+.mc-feuille h3{display:flex;align-items:center;gap:12px;font:900 38px var(--body);letter-spacing:-.045em;margin:20px 0 16px;color:#0E1726}
+.mc-feuille h3 i{width:16px;height:16px;border-radius:50%;background:var(--mc);flex:none}
+.mc-carte{background:#fff;border-radius:20px;padding:16px 18px;margin-bottom:12px;box-shadow:0 1px 2px rgba(11,30,68,.05),0 12px 30px -20px rgba(11,30,68,.3)}
+.mc-carte .h{font:900 15px var(--body);color:#1A5EDB;margin:0 0 4px}
+.mc-carte .t{font:900 25px/1.15 var(--body);letter-spacing:-.03em;color:#0E1726;margin:0}
+.mc-carte .s{font-size:14px;color:#4B5873;margin:6px 0 0}
+.mc-carte.ok{opacity:.55}
+.mc-btns{display:flex;gap:10px;margin-top:14px}
+.mc-btns a,.mc-btns button{flex:1;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:100px;padding:13px 10px;font:900 16px var(--body);text-decoration:none;cursor:pointer;background:#0E1726;color:#fff}
+.mc-btns .bl{background:#1A5EDB}
+.mc-btns .cl{background:#EFF4FD;color:#0D3FA0}
+.mc-vide{text-align:center;font:900 22px var(--body);color:#12B76A;padding:40px 0}
+@media(max-width:600px){.mc h2{font-size:30px}.mc-grille{gap:10px}.mc-tuile{min-height:150px;padding:18px 14px 14px}.mc-tuile b{font-size:54px}.mc-tuile span{font-size:16px;padding-right:34px}.mc-tuile svg{width:32px;height:32px;right:12px;bottom:12px}}
 .ck{margin:0 0 20px}
 .ck-tete{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .ck-tete h2{font:900 30px var(--body);letter-spacing:-.04em;margin:0}
@@ -2981,6 +3015,103 @@ async function ckEnvoiRapide(btn){
   }catch(e){ showToast(e.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Envoyer';
 }
+// ── Mode simple (« McDo ») — maquette Canva validée le 25/11/2026 ──────────
+// N'importe qui dans l'équipe sait quoi faire : 4 cartes, un chiffre géant,
+// un clic = la liste, un bouton = l'action. Le mode complet reste à un clic.
+let MC = {livrer:[], recup:[], pb:[]};
+function modeSimple(){ try{ return localStorage.getItem('a_mode') !== 'complet'; }catch(_){ return true; } }
+function changerMode(simple){
+  try{ localStorage.setItem('a_mode', simple ? 'simple' : 'complet'); }catch(_){}
+  const a = document.getElementById('acc-simple'), b = document.getElementById('acc-complet');
+  if(a) a.classList.toggle('hidden', !simple);
+  if(b) b.classList.toggle('hidden', simple);
+  window.scrollTo(0, 0);
+}
+const MC_IC = {
+  livrer:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>',
+  recup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h2l3 13h10"/><rect x="10" y="6" width="9" height="7" rx="1"/><circle cx="10" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>',
+  pb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  points:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+};
+function mcHeure(c){ const m = String(c||'').match(/(\d{1,2})\s*h\s*(\d{0,2})/); return m ? Number(m[1]) * 60 + Number(m[2]||0) : 9999; }
+function mcVille(adr){ const m = String(adr||'').match(/\b\d{5}\s+(.+)$/); return m ? m[1].trim() : ''; }
+function simpleHtml(al, pr, livraisons){
+  al = al || {};
+  const auj = todayParisStr();
+  const jour = (livraisons||[]).filter(m => m.date_prevue === auj && !['annule','refusee'].includes(m.statut));
+  MC.livrer = jour.filter(m => m.type !== 'recuperation');
+  MC.recup = jour.filter(m => m.type === 'recuperation');
+  const pbs = [];
+  if(al.incidents) pbs.push({t:`${al.incidents} incident${al.incidents>1?'s':''} ouvert${al.incidents>1?'s':''}`, s:'Panne, casse ou réclamation', go:"switchAdminTab('incidents')", l:'Traiter'});
+  jour.filter(m => m.statut === 'probleme').forEach(m => { const r = m.reservation||{}; pbs.push({t:`Mission bloquée · ${escHtml(r.prenom||m.titre||'')}`, s:escHtml(m.probleme_description||m.probleme_type||'Le livreur a signalé un problème'), go:"switchAdminTab('livraisons')", l:'Voir'}); });
+  if(pr && pr.points && typeof prAFaireListe === 'function'){
+    prAFaireListe(pr).filter(x => x.n === 'urgent' || /^(Panne|Signalement|Retard|Stock dépassé)/.test(x.t)).forEach(x => pbs.push({t:x.t, s:x.s, html:x.b}));
+  }
+  const poidsPb = (x) => /^(Panne|Signalement|Mission bloquée|\d+ incident)/.test(x.t) ? 0 : /^Retard/.test(x.t) ? 1 : 2;
+  pbs.sort((a, b) => poidsPb(a) - poidsPb(b));
+  MC.pb = pbs;
+  const reste = (l) => l.filter(m => m.statut !== 'fait').length;
+  const nL = reste(MC.livrer), nR = reste(MC.recup), nP = pbs.length;
+  const nPts = pr && pr.resume ? pr.resume.ouverts : 0;
+  const prenom = (NOM_COMPTE || '').split(/\s+/)[0];
+  const tuile = (cls, n, label, ic, go, urgent) => `<button type="button" class="mc-tuile ${n ? cls : cls + ' mc-zero'}" onclick="${go}"><b>${n}</b><span>${label}${urgent && n ? '<small>URGENT</small>' : ''}</span>${MC_IC[ic]}</button>`;
+  return `
+  <div class="mc">
+    <h2>Bonjour${prenom ? ' ' + escHtml(prenom) : ''}</h2>
+    <div class="mc-grille">
+      ${tuile('mc-bleu', nL, 'À livrer aujourd’hui', 'livrer', "mcOuvrir('livrer')")}
+      ${tuile('mc-encre', nR, 'À récupérer', 'recup', "mcOuvrir('recup')")}
+      ${tuile('mc-rouge', nP, nP > 1 ? 'Problèmes à régler' : 'Problème à régler', 'pb', "mcOuvrir('pb')", true)}
+      ${tuile('mc-vert', nPts, 'Points de retrait', 'points', "switchAdminTab('pointsretrait')")}
+    </div>
+    <button type="button" class="mc-nouv" onclick="goToNouvelleReservation()"><span style="font-size:26px;line-height:0">+</span> Nouvelle réservation</button>
+    <button type="button" class="mc-mode" onclick="changerMode(false)">Tout voir (mode complet)</button>
+  </div>`;
+}
+function mcFermer(){ const f = document.getElementById('mc-feuille'); if(f) f.remove(); document.body.style.overflow = ''; }
+function mcOuvrir(quoi){
+  mcFermer();
+  const titres = {livrer:['À livrer', '#1A5EDB'], recup:['À récupérer', '#0E1726'], pb:['À régler', '#D92D20']};
+  const [titre, coul] = titres[quoi];
+  const liste = MC[quoi] || [];
+  let corps;
+  if(quoi === 'pb'){
+    corps = liste.map(x => `<div class="mc-carte"><p class="t" style="font-size:20px">${x.t}</p><p class="s">${x.s}</p>
+      <div class="mc-btns">${x.go ? `<button type="button" class="bl" onclick="mcFermer();${x.go}">${x.l}</button>` : (x.html||'').split('<button type="button"').join('<button type="button" class="bl"')}</div></div>`).join('');
+  }else{
+    const tri = liste.slice().sort((a, b) => (a.statut === 'fait') - (b.statut === 'fait') || mcHeure(a.creneau) - mcHeure(b.creneau));
+    corps = tri.map(m => {
+      const r = m.reservation || {}, autre = m.type === 'autre';
+      const nom = autre ? (m.titre || 'Mission') : (r.prenom || r.nom || 'Client');
+      const adr = autre ? m.adresse_libre : r.adresse;
+      const ville = mcVille(adr);
+      const tel = String(r.tel||'').replace(/[^\d+]/g, '');
+      const fait = m.statut === 'fait';
+      const qui = m.transporteur ? m.transporteur.nom : 'Personne n’y va encore';
+      return `<div class="mc-carte${fait ? ' ok' : ''}">
+        <p class="h">🕘 ${escHtml(m.creneau || 'Aujourd’hui')}${fait ? ' · ✓ Fait' : ''}</p>
+        <p class="t">${escHtml(nom)}${ville ? ' <span style="color:#1A5EDB">·</span> ' + escHtml(ville) : ''}</p>
+        <p class="s">${m.type === 'changement' ? 'Remplacement · ' : ''}${escHtml(qui)}</p>
+        ${fait ? '' : `<div class="mc-btns">
+          ${tel ? `<a href="tel:${escHtml(tel)}">📞 Appeler</a>` : ''}
+          ${adr ? `<a class="bl" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}">➤ Y aller</a>` : ''}
+          ${m.transporteur ? '' : `<button type="button" class="cl" onclick="mcFermer();switchAdminTab('livraisons')">Choisir</button>`}
+        </div>`}
+      </div>`;
+    }).join('');
+  }
+  const reste = quoi === 'pb' ? liste.length : liste.filter(m => m.statut !== 'fait').length;
+  const f = document.createElement('div');
+  f.id = 'mc-feuille'; f.className = 'mc-feuille';
+  f.innerHTML = `<div class="mc-feuille-in" style="--mc:${coul}">
+    <button type="button" class="mc-retour" onclick="mcFermer()">← Retour</button>
+    <h3><i></i>${titre} · ${reste}</h3>
+    ${corps || `<p class="mc-vide">✓ Rien à faire</p>`}
+  </div>`;
+  document.body.appendChild(f);
+  document.body.style.overflow = 'hidden';
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape') mcFermer(); });
 async function loadDashboard(periode, silent){
   CURRENT_DASHBOARD_PERIODE = periode;
   const zone = document.getElementById('tab-accueil');
@@ -3012,7 +3143,11 @@ async function loadDashboard(periode, silent){
     // Ce qui se passe AUJOURD'HUI (board opérationnel, actionnable) passe
     // avant le rétroviseur d'hier — un centre de pilotage montre d'abord ce
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
+    const simple = modeSimple();
     zone.innerHTML = `
+      <div id="acc-simple" class="${simple ? '' : 'hidden'}">${simpleHtml(alertes, prData, ld.livraisons||[])}</div>
+      <div id="acc-complet" class="${simple ? 'hidden' : ''}">
+      <button type="button" class="mc-mode" style="margin:0 0 12px auto;text-align:right" onclick="changerMode(true)">← Mode simple</button>
       ${cockpitHtml(d, alertes, prData)}
       <div style="display:flex;gap:10px;margin-bottom:16px;align-items:stretch">
         <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()" style="flex:1">
@@ -3058,6 +3193,7 @@ async function loadDashboard(periode, silent){
       ${dashboardLogistiqueHtml(d.logistique)}
       ${dashboardPartenairesHtml(d.partenaires)}
       ${d.agregat ? parVilleTableHtml(d.par_ville||[]) : ''}
+      </div>
     `;
     ckOutlookEtat();
     // Chargée à part (pas dans le Promise.all principal) : c'est un
