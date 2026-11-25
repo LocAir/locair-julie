@@ -53,12 +53,13 @@ async function detecterParrainage(supabase, partenaire) {
         await sendBrevoEmail({
           to: parrain.email,
           subject: `${partenaire.nom} a signé grâce à vous`,
-          html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
-<h2 style="color:#1A5EDB;margin:0 0 12px">Bonne nouvelle !</h2>
-<p><b>${esc(partenaire.nom)}</b> devient point de retrait Loc’Air grâce à vous.</p>
-<p>Votre bonus : <b>50 €</b>, versé avec votre virement dès sa 1re location.</p>
-<p><a href="https://www.locair.fr/partenaire" style="color:#1A5EDB;font-weight:bold">Voir mon espace</a></p>
-<p style="color:#4B5873;font-size:13px">Loc’Air · 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`,
+          html: require('./emailPartenaire').layoutPartenaire({
+            eyebrow: 'Parrainage',
+            titre: `${esc(partenaire.nom)} a signé <em style="font-style:italic;color:#BFD6FF">grâce à vous</em>.`,
+            intro: 'Votre bonus est activé.',
+            corps: require('./emailPartenaire').cartes([{ n: '50&nbsp;€', t: 'pour vous, avec votre virement', ton: 'bleu' }, { n: '1re', t: 'location de son point : le déclencheur', ton: 'clair' }]),
+            cta: { href: 'https://www.locair.fr/partenaire', label: 'Voir mon espace →' },
+          }),
           senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com',
         }).catch(() => {});
       }

@@ -351,16 +351,19 @@ async function runReleveCommercants(supabase) {
     const { data: deja } = await supabase.from('email_log').select('id').eq('scenario', cle).eq('destinataire', p.email).eq('statut', 'envoye').limit(1); // un envoi raté est retenté le 2 et le 3
     if (deja && deja.length) continue;
     const x = par[p.id], ribOk = !!(p.iban && String(p.iban).trim());
-    const ligne = (k, v, fort) => `<tr><td style="padding:10px 0;border-bottom:1px solid #E3E9F4;color:#4B5873">${k}</td><td style="padding:10px 0;border-bottom:1px solid #E3E9F4;text-align:right${fort ? ';font-size:18px' : ''}"><b>${v}</b></td></tr>`;
-    const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
-<h2 style="color:#1A5EDB;margin:0 0 6px">Votre relevé de ${escHtml(mois)}</h2>
-<p style="margin:0 0 14px;color:#4B5873">${escHtml(p.nom || '')}</p>
-<table style="width:100%;border-collapse:collapse;font-size:15px">
-${ligne('Locations', String(x.locations))}${ligne('Encaissé par Loc’Air', eur(x.ca))}${ligne('Votre part', eur(x.com), true)}
-</table>
-<p style="margin:16px 0">${ribOk ? `Virement entre le 1<sup>er</sup> et le 5 ${escHtml(moisVirement)}.` : `<b style="color:#B42318">Il nous manque votre RIB.</b> Répondez à cet email avec votre RIB : on vous vire aussitôt.`}</p>
-<p style="margin:16px 0"><a href="https://www.locair.fr/partenaire" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:100px">Mon espace</a></p>
-<p style="color:#4B5873;font-size:13px">Loc’Air · 06 63 79 87 56 · partenaires.locair@outlook.com</p></div>`;
+    const { layoutPartenaire, cartes } = require('./_lib/emailPartenaire');
+    const html = layoutPartenaire({
+      preheader: `Votre part de ${mois} : ${eur(x.com)}.`,
+      eyebrow: `${escHtml(p.nom || 'Votre point de retrait')} · Relevé`,
+      titre: `Votre part de ${escHtml(mois)}&nbsp;: <em style="font-style:italic;color:#BFD6FF">${eur(x.com)}</em>`,
+      intro: ribOk ? `Virée entre le 1<sup>er</sup> et le 5 ${escHtml(moisVirement)}.` : '<b style="color:#FFFFFF">Il nous manque votre RIB.</b> Répondez à cet e-mail avec votre RIB : on vous vire aussitôt.',
+      corps: cartes([
+        { n: String(x.locations), t: x.locations > 1 ? 'locations' : 'location', ton: 'clair' },
+        { n: eur(x.ca).replace(' €', '&nbsp;€'), t: 'encaissé par Loc’Air', ton: 'encre' },
+        { n: eur(x.com).replace(' €', '&nbsp;€'), t: 'votre part (20 %)', ton: 'bleu' },
+      ]),
+      cta: { href: 'https://www.locair.fr/partenaire', label: 'Mon espace →' },
+    });
     const r = await sendBrevoEmail({ to: p.email, subject: `Votre relevé Loc’Air de ${mois} : ${eur(x.com)}`, html, senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com' }).catch((e) => ({ ok: false, error: e.message }));
     await supabase.from('email_log').insert({ scenario: cle, canal: 'email', destinataire: p.email, modele: 'releve_partenaire', statut: r && r.ok ? 'envoye' : 'erreur', sent_at: new Date().toISOString() }).then(() => {}, () => {});
     if (r && r.ok) envoyes++;
