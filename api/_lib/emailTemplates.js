@@ -1030,7 +1030,7 @@ function tplOffrePrivilege({ prenom, ref, prixFormate, appareilNumero, lang }) {
         </div>
         <p>To accept or decline this offer, visit your client portal with your order number (<strong>${r}</strong>).</p>
         <p style="font-size:13px;color:#888">This offer is valid until the end of your rental. If you do nothing, the unit will be collected normally on the scheduled date — no action required.</p>`,
-      ctaHref: 'https://www.locair.fr/client',
+      ctaHref: 'https://www.locair.fr/client?lang=en',
       ctaLabel: 'View the offer in my account →',
     });
   }
@@ -1217,7 +1217,7 @@ function tplCCRappelRetour({ prenom, ref, lang, point, dateRetour, itineraire })
         ${pt.horaires ? `<p style="margin:0">${T('Horaires', 'Opening hours', 'Horario')} : ${escHtml(pt.horaires)}</p>` : ''}
       </div>
       <p><b>${T('En arrivant, scannez le QR code du comptoir.', 'When you arrive, scan the QR code at the counter.', 'Al llegar, escanea el código QR del mostrador.')}</b></p>
-      <p>${T('Encore chaud ? Vous pouvez prolonger en ligne depuis votre espace client :', 'Still hot? You can extend online from your account:', '¿Sigue haciendo calor? Puedes ampliar en línea desde tu espacio cliente:')} <a href="https://www.locair.fr/client" style="color:#1A5EDB;font-weight:700">locair.fr/client</a></p>
+      <p>${T('Encore chaud ? Vous pouvez prolonger en ligne depuis votre espace client :', 'Still hot? You can extend online from your account:', '¿Sigue haciendo calor? Puedes ampliar en línea desde tu espacio cliente:')} <a href="https://www.locair.fr/client${T('', '?lang=en', '?lang=es')}" style="color:#1A5EDB;font-weight:700">locair.fr/client</a></p>
       ${itineraire ? `<p style="font-size:13px"><a href="${itineraire}" style="color:#1A5EDB;font-weight:700">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}`,
     ctaHref: LIEN_JULIE_CC,
     ctaLabel: T('Une question ? Écrire à Julie', 'A question? Chat with Julie', '¿Una pregunta? Escribe a Julie'),
