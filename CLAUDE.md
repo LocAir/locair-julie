@@ -442,7 +442,10 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
   facultatifs) → « Merci pour votre intérêt pour Loc'Air » + tous les
   supports (présentation + convention + « Signer en ligne »). La fiche
   entre dans Terrain (« À signer », note « Envoi rapide ») ; même e-mail =
-  même fiche (`envoi_rapide`, `api/prospection.js`).
+  même fiche (`envoi_rapide`, `api/prospection.js`). Bouton « Faire scanner
+  le QR code » de la même carte : ouvre `/prospection?visite=1`, le QR code
+  s'affiche tout de suite ; le commerçant tape son e-mail lui-même et reçoit
+  tout.
 5. **Point signé** : compte dans l'objectif (8–10 points, 40 clims).
    Il faut encore l'ajouter à `api/_lib/pointsRetrait.js` et créer le
    commerçant (onglet Partenaires), comme avant.
