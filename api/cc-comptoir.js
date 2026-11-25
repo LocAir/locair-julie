@@ -43,7 +43,11 @@ module.exports = async (req, res) => {
   const ip = getClientIp(req);
   const cleClient = `comptoir:${ip}`;
   try {
-    if (await isRateLimited(supabase, cleClient)) {
+    // Aussi par point (toutes adresses confondues) : sinon, en changeant
+    // d'adresse, on pouvait essayer les 10 000 numéros d'un point et lire le
+    // nom des clients. 60 numéros introuvables en 15 min au même point, puis pause.
+    const clePoint = `comptoir-point:${point.id}`;
+    if (await isRateLimited(supabase, cleClient) || await isRateLimited(supabase, clePoint, 60, 15)) {
       return res.status(429).json({ error: T(lang, 'Trop d’essais. Réessayez dans 15 minutes ou écrivez à Julie sur locair.fr.', 'Too many attempts. Try again in 15 minutes or chat with Julie on locair.fr.', 'Demasiados intentos. Vuelve a intentarlo en 15 minutos o escribe a Julie en locair.fr.') });
     }
     // Click & Collect, ou client LIVRÉ qui vient échanger un appareil en panne
@@ -86,6 +90,7 @@ module.exports = async (req, res) => {
     }
     if (!r) {
       await recordFailedAttempt(supabase, cleClient);
+      await recordFailedAttempt(supabase, clePoint).catch(() => {});
       return res.status(404).json({ error: T(lang, 'Numéro de commande introuvable. Vérifiez-le dans votre email de confirmation.', 'Order number not found. Check it in your confirmation email.', 'Número de pedido no encontrado. Revísalo en tu email de confirmación.') });
     }
     if (r.source_channel !== 'click_collect') {
