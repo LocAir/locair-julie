@@ -437,6 +437,12 @@ Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
    **on ne parle pas de signature sur place**) : il étudie l'e-mail chez
    lui, puis « Signer en ligne » → `/partenaires?s=…&signer=1` → signature
    du doigt (convention signée en PDF, copie au commerçant et à Loc'Air).
+- **Envoi rapide** (accueil de l'admin, demandé le 25/11/2026) : quelqu'un
+  rencontré par hasard (rue, téléphone) → e-mail (+ prénom, commerce
+  facultatifs) → « Merci pour votre intérêt pour Loc'Air » + tous les
+  supports (présentation + convention + « Signer en ligne »). La fiche
+  entre dans Terrain (« À signer », note « Envoi rapide ») ; même e-mail =
+  même fiche (`envoi_rapide`, `api/prospection.js`).
 5. **Point signé** : compte dans l'objectif (8–10 points, 40 clims).
    Il faut encore l'ajouter à `api/_lib/pointsRetrait.js` et créer le
    commerçant (onglet Partenaires), comme avant.
