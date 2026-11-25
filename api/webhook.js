@@ -259,6 +259,7 @@ async function handleChargeRefunded(supabase, charge) {
     // Marquer remboursée seulement si le remboursement couvre la totalité du paiement
     if (remboursementTotal) {
       await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id).eq('statut', 'confirmee');
+      await require('./_lib/parrainage').premiereLocationRemboursee(supabase, resa);
 
       const { data: missions } = await supabase
         .from('livraisons').select('id, type, statut, transporteur_id')
