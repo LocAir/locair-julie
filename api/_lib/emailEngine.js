@@ -104,7 +104,7 @@ async function buildEmailContext(supabase, reservation) {
     // (capture d'écran à l'appui, 2026-08-05).
     modeleClimatiseur: lang === 'en' ? 'Air conditioner' : lang === 'zh' ? '空调' : lang === 'ru' ? 'Кондиционер' : 'Climatiseur',
     lienEspaceClient: 'https://www.locair.fr/client',
-    lienProlongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(reservation.ref || '')}`,
+    lienProlongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(reservation.ref || '')}${reservation.lang === 'en' || reservation.lang === 'es' ? '&lang=' + reservation.lang : ''}`,
   };
 }
 

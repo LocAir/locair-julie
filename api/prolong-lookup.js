@@ -9,6 +9,7 @@ const { facteurCC, REGLES } = require('./_lib/tarifDynamique');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  require('./_lib/traduireErreurs').traduireErreurs(res, req.body && typeof req.body === 'object' ? req.body.lang : null);
 
   const { email, token } = req.body || {};
   let { ref } = req.body || {};

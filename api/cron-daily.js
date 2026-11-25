@@ -1418,7 +1418,7 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
       const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
       const pt = getPointRetrait(r.point_retrait_id || '') || null;
       if (parSms) {
-        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}`;
+        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}${l !== 'fr' ? '&lang=' + l : ''}`;
         const nomPoint = pt ? pt.nom : T('votre point de retrait', 'your pick-up point', 'tu punto de recogida');
         const n = Math.max(1, r.quantite || 1);
         // heure de fermeture du point : après, le jour de retard est compté
