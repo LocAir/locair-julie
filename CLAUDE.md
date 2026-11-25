@@ -339,7 +339,9 @@ bouton « Stock » de la carte du point, raison obligatoire, historique gardé
 (`stock_points`, `stock_points_historique`,
 `supabase/migration_2026-11-25_stock_points.sql`, `api/_lib/stockPoints.js` ;
 le chiffre de `pointsRetrait.js` n'est que la valeur de départ), e-mail de
-confirmation au commerçant. Contrôle quotidien (« À faire ») : « Stock
+confirmation au commerçant. **Appareil en retard** (décidé le 25/11/2026) :
+tant qu'il n'est pas rendu, il bloque sa place au point aujourd'hui et
+demain (`lignesEnRetard`, `api/_lib/clickCollect.js`). Contrôle quotidien (« À faire ») : « Stock
 dépassé » quand les locations prévues sur 60 jours dépassent le stock d'un
 point, « Flotte dépassée » quand les points annoncent plus de climatiseurs
 que la flotte de la cellule ; selon
