@@ -329,6 +329,20 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
    À garder derrière le comptoir, jamais affiché.
 5. Faire un essai complet (retrait puis retour) avec le point.
 
+**Créer ou modifier un point sans toucher au code (26/11/2026)** : Admin →
+Points de retrait → Points → « + Nouveau point de retrait » (gérant
+seulement) : nom, adresse choisie dans la Base Adresse Nationale (position
+et ville remplies d'office), téléphone, climatiseurs (3/4/5 ou 1 à 20),
+heures, jours fermés, code du commerçant, « Ouvert aux réservations »
+(décoché = exemple, paiement refusé). Bouton « Modifier » sur chaque carte ;
+« Retirer ce point » seulement pour un point créé dans l'admin et sans
+location à venir. Table `points_retrait`
+(`supabase/migration_2026-11-26_points_retrait.sql`) ; même id qu'un point
+du code (ex. un exemple) = le remplace. Chargement : `chargerPoints()`
+(`api/_lib/pointsRetrait.js`), appelé au début de chaque fonction api/ qui
+lit les points (relu toutes les 60 s). Le stock se change ensuite avec
+« Stock ». Les étapes 2 à 5 ci-dessus restent à faire.
+
 Page `click-and-collect.html` (22/11/2026) : paiement express Apple Pay /
 Google Pay sans formulaire (coordonnées prises dans le téléphone, mention
 « En payant, vous acceptez les conditions ») ; carte avec le stock en direct

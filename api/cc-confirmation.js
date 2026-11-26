@@ -26,6 +26,7 @@ function dateLongue(iso, l) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const [idTxt, code] = String((req.query || {}).t || '').split('.');
   const id = parseInt(idTxt, 10);

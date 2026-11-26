@@ -26,6 +26,7 @@ const { declarerPanne } = require('./_lib/panne');
 const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   if (!process.env.TRANSPORTEUR_SECRET) return res.status(500).json({ error: 'Erreur de configuration.' });
   res.setHeader('Cache-Control', 'no-store');

@@ -33,6 +33,7 @@ async function notifyPartenaireVirementVerse(supabase, partenaireId, montantCent
 // partenaire (conciergerie...) n'est pas une ressource opérationnelle
 // localisée, il peut apporter des clients quelle que soit la ville.
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
   const admin = await checkAdminRole(req, supabase);

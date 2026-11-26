@@ -11,7 +11,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
-const { POINTS_RETRAIT, pointFermeLe, CELLULES, getCellule, pointMortCellule, COMMISSION_POINT_PCT } = require('./_lib/pointsRetrait');
+const { chargerPoints, estDuCode, POINTS_RETRAIT, pointFermeLe, CELLULES, getCellule, pointMortCellule, COMMISSION_POINT_PCT } = require('./_lib/pointsRetrait');
 const { codeRetour, numeroComptoir, occupationParPoint, lignesEnRetard, lignesEnPanne } = require('./_lib/clickCollect');
 const { chargerStocks } = require('./_lib/stockPoints');
 const { encaisseCents } = require('./_lib/encaisse');
@@ -24,6 +24,7 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const CHAMPS = 'id, ref, prenom, nom, tel, point_retrait_id, date_debut, date_fin, quantite, statut, remis_at, rendu_at, prix_total_cents, partenaire_commission_cents, partenaire_commission_payee, created_at, source';
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
   const a = await checkAdminRole(req, supabase);
@@ -38,6 +39,66 @@ module.exports = async (req, res) => {
     // (qui, quand, avant → après, pourquoi) et le commerçant reçoit une trace
     // écrite par e-mail. Baisser sous les locations déjà prévues : refusé
     // sauf confirmation (forcer).
+    // Créer ou modifier un point (26/11/2026) : sans toucher au code. Table
+    // points_retrait ; même id qu'un point du code (ex. un exemple) = le
+    // remplace. Le stock se fixe à la création, puis via le bouton « Stock ».
+    if (b.action === 'point_enregistrer' || b.action === 'point_retirer') {
+      if (a.role !== 'administrateur') return res.status(403).json({ error: 'Réservé au gérant.' });
+      const t = (v, n) => String(v == null ? '' : v).replace(/[<>]/g, '').trim().slice(0, n);
+      if (b.action === 'point_retirer') {
+        const id = t(b.id, 60);
+        if (estDuCode(id)) return res.status(400).json({ error: 'Ce point est écrit dans le code : passez-le en « Pas encore ouvert » au lieu de le retirer.' });
+        const { count } = await supabase.from('reservations').select('id', { count: 'exact', head: true })
+          .eq('point_retrait_id', id).gte('date_fin', todayParis()).not('statut', 'in', '(annulee,remboursee)');
+        if (count) return res.status(409).json({ error: `${count} location${count > 1 ? 's' : ''} à venir sur ce point : impossible de le retirer.` });
+        const { error } = await supabase.from('points_retrait').update({ actif: false, updated_at: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+        await chargerPoints(supabase, { force: true });
+        return res.status(200).json({ ok: true });
+      }
+      const nom = t(b.nom, 60), ville = t(b.ville, 60), adresse = t(b.adresse, 160);
+      if (nom.length < 2) return res.status(400).json({ error: 'Le nom du point manque.' });
+      if (!/\b\d{5}\b/.test(adresse)) return res.status(400).json({ error: 'Adresse complète, avec le code postal.' });
+      if (ville.length < 2) return res.status(400).json({ error: 'La ville manque.' });
+      const lat = Number(b.lat), lng = Number(b.lng);
+      if (!(lat > 35 && lat < 52 && lng > -10 && lng < 10)) return res.status(400).json({ error: 'Position introuvable : choisissez l’adresse dans la liste.' });
+      const o1 = Number(b.ouverture && b.ouverture[0]), o2 = Number(b.ouverture && b.ouverture[1]);
+      if (!(Number.isInteger(o1) && Number.isInteger(o2) && o1 >= 0 && o2 <= 24 && o1 < o2)) return res.status(400).json({ error: 'Horaires : heure d’ouverture avant l’heure de fermeture.' });
+      const fermes = [...new Set((Array.isArray(b.fermes) ? b.fermes : []).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6))].sort();
+      if (fermes.length === 7) return res.status(400).json({ error: 'Le point doit être ouvert au moins un jour.' });
+      const JOURS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+      const ouverts = [1, 2, 3, 4, 5, 6, 0].filter((j) => !fermes.includes(j));
+      const suite = ouverts.length > 1 && ouverts.every((j, i) => i === 0 || [1, 2, 3, 4, 5, 6, 0].indexOf(j) === [1, 2, 3, 4, 5, 6, 0].indexOf(ouverts[i - 1]) + 1);
+      const jours = ouverts.length === 7 ? 'Tous les jours' : suite ? `${JOURS[ouverts[0]]}–${JOURS[ouverts[ouverts.length - 1]]}` : ouverts.map((j) => JOURS[j]).join(', ');
+      const data = {
+        nom, ville, adresse, lat: Math.round(lat * 1e5) / 1e5, lng: Math.round(lng * 1e5) / 1e5,
+        ouverture: [o1, o2], fermes, horaires: `${jours} · ${o1}h–${o2}h`,
+        tel: t(b.tel, 20), partenaire_code: t(b.partenaire_code, 40).toLowerCase() || null,
+        exemple: b.exemple === true,
+      };
+      let id = t(b.id, 60);
+      let avant = null;
+      if (id) {
+        const { data: l } = await supabase.from('points_retrait').select('data').eq('id', id).maybeSingle();
+        avant = l ? l.data || {} : null;
+        if (!avant && !estDuCode(id)) return res.status(404).json({ error: 'Point inconnu' });
+        avant = avant || {};
+      } else {
+        const base = nom.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'point';
+        id = base;
+        for (let k = 2; POINTS_RETRAIT.some((p) => p.id === id) || (await supabase.from('points_retrait').select('id').eq('id', id).maybeSingle()).data; k++) id = `${base}-${k}`;
+        const stock = Number(b.stock);
+        if (!Number.isInteger(stock) || stock < 1 || stock > 20) return res.status(400).json({ error: 'Nombre de climatiseurs : entre 1 et 20.' });
+        data.stock = stock;
+        data.livraison = 60;
+        data.cellule = 'c1';
+      }
+      const { error } = await supabase.from('points_retrait').upsert({ id, data: { ...(avant || {}), ...data }, actif: true, cree_par: a.nom || a.role, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+      if (error) return res.status(503).json({ error: /points_retrait/.test(error.message || '') ? 'Table points_retrait absente dans Supabase.' : error.message });
+      await chargerPoints(supabase, { force: true });
+      return res.status(200).json({ ok: true, id, nouveau: !avant });
+    }
+
     if (b.action === 'stock') {
       if (!roleHasAccess(a.role, 'partenaires') && a.role !== 'administrateur') return res.status(403).json({ error: 'Réservé au gérant.' });
       if (stockTable === false) return res.status(503).json({ error: 'Table stock_points à créer dans Supabase (SQL du 25/11).' });
@@ -280,6 +341,7 @@ module.exports = async (req, res) => {
         jours_sans_passage: dernierPassage[p.id] ? Math.round((Date.parse(auj) - Date.parse(dernierPassage[p.id])) / 864e5) : null,
         commercant: part ? { nom: part.nom || part.code, code: part.code, telephone: part.telephone || null, rib_ok: !!(part.iban && String(part.iban).trim()), actif: part.actif !== false } : null,
         partenaire_code: p.partenaire_code || null,
+        fiche: { lat: p.lat, lng: p.lng, tel: p.tel || '', ouverture: p.ouverture, fermes: p.fermes || [], cree_admin: !!p.cree_admin, du_code: estDuCode(p.id) },
         code_retour: codeRetour(p, part),
         mois: { locations: duMois.filter((r) => r.source !== 'site_prolongation').length, ca_cents: caMois, commission_cents: comMois },
       };

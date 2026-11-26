@@ -96,9 +96,9 @@ const POINTS_RETRAIT = [
   { id: 'cannes',           ville: 'Cannes',               nom: 'Cannes',               lat: 43.5528, lng: 7.0174, adresse: 'Adresse à venir, 06400 Cannes',               horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
 ];
 
-// Valeurs par défaut posées une seule fois : chaque point a toujours un
-// stock, une commission et une zone, même si la ligne ne les écrit pas.
-POINTS_RETRAIT.forEach((p) => {
+// Valeurs par défaut : chaque point a toujours un stock, une commission et
+// une zone, même si la ligne ne les écrit pas.
+function normaliser(p) {
   if (!Number.isFinite(p.stock)) p.stock = STOCK_PAR_DEFAUT;
   p.stock_code = p.stock; // valeur de départ ; l'admin peut la changer (_lib/stockPoints.js)
   if (!Number.isFinite(p.commission_pct)) p.commission_pct = COMMISSION_POINT_PCT;
@@ -107,7 +107,71 @@ POINTS_RETRAIT.forEach((p) => {
   if (!Array.isArray(p.ouverture)) p.ouverture = [9, 19];
   if (!('partenaire_code' in p)) p.partenaire_code = null;
   if (!Array.isArray(p.photos)) p.photos = [];
-});
+  return p;
+}
+POINTS_RETRAIT.forEach(normaliser);
+
+// ── Points créés ou modifiés depuis l'admin (26/11/2026) ─────────────────
+// Table points_retrait (une ligne = un point, champs dans `data`). Même id
+// qu'un point du code = le remplace (ex. l'exemple « Nice Port » devient la
+// vraie boutique). La liste est relue au plus toutes les 60 s ; table
+// absente ou illisible = la liste du code, rien ne casse. Les fonctions
+// ci-dessous restent synchrones : chaque fonction api/ appelle
+// chargerPoints() au début, et POINTS_RETRAIT est mis à jour sur place.
+const IDS_CODE = new Set(POINTS_RETRAIT.map((p) => p.id));
+const CHAMPS_ADMIN = ['nom', 'ville', 'adresse', 'lat', 'lng', 'horaires', 'ouverture', 'fermes', 'stock', 'tel', 'partenaire_code', 'exemple', 'livraison', 'cellule', 'photos'];
+const DUREE_CACHE_MS = 60 * 1000;
+let _lu = 0, _enCours = null;
+// On ne touche qu'aux points qui ont une ligne dans la table : avant chaque
+// lecture, on défait la précédente (valeurs du code remises, points ajoutés
+// retirés), puis on applique la nouvelle. Table vide = rien ne bouge.
+let _defaire = { valeurs: [], ajoutes: [] }, _signature = '[]';
+function appliquerPoints(lignes) {
+  const sig = JSON.stringify((lignes || []).map((l) => [l.id, l.actif, l.data]));
+  if (sig === _signature) return;
+  _signature = sig;
+  // 1. défaire la lecture précédente
+  for (const [o, k, existait, v] of _defaire.valeurs.reverse()) { if (existait) o[k] = v; else delete o[k]; }
+  for (const id of _defaire.ajoutes) { const i = POINTS_RETRAIT.findIndex((p) => p.id === id); if (i >= 0) POINTS_RETRAIT.splice(i, 1); }
+  _defaire = { valeurs: [], ajoutes: [] };
+  const poser = (o, k, v) => { _defaire.valeurs.push([o, k, k in o, o[k]]); o[k] = v; };
+  // 2. appliquer la nouvelle
+  for (const l of lignes || []) {
+    const d = l.data || {};
+    const o = POINTS_RETRAIT.find((p) => p.id === l.id);
+    if (o && estDuCode(l.id)) {
+      if (o.test) continue;
+      CHAMPS_ADMIN.forEach((k) => { if (k in d) poser(o, k, d[k]); });
+      if ('stock' in d) poser(o, 'stock_code', o.stock);
+      poser(o, 'cree_admin', true);
+      continue;
+    }
+    if (l.actif === false || o) continue;
+    const v = { id: l.id, cree_admin: true };
+    CHAMPS_ADMIN.forEach((k) => { if (k in d) v[k] = JSON.parse(JSON.stringify(d[k])); });
+    normaliser(v);
+    v.stock_code = v.stock;
+    POINTS_RETRAIT.push(v);
+    _defaire.ajoutes.push(v.id);
+  }
+  try { require('./stockPoints').reappliquerStocks(); } catch (_e) { /* pas encore chargé */ }
+}
+function estDuCode(id) { return IDS_CODE.has(id); }
+async function chargerPoints(supabase, { force } = {}) {
+  if (!force && Date.now() - _lu < DUREE_CACHE_MS) return;
+  if (_enCours && !force) return _enCours;
+  _enCours = (async () => {
+    try {
+      const sb = supabase || require('./supabase').getSupabase();
+      const { data, error } = await sb.from('points_retrait').select('id, data, actif');
+      if (error) throw error;
+      appliquerPoints(data || []);
+    } catch (_e) { /* table absente : liste du code */ }
+    _lu = Date.now();
+    _enCours = null;
+  })();
+  return _enCours;
+}
 
 function getPointRetrait(id) {
   return POINTS_RETRAIT.find((p) => p.id === id) || null;
@@ -148,4 +212,4 @@ function tauxAffiche(partenaire) {
   return pt ? pt.commission_pct : (partenaire ? partenaire.taux_commission_pct ?? null : null);
 }
 
-module.exports = { CELLULES, getCellule, pointMortCellule, horsSaison, pointDuPartenaire, tauxAffiche, POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };
+module.exports = { chargerPoints, estDuCode, appliquerPoints, CHAMPS_ADMIN, CELLULES, getCellule, pointMortCellule, horsSaison, pointDuPartenaire, tauxAffiche, POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };

@@ -10,6 +10,9 @@ function getSupabase() {
     throw new Error('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY manquantes');
   }
   _client = createClient(url, key, { auth: { persistSession: false } });
+  // Points de retrait créés dans l'admin : lus en fond dès la 1re connexion
+  // (les fonctions qui en ont besoin tout de suite attendent chargerPoints()).
+  setImmediate(() => { try { require('./pointsRetrait').chargerPoints(_client); } catch (_e) { /* rien */ } });
   return _client;
 }
 

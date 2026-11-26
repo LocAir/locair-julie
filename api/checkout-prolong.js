@@ -9,6 +9,7 @@ const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/rate
 const { estClickCollect, preparerProlongationCC, champsLigneCC, refDepuisNumero } = require('./_lib/prolongCC');
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const supabaseRL = getSupabase();

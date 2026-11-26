@@ -19,6 +19,7 @@ const T = (lang, fr, en, es) => (lang === 'en' ? en : lang === 'es' ? es : fr);
 const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif' };
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   res.setHeader('Cache-Control', 'no-store');
   const b = req.body || {};

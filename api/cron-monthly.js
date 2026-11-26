@@ -375,6 +375,7 @@ async function runReleveCommercants(supabase) {
 // CRON_SECRET) même si non planifié directement — voir cron-daily.js qui
 // l'appelle le 1er de chaque mois.
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
   try {

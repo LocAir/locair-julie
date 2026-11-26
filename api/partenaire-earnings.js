@@ -13,6 +13,7 @@ function startOfMonthISO() { return debutParisISO(aujParis().slice(0, 8) + '01')
 function startOfYearISO() { return debutParisISO(aujParis().slice(0, 5) + '01-01'); }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const supabase = getSupabase();

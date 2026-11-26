@@ -72,6 +72,7 @@ function traduire(msg, lang, code) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   {
     const lang = req.body && typeof req.body === 'object' ? req.body.lang : null;

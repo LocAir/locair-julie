@@ -40,6 +40,7 @@ async function apercu(supabase) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   const q = req.query || {};
   if (q.apercu === '1') {
