@@ -77,6 +77,13 @@ module.exports = async (req, res) => {
         exemple: b.exemple === true,
       };
       let id = t(b.id, 60);
+      // Fiche partenaire du commerçant : choisie dans la liste, une seule par point.
+      if (data.partenaire_code) {
+        const { data: part } = await supabase.from('partenaires').select('code').eq('code', data.partenaire_code).maybeSingle();
+        if (!part) return res.status(400).json({ error: 'Fiche partenaire introuvable : créez-la dans l’onglet Partenaires.' });
+        const autre = POINTS_RETRAIT.find((p) => p.id !== id && p.partenaire_code && String(p.partenaire_code).toLowerCase() === data.partenaire_code);
+        if (autre) return res.status(409).json({ error: `Cette fiche est déjà reliée au point ${autre.nom}.` });
+      }
       let avant = null;
       if (id) {
         const { data: l } = await supabase.from('points_retrait').select('data').eq('id', id).maybeSingle();
