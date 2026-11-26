@@ -81,6 +81,21 @@ Version à envoyer par email (22/11/2026), à tenir à jour en même temps :
 https://claude.ai/artifact/JLju4FoAqkFuP36kpFTi1M — mêmes 4 parties, diapos qui se lisent
 seules (liens cliquables, aucune note interne), envoyée en PDF.
 
+## Figma : parcours, pièces communes, maquettes (26/11/2026)
+
+- **Tableau FigJam des parcours** (client Click & Collect, commerçant,
+  livreur, cellule Nice–Cannes) : https://www.figma.com/board/pnNcB4OCoBEOD95Jz5zAne
+  — pour expliquer le fonctionnement à une recrue ou un investisseur. Le
+  mettre à jour quand un parcours change.
+- **Pièces communes + maquette cliquable** :
+  https://www.figma.com/design/6rmzCg0sTxMjExO7rnh6y6 — page « Pièces
+  communes » (variables couleurs/arrondis, styles de texte DM Sans,
+  composants Bouton ×5, Tuile chiffre ×5, Carte mission, Ligne à cocher,
+  Choix problème) ; page « Maquette cliquable · Livreur » (6 écrans reliés,
+  à tester sur téléphone avec l'appli Figma, bouton ▶ Présenter). Tout
+  nouvel écran se dessine d'abord avec ces pièces, se teste avec un vrai
+  livreur ou commerçant, puis se code.
+
 ## Déploiement
 
 Quand une pull request de correctifs/améliorations est prête sur la branche de
