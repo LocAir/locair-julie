@@ -15,7 +15,7 @@ async function notifyPartenaireVirementVerse(supabase, partenaireId, montantCent
     const html = withSignature({
       title: 'Ton virement a été effectué',
       intro: `Bonjour ${escHtml(p.nom || '')}, ton virement de commission Loc'Air vient d'être effectué.`,
-      bodyHtml: `<div style="background:#e6f0ea;border-radius:12px;padding:20px 24px;text-align:center;margin-bottom:16px"><div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:36px;font-weight:700;color:#2d6a4f">${escHtml(montantFmt)}</div><div style="font-size:13px;color:#4a7a5a;margin-top:6px;font-weight:600">Versement effectué</div></div><p>Il sera visible sur ton compte bancaire dans 1 à 3 jours ouvrés. Tu peux vérifier le détail de tes réservations et commissions dans ton espace ambassadeur.</p>`,
+      bodyHtml: `<div style="background:#E7F6EC;border-radius:14px;padding:20px 24px;text-align:center;margin-bottom:16px"><div style="font-family:'DM Sans',Arial,sans-serif;font-size:36px;font-weight:900;letter-spacing:-.02em;color:#0F7A3D">${escHtml(montantFmt)}</div><div style="font-size:13px;color:#0F7A3D;margin-top:6px;font-weight:700">Versement effectué</div></div><p>Il sera visible sur ton compte bancaire dans 1 à 3 jours ouvrés. Tu peux vérifier le détail de tes réservations et commissions dans ton espace ambassadeur.</p>`,
       ctaHref: 'https://www.locair.fr/partenaire',
       ctaLabel: 'Voir mon espace ambassadeur →',
     }, sig);
@@ -33,6 +33,7 @@ async function notifyPartenaireVirementVerse(supabase, partenaireId, montantCent
 // partenaire (conciergerie...) n'est pas une ressource opérationnelle
 // localisée, il peut apporter des clients quelle que soit la ville.
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
   const admin = await checkAdminRole(req, supabase);
@@ -41,6 +42,15 @@ module.exports = async (req, res) => {
 
   const body   = req.body || {};
   const action = body.action || 'list';
+  // Commerçant point de retrait (convention, art. 2) : les 20 % d'un mois
+  // sont virés entre le 1er et le 5 du mois suivant. On ne verse donc que les
+  // locations des mois passés (le mois en cours attend le mois prochain).
+  // Les autres partenaires (apporteurs d'affaires) : tout ce qui est validé.
+  const { pointDuPartenaire } = require('./_lib/pointsRetrait');
+  const { todayParis, debutJourParisISO } = require('./_lib/dates');
+  const debutMoisISO = debutJourParisISO(todayParis().slice(0, 8) + '01');
+  const estPoint = (code) => !!pointDuPartenaire(code);
+  const codeDe = async (id) => { const { data } = await supabase.from('partenaires').select('code').eq('id', id).maybeSingle(); return data ? data.code : null; };
 
   try {
     if (action === 'list') {
@@ -110,13 +120,15 @@ module.exports = async (req, res) => {
 
       const result = (partenaires || []).map(p => {
         const reservations = byPartenaire[p.id] || [];
-        const nonVerse = reservations.filter(r => !r.partenaire_commission_payee).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
+        const point = estPoint(p.code);
+        const nonVerse = reservations.filter(r => !r.partenaire_commission_payee && (!point || String(r.created_at || '') < debutMoisISO)).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
+        const moisEnCours = point ? reservations.filter(r => !r.partenaire_commission_payee && String(r.created_at || '') >= debutMoisISO).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0) : 0;
         const verse    = reservations.filter(r => r.partenaire_commission_payee).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
         const litiges  = litigesByPartenaire[p.id] || [];
         return {
           id: p.id, nom: p.nom, code: p.code, actif: p.actif,
           titulaire_compte: p.titulaire_compte, iban: p.iban, bic: p.bic,
-          non_verse_cents: nonVerse, verse_cents: verse,
+          non_verse_cents: nonVerse, verse_cents: verse, mois_en_cours_cents: moisEnCours, point_retrait: point,
           demande_en_cours: enCoursSet.has(p.id),
           reservations: reservations.map(r => ({
             id: r.id, ref: r.ref,
@@ -172,10 +184,11 @@ module.exports = async (req, res) => {
       const partenaireId = parseInt(body.partenaire_id);
       if (!partenaireId) return res.status(400).json({ error: 'partenaire_id manquant' });
 
-      const { data: resas } = await supabase
-        .from('reservations').select('id, partenaire_commission_cents')
+      let { data: resas } = await supabase
+        .from('reservations').select('id, partenaire_commission_cents, created_at')
         .eq('partenaire_id', partenaireId).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .eq('partenaire_commission_payee', false);
+      if (estPoint(await codeDe(partenaireId))) resas = (resas || []).filter(r => String(r.created_at || '') < debutMoisISO);
       const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
       const ids = (resas || []).map(r => r.id);
 
@@ -246,10 +259,11 @@ module.exports = async (req, res) => {
 
       // Recalcul du montant réel au moment du virement (peut différer de la
       // demande si d'autres réservations ont été confirmées entre-temps).
-      const { data: resas } = await supabase
-        .from('reservations').select('id, partenaire_commission_cents')
+      let { data: resas } = await supabase
+        .from('reservations').select('id, partenaire_commission_cents, created_at')
         .eq('partenaire_id', virement.partenaire_id).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .eq('partenaire_commission_payee', false);
+      if (estPoint(await codeDe(virement.partenaire_id))) resas = (resas || []).filter(r => String(r.created_at || '') < debutMoisISO);
       const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
       const ids = (resas || []).map(r => r.id);
 

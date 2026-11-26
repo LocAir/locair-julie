@@ -15,7 +15,7 @@ function fmtDate(d) {
   if (!d) return '—';
   const date = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
 }
 
 function eur(cents) {
@@ -116,6 +116,40 @@ function buildContratContent({ reservation, appareils, pricing, forfait }) {
              'de la consommation MEDICYS (73 Boulevard de Clichy, 75009 Paris — www.medicys.fr). À défaut, les tribunaux compétents sont ceux de Nice.' },
   ];
 
+  // Click & Collect : pas de livraison, pas de kit fenêtre, retrait et retour
+  // au point. On remplace les lignes qui décrivaient la livraison à domicile.
+  if (reservation.source_channel === 'click_collect') {
+    const point = String(reservation.adresse || '').replace(/^CLICK & COLLECT — /, '') || '—';
+    const m = String(reservation.instructions_acces || '').match(/ADRESSE CLIENT : ([^|]+)/);
+    const domicile = reservation.adresse_client || (m ? m[1].trim() : '') || '—';
+    const paye = reservation.prix_total_cents ? eur(reservation.prix_total_cents) : '—';
+    const nbCC = Math.max(1, reservation.quantite || 1);
+    const recapCC = [
+      { label: 'Équipement',          value: (nbCC > 1 ? `${nbCC} × ` : '') + (modeleConnu ? modele : 'climatiseur mobile (9 000 à 12 000 BTU)') },
+      { label: 'Période',             value: `Du ${fmtDate(reservation.date_debut)} au ${fmtDate(reservation.date_fin)} — ${jours} jours` },
+      { label: 'Retrait et retour',   value: point },
+      { label: 'Installation',        value: 'Par le locataire (kit fenêtre non fourni)' },
+    ];
+    const remplace = {
+      1: `Bailleur : ${SELLER.nomCommercial}, exploité par Aly THIAM, ${SELLER.adresse}. SIRET : ${SELLER.siret}.\n` +
+         `Locataire : ${locataireNom}${entreprise}, demeurant au ${domicile}.`,
+      2: `Location ${nbCC > 1 ? `de ${nbCC} climatiseurs mobiles` : 'd’un climatiseur mobile'} ${modeleConnu ? modele + ' ' : ''}(de 9 000 à 12 000 BTU, adapté à une pièce fermée jusqu’à environ 15 m²${nbCC > 1 ? ' chacun' : ''}), ` +
+         `${nbCC > 1 ? 'chacun ' : ''}sous sa housse de protection, avec sa gaine d’évacuation. Le kit fenêtre et la télécommande ne sont pas fournis. Retrait et retour par le locataire au point de retrait : ${point}.`,
+      4: `Prix de la location payé à la réservation : ${paye} pour ${jours} jours${nbCC > 1 ? ` et ${nbCC} appareils` : ''} (Click & Collect, tarification selon la demande, prix affiché garanti au moment du paiement).\n` +
+         'Aucuns frais de livraison ni d’installation : le locataire retire et rapporte l’appareil au point de retrait, aux horaires d’ouverture.\n' +
+         `TVA : ${SELLER.mentionTva}.`,
+      3: `La durée minimale de location est de 3 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
+         `${fmtDate(reservation.date_fin)}, pour une durée de ${jours} jours.`,
+      6: 'Annulation : selon les conditions générales de location.\n' +
+         'Garantie panne : en cas de défaillance technique non imputable au client, l’appareil est remplacé dans les meilleurs ' +
+         'délais. À défaut, les jours de location restants sont intégralement remboursés.\n' +
+         'Responsabilité : le locataire est responsable de l’utilisation normale de l’appareil conformément aux instructions, ' +
+         'et de sa restitution au point de retrait à la date prévue. Il s’engage à ne pas tenter de le réparer sans accord préalable.\n' +
+         'Rétractation : le locataire a demandé que la location commence à la date de retrait choisie, avant la fin du délai de rétractation de 14 jours.',
+    };
+    const articlesCC = articles.map((a) => remplace[a.num] ? Object.assign({}, a, a.num === 4 ? { titre: 'Prix' } : {}, { texte: remplace[a.num] }) : a);
+    return { locataireNom, entreprise, modele, jours, modeleConnu, recap: recapCC, articles: articlesCC };
+  }
   return { locataireNom, entreprise, modele, jours, modeleConnu, recap, articles };
 }
 

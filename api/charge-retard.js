@@ -10,7 +10,7 @@ function safeEqual(a, b) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const token = ((req.body || {}).token || req.headers['x-operator-token'] || '').trim();
+  const token = String((req.body || {}).token || req.headers['x-operator-token'] || '').trim();
   if (!process.env.OPERATOR_TOKEN || !safeEqual(token, process.env.OPERATOR_TOKEN)) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
@@ -33,7 +33,7 @@ module.exports = async (req, res) => {
 
     // Recherche par email si pas de customer_id
     if (!customerId && data.email) {
-      const list = await stripe.customers.list({ email: data.email.trim(), limit: 1 });
+      const list = await stripe.customers.list({ email: String(data.email).trim(), limit: 1 });
       if (list.data.length > 0) customerId = list.data[0].id;
     }
 
@@ -92,7 +92,7 @@ module.exports = async (req, res) => {
       if (!resa && data.email) {
         ({ data: resa } = await supabase
           .from('reservations').select('id, city_id')
-          .eq('email', data.email.trim().toLowerCase())
+          .eq('email', String(data.email).trim().toLowerCase())
           .order('created_at', { ascending: false }).limit(1).maybeSingle());
       }
       if (resa) reservationId = resa.id;
@@ -149,7 +149,7 @@ module.exports = async (req, res) => {
           ({ data: resa } = await supabase.from('reservations').select('id, city_id').eq('stripe_customer_id', customerId).order('created_at', { ascending: false }).limit(1).maybeSingle());
         }
         if (!resa && data.email) {
-          ({ data: resa } = await supabase.from('reservations').select('id, city_id').eq('email', data.email.trim().toLowerCase()).order('created_at', { ascending: false }).limit(1).maybeSingle());
+          ({ data: resa } = await supabase.from('reservations').select('id, city_id').eq('email', String(data.email).trim().toLowerCase()).order('created_at', { ascending: false }).limit(1).maybeSingle());
         }
         if (resa) reservationId = resa.id;
         await supabase.from('incidents').insert({

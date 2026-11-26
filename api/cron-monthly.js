@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { debutJourParisISO } = require('./_lib/dates'); // minuit à Nice (factures transporteur : mêmes bornes)
 const { getSupabase }              = require('./_lib/supabase');
 const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
@@ -55,8 +56,8 @@ async function runMonthlyRecap(supabase) {
       .from('livraisons')
       .select('transporteur_id, montant_du_cents, type')
       .eq('statut', 'fait')
-      .gte('fait_at', startStr + 'T00:00:00Z')
-      .lt('fait_at', endStr + 'T00:00:00Z')
+      .gte('fait_at', debutJourParisISO(startStr))
+      .lt('fait_at', debutJourParisISO(endStr))
       .not('transporteur_id', 'is', null)
       .gt('montant_du_cents', 0);
 
@@ -96,18 +97,18 @@ async function runMonthlyRecap(supabase) {
       to:      adminEmail,
       subject: `Virements à effectuer — ${nomMois} ${annee}`,
       html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;background:#F4F7FC;margin:0;padding:0}
 .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
-.head{background:#0f766e;padding:28px 32px;text-align:center}
+.head{background:#1A5EDB;padding:28px 32px;text-align:center}
 .head h1{color:#fff;font-size:20px;margin:0 0 4px}
 .head p{color:rgba(255,255,255,.75);font-size:13px;margin:0}
 .body{padding:24px 32px}
-.total-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;text-align:center;margin-bottom:20px}
-.total-val{font-size:28px;font-weight:700;color:#0f766e}
-.row{padding:10px 0;border-bottom:1px solid #f0ede8;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.total-box{background:#EFF4FD;border:1px solid #DDE6F5;border-radius:10px;padding:16px;text-align:center;margin-bottom:20px}
+.total-val{font-size:28px;font-weight:700;color:#1A5EDB}
+.row{padding:10px 0;border-bottom:1px solid #DDE6F5;font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .row:last-child{border-bottom:none}
-.footer{background:#f4f0ea;padding:16px 32px;text-align:center;font-size:12px;color:#888}
-.btn{display:inline-block;background:#0f766e;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px;margin-top:16px}
+.footer{background:#F4F7FC;padding:16px 32px;text-align:center;font-size:12px;color:#888}
+.btn{display:inline-block;background:#1A5EDB;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px;margin-top:16px}
 </style></head><body>
 <div class="wrap">
 <div class="head">
@@ -116,7 +117,7 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 </div>
 <div class="body">
 <div class="total-box">
-<div style="font-size:12px;color:#0f766e;margin-bottom:4px">TOTAL À VIRER</div>
+<div style="font-size:12px;color:#1A5EDB;margin-bottom:4px">TOTAL À VIRER</div>
 <div class="total-val">${(grandTotal / 100).toFixed(2)} €</div>
 </div>
 ${rows}
@@ -244,10 +245,137 @@ async function runDormantClientsWinback(supabase) {
   return { relancesDormants: relanceCount };
 }
 
+// Commissions partenaires : virées UNE FOIS PAR MOIS (plus de bouton
+// « Demander le virement »). Le 1er du mois, l'admin reçoit la liste des
+// partenaires à payer avec leur montant et s'il manque le RIB. Le virement
+// lui-même reste fait à la main, puis marqué « versé » dans l'admin
+// (onglet Partenaires), ce qui prévient le partenaire par email.
+async function runRecapPartenaires(supabase) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { data: dejaSent } = await supabase
+    .from('email_log').select('id')
+    .eq('scenario', 'recap_mensuel_partenaires')
+    .gte('sent_at', todayStr + 'T00:00:00Z')
+    .maybeSingle();
+  if (dejaSent) return { skipped: true, reason: 'already_sent_today' };
+
+  const { data: resas } = await supabase
+    .from('reservations')
+    .select('partenaire_id, partenaire_commission_cents')
+    .not('partenaire_id', 'is', null)
+    .in('statut', ['confirmee', 'terminee']).eq('masquee', false)
+    .eq('partenaire_commission_payee', false)
+    .gt('partenaire_commission_cents', 0);
+  if (!resas || !resas.length) return { message: 'Aucune commission à virer' };
+
+  const dus = {};
+  for (const r of resas) dus[r.partenaire_id] = (dus[r.partenaire_id] || 0) + (r.partenaire_commission_cents || 0);
+  const { data: partenaires } = await supabase
+    .from('partenaires').select('id, nom, iban').in('id', Object.keys(dus).map(Number));
+  const entries = (partenaires || [])
+    .map(p => ({ nom: p.nom, iban: !!(p.iban && String(p.iban).trim()), total: dus[p.id] || 0 }))
+    .filter(e => e.total > 0)
+    .sort((a, b) => b.total - a.total);
+  if (!entries.length) return { message: 'Aucune commission à virer' };
+
+  const grandTotal = entries.reduce((s, e) => s + e.total, 0);
+  const sansRib = entries.filter(e => !e.iban).length;
+  const now = new Date();
+  const moisPrec = MOIS_FR[new Date(now.getFullYear(), now.getMonth() - 1, 1).getMonth()];
+  const adminEmail = process.env.ADMIN_EMAIL || 'contact@locair.fr';
+  const rows = entries.map(e =>
+    `<tr><td style="padding:10px 0;border-bottom:1px solid #eee">${escHtml(e.nom)}${e.iban ? '' : '<br><small style="color:#B42318">RIB manquant : à lui demander</small>'}</td><td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right"><strong>${(e.total / 100).toFixed(2).replace('.', ',')} €</strong></td></tr>`
+  ).join('');
+
+  await sendBrevoEmail({
+    to: adminEmail,
+    subject: `Commissions partenaires à virer — fin ${moisPrec}`,
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;background:#F4F7FC;margin:0;padding:16px">
+<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:24px 28px">
+<h1 style="font-size:20px;margin:0 0 6px">Virement mensuel des partenaires</h1>
+<p style="color:#555;font-size:14px;margin:0 0 16px">${entries.length} partenaire${entries.length > 1 ? 's' : ''} à payer · total <strong>${(grandTotal / 100).toFixed(2).replace('.', ',')} €</strong>${sansRib ? ` · <span style="color:#B42318">${sansRib} sans RIB</span>` : ''}</p>
+<table style="width:100%;border-collapse:collapse;font-size:14px">${rows}</table>
+<p style="font-size:13px;color:#555;margin:16px 0 0">Faites les virements depuis votre banque, puis cliquez « Marquer versé » pour chacun dans l'admin (onglet Partenaires) : le partenaire reçoit un email de confirmation.</p>
+<p style="text-align:center;margin:20px 0 0"><a href="https://www.locair.fr/admin" style="background:#1A5EDB;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px">Ouvrir l'admin →</a></p>
+</div></body></html>`,
+  });
+  const { error: logError } = await supabase.from('email_log').insert({
+    scenario: 'recap_mensuel_partenaires', canal: 'email', destinataire: adminEmail,
+    modele: 'recap_mensuel_partenaires', statut: 'envoye', sent_at: new Date().toISOString(),
+  });
+  if (logError) throw new Error('[recap_mensuel_partenaires log] ' + logError.message);
+  return { partenaires: entries.length, total_cents: grandTotal, sans_rib: sansRib };
+}
+
+// Relevé récapitulatif envoyé à CHAQUE commerçant le 1er du mois
+// (convention, art. 2 : « versées par virement entre le 1er et le 5 du mois
+// suivant sur relevé récapitulatif » ; les encaissements de mai figurent sur
+// le relevé de juin). Locations payées le mois précédent (heure de Paris),
+// annulées et remboursées exclues. Une seule fois par commerçant et par mois.
+async function runReleveCommercants(supabase) {
+  const { debutJourParisISO, todayParis } = require('./_lib/dates');
+  const auj = todayParis();
+  const [y, m] = auj.split('-').map(Number);
+  const pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y;
+  const debut = debutJourParisISO(`${py}-${String(pm).padStart(2, '0')}-01`);
+  const fin = debutJourParisISO(`${y}-${String(m).padStart(2, '0')}-01`);
+  const mois = MOIS_FR[pm - 1], moisVirement = MOIS_FR[m - 1];
+  const cle = `releve_partenaire_${py}-${String(pm).padStart(2, '0')}`;
+
+  const { data: resas, error } = await supabase.from('reservations')
+    .select('partenaire_id, prix_total_cents, partenaire_commission_cents, source, created_at, point_retrait_id')
+    .not('partenaire_id', 'is', null).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
+    .gte('created_at', debut).lt('created_at', fin);
+  if (error) throw error;
+  const lignes = (resas || []).filter((r) => r.partenaire_commission_cents > 0);
+  const ids = [...new Set(lignes.map((r) => r.partenaire_id))];
+  if (!ids.length) return { envoyes: 0 };
+  const { data: partenaires } = await supabase.from('partenaires').select('id, nom, email, iban, actif, taux_commission_pct').in('id', ids);
+  const { getPointRetrait } = require('./_lib/pointsRetrait');
+  const par = {};
+  for (const r of lignes) {
+    const x = par[r.partenaire_id] || (par[r.partenaire_id] = { locations: 0, ca: 0, com: 0 });
+    if (r.source !== 'site_prolongation') x.locations++;
+    // Remboursement partiel : la commission est déjà recalculée sur ce qui
+    // reste (webhook.js), mais prix_total_cents garde le prix de départ. On
+    // affiche donc ce qui reste vraiment encaissé (commission ÷ taux).
+    const pt = r.point_retrait_id ? getPointRetrait(r.point_retrait_id) : null;
+    const pa = (partenaires || []).find((z) => z.id === r.partenaire_id);
+    const pct = pt && pt.commission_pct ? pt.commission_pct : (pa && pa.taux_commission_pct) || null;
+    x.ca += require('./_lib/encaisse').encaisseCents(r.prix_total_cents, r.partenaire_commission_cents, pct); x.com += r.partenaire_commission_cents || 0;
+  }
+  const eur = (c) => (c / 100).toFixed(2).replace('.', ',') + ' €';
+  let envoyes = 0;
+  for (const p of partenaires || []) {
+    if (!p.email || p.actif === false) continue;
+    const { data: deja } = await supabase.from('email_log').select('id').eq('scenario', cle).eq('destinataire', p.email).eq('statut', 'envoye').limit(1); // un envoi raté est retenté le 2 et le 3
+    if (deja && deja.length) continue;
+    const x = par[p.id], ribOk = !!(p.iban && String(p.iban).trim());
+    const { layoutPartenaire, cartes } = require('./_lib/emailPartenaire');
+    const html = layoutPartenaire({
+      preheader: `Votre part de ${mois} : ${eur(x.com)}.`,
+      eyebrow: `${escHtml(p.nom || 'Votre point de retrait')} · Relevé`,
+      titre: `Votre part de ${escHtml(mois)}&nbsp;: <em style="font-style:italic;color:#BFD6FF">${eur(x.com)}</em>`,
+      intro: ribOk ? `Virée entre le 1<sup>er</sup> et le 5 ${escHtml(moisVirement)}.` : '<b style="color:#FFFFFF">Il nous manque votre RIB.</b> Répondez à cet e-mail avec votre RIB : on vous vire aussitôt.',
+      corps: cartes([
+        { n: String(x.locations), t: x.locations > 1 ? 'locations' : 'location', ton: 'clair' },
+        { n: eur(x.ca).replace(' €', '&nbsp;€'), t: 'encaissé par Loc’Air', ton: 'encre' },
+        { n: eur(x.com).replace(' €', '&nbsp;€'), t: 'votre part (20 %)', ton: 'bleu' },
+      ]),
+      cta: { href: 'https://www.locair.fr/partenaire', label: 'Mon espace →' },
+    });
+    const r = await sendBrevoEmail({ to: p.email, subject: `Votre relevé Loc’Air de ${mois} : ${eur(x.com)}`, html, senderName: "Loc'Air", replyTo: 'partenaires.locair@outlook.com' }).catch((e) => ({ ok: false, error: e.message }));
+    await supabase.from('email_log').insert({ scenario: cle, canal: 'email', destinataire: p.email, modele: 'releve_partenaire', statut: r && r.ok ? 'envoye' : 'erreur', sent_at: new Date().toISOString() }).then(() => {}, () => {});
+    if (r && r.ok) envoyes++;
+  }
+  return { envoyes };
+}
+
 // Conservé comme endpoint indépendant (déclenchable manuellement avec
 // CRON_SECRET) même si non planifié directement — voir cron-daily.js qui
 // l'appelle le 1er de chaque mois.
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
   try {
@@ -260,3 +388,5 @@ module.exports = async (req, res) => {
 };
 module.exports.runMonthlyRecap = runMonthlyRecap;
 module.exports.runDormantClientsWinback = runDormantClientsWinback;
+module.exports.runRecapPartenaires = runRecapPartenaires;
+module.exports.runReleveCommercants = runReleveCommercants;

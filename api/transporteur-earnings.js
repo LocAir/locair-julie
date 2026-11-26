@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { pushToAdmin } = require('./_lib/push');
+const { debutJourParisISO } = require('./_lib/dates');
 
 // Heure de Paris (UTC+1 en hiver, UTC+2 en été) — audit 2026-08-06 C5 :
 // setUTCHours(0,0,0,0) donnait minuit UTC, soit 2h du matin à Paris en été,
@@ -8,13 +9,13 @@ const { pushToAdmin } = require('./_lib/push');
 function startOfDayISO() {
   const now = new Date();
   const parisStr = now.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }); // YYYY-MM-DD
-  return parisStr + 'T00:00:00+02:00'; // heure d'été ; approximation acceptable
+  return debutJourParisISO(parisStr); // minuit à Nice, été comme hiver
 }
 function startOfMonthISO() {
   const now = new Date();
   const parisStr = now.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
   const firstOfMonth = parisStr.slice(0, 8) + '01';
-  return firstOfMonth + 'T00:00:00+02:00';
+  return debutJourParisISO(firstOfMonth);
 }
 
 module.exports = async (req, res) => {

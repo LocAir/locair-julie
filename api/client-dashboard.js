@@ -203,7 +203,7 @@ module.exports = async (req, res) => {
       notifications,
       centre_aide: aideArticles || [],
       assistance: assistance || null,
-      lien_prolongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(resa.ref)}`,
+      lien_prolongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(resa.ref)}${resa.lang === 'en' || resa.lang === 'es' ? '&lang=' + resa.lang : ''}`,
       offres_privilege: (offresPrivilege || []).map(o => ({ id: o.id, prix_cents: o.prix_vente_cents, appareil_numero: o.appareil?.numero ?? null })),
     });
   } catch (err) {

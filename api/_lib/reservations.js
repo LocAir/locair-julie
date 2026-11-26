@@ -315,15 +315,35 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     if (lockErr) return; // verrou déjà pris par un autre processus
   }
 
+  // Click & Collect : le client rapporte lui-même l'appareil au point de
+  // retrait — jamais « notre technicien passera le récupérer ».
+  let cc = null;
+  if (reservationId) {
+    const { data: r } = await supabase.from('reservations').select('*').eq('id', reservationId).maybeSingle();
+    if (r && r.source_channel === 'click_collect') {
+      const { getPointRetrait } = require('./pointsRetrait');
+      const pt = getPointRetrait(r.point_retrait_id || '');
+      const dRetour = r.date_fin ? new Date(r.date_fin + 'T12:00:00Z').toLocaleDateString(lang === 'en' ? 'en-GB' : lang === 'es' ? 'es-ES' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '—';
+      cc = { nom: pt ? pt.nom : '', adresse: pt ? pt.adresse : String(r.adresse || '').replace(/^CLICK & COLLECT — /, ''), retour: dRetour };
+    }
+  }
+
   const sig = await getSignature(supabase);
-  const html = withSignature(tplProlongConfirmation({
+  const escCC = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const html = cc ? withSignature(lang === 'es'
+    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">¡Ampliación confirmada, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} día(s) más</b> · pagado ${escCC(amount)}.</p><p>Devuelve el aire acondicionado al punto <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) el <b>${escCC(cc.retour)}</b>, en su horario de apertura.</p>${refOrigine ? `<p>Tu número de pedido no cambia: <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Tu reserva: <a href="https://www.locair.fr/client?lang=es">locair.fr/client</a></p></div>`
+    : lang === 'en'
+    ? `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Extension confirmed, ${escCC(prenom)}!</h2><p><b>${Number(jours) || 1} extra day(s)</b> · paid ${escCC(amount)}.</p><p>Bring the air conditioner back to <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) on <b>${escCC(cc.retour)}</b>, during opening hours.</p>${refOrigine ? `<p>Your order number stays the same: <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Your booking: <a href="https://www.locair.fr/client?lang=en">locair.fr/client</a></p></div>`
+    : `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><h2 style="color:#1A5EDB;margin:0 0 12px">Prolongation confirmée, ${escCC(prenom)} !</h2><p><b>${Number(jours) || 1} jour(s) en plus</b> · payé ${escCC(amount)}.</p><p>Rapportez le climatiseur au point <b>${escCC(cc.nom)}</b> (${escCC(cc.adresse)}) le <b>${escCC(cc.retour)}</b>, aux horaires d’ouverture.</p>${refOrigine ? `<p>Votre numéro de commande ne change pas : <b>${escCC(refOrigine)}</b>.</p>` : ''}<p>Votre réservation : <a href="https://www.locair.fr/client">locair.fr/client</a></p></div>`, sig)
+  : withSignature(tplProlongConfirmation({
     prenom: prenom || '', nom: nom || '', jours: jours || 1,
     date_recuperation: dateRecuperation || '', creneau: creneau || '', amount, lang,
     ref_origine: refOrigine || '',
     lienEspaceClient: 'https://www.locair.fr/client',
   }), sig);
   const jNum = Number(jours) || 1;
-  const subject = lang === 'en' ? `Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
+  const subject = lang === 'es' ? `Ampliación confirmada — ${jNum} día${jNum > 1 ? 's' : ''} más`
+    : lang === 'en' ? `Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
     : lang === 'zh' ? `续租已确认 — 已延长 ${jNum} 天`
     : lang === 'ru' ? `Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
     : `Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
@@ -354,7 +374,13 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
       .insert({ reservation_id: reservationId, scenario: 'sms_prolongation', sent_at: new Date().toISOString() });
     if (!smsLockErr) {
       let smsProlongContent;
-      if (lang === 'en') {
+      if (cc) {
+        smsProlongContent = lang === 'es'
+          ? `Loc'Air - Tu ampliación de ${jNum} día${jNum > 1 ? 's' : ''} está confirmada. Devuelve el aparato a ${cc.nom} el ${cc.retour}, en su horario de apertura.`
+          : lang === 'en'
+          ? `Loc'Air - Your ${jNum}-day extension is confirmed. Bring the unit back to ${cc.nom} on ${cc.retour}, during opening hours.`
+          : `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Rapportez l'appareil au point ${cc.nom} le ${cc.retour}, aux horaires d'ouverture.`;
+      } else if (lang === 'en') {
         smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${dateRecuperation || '—'}${creneau ? ', time slot ' + creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
       } else if (lang === 'zh') {
         smsProlongContent = `Loc'Air - 您延长${jNum}天的续租已确认。取回日期：${dateRecuperation || '—'}${creneau ? '，时间段：' + creneau : ''}。技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
@@ -425,7 +451,7 @@ async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}
   const ref = resa.ref || '';
   let content;
   if (lang === 'en') {
-    content = `Hello ${prenom},\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n- extend your rental, or\n- choose your collection time slot\n\nYour order number: ${ref}\n\nhttps://www.locair.fr/client\n\nHave a great day.\nAly from Loc'Air`;
+    content = `Hello ${prenom},\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n- extend your rental, or\n- choose your collection time slot\n\nYour order number: ${ref}\n\nhttps://www.locair.fr/client?lang=en\n\nHave a great day.\nAly from Loc'Air`;
   } else if (lang === 'zh') {
     content = `您好 ${prenom}，\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n- 续租，或\n- 选择取回时间段\n\n您的订单编号：${ref}\n\nhttps://www.locair.fr/client\n\n祝您愉快。\nLoc'Air的Aly`;
   } else if (lang === 'ru') {
@@ -506,7 +532,7 @@ async function sendRelanceProlongationWhatsapp(supabase, resa, { force = false }
     content = `[template:${tplName}] prenom=${prenom} ref=${ref}`;
   } else {
     if (lang === 'en') {
-      content = `Hello ${prenom} 👋\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n• Extend your rental\n• Choose your collection time slot\n\nYour order number: *${ref}*\n\nhttps://www.locair.fr/client\n\nHave a great day!\n_Aly from Loc'Air_`;
+      content = `Hello ${prenom} 👋\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n• Extend your rental\n• Choose your collection time slot\n\nYour order number: *${ref}*\n\nhttps://www.locair.fr/client?lang=en\n\nHave a great day!\n_Aly from Loc'Air_`;
     } else if (lang === 'zh') {
       content = `您好 ${prenom} 👋\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n• 续租\n• 选择取回时间段\n\n您的订单编号：*${ref}*\n\nhttps://www.locair.fr/client\n\n祝您愉快！\n_Loc'Air的Aly_`;
     } else if (lang === 'ru') {
@@ -760,6 +786,17 @@ async function confirmReservation(supabase, resa) {
     }
   }
 
+  // Click & Collect (réservation ou prolongation) : le client vient chercher
+  // l'appareil au point de retrait et le rapporte au même point. Donc :
+  //   - aucune mission livraison/récupération, aucun transporteur prévenu ;
+  //   - aucun appareil pris dans la flotte de livraison (assign_appareils) :
+  //     le stock d'un point est un stock figé, compté à part par
+  //     _lib/clickCollect.js (occupationParPoint) ;
+  //   - pas d'alerte « sous-effectif » ni « stock épuisé » de la ville, qui
+  //     concernent uniquement la flotte de livraison.
+  // On s'arrête ici, juste après le passage en « confirmée ».
+  if (resa.source_channel === 'click_collect') return resa;
+
   await assignAppareils(supabase, resa, staleOriginalId);
 
   // Validation automatique immédiate des appareils assignés — supprime l'étape
@@ -891,7 +928,28 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
     .eq('stripe_payment_intent_id', paymentIntentId)
     .maybeSingle();
   if (error || !resa) return null;
-  return confirmReservation(supabase, resa);
+  // Paiement réussi sur une réservation passée « annulée » : ça arrive quand
+  // une première carte a été refusée puis qu'une deuxième passe sur le même
+  // paiement. Le client a payé : on la remet en attente pour la confirmer,
+  // et on prévient l'admin de vérifier le stock (l'appareil a pu être
+  // proposé à quelqu'un d'autre entre-temps).
+  if (resa.statut === 'annulee') {
+    const { data: revived } = await supabase.from('reservations')
+      .update({ statut: 'en_attente' }).eq('id', resa.id).eq('statut', 'annulee').select('id');
+    if (revived && revived.length) {
+      resa.statut = 'en_attente';
+      await pushToAdmin(supabase, {
+        title: 'Paiement réussi après un échec',
+        body: `Dossier ${resa.ref || resa.id} : la réservation était annulée, le client a finalement payé. Elle est confirmée — vérifiez qu'un appareil est bien disponible.`,
+        tag: `revive-${resa.id}`,
+      }).catch(() => {});
+    }
+  }
+  const out = await confirmReservation(supabase, resa);
+  // Statut à jour pour l'appelant (le webhook n'envoie SMS et email de
+  // confirmation que pour une réservation réellement confirmée).
+  if (out && out.statut === 'en_attente') out.statut = 'confirmee';
+  return out;
 }
 
 module.exports = {

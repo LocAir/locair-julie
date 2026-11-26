@@ -4,6 +4,83 @@
 
 Toujours expliquer les choses simplement, comme si le propriétaire était un adolescent qui n'y connaît rien en technique. Pas de jargon, pas de termes complexes — des phrases courtes, concrètes, qui vont droit au but. Cette règle s'applique à toutes les réponses, synthèses et résumés, sur l'ensemble du projet Loc'Air (site, app admin, app transporteur).
 
+## Les documents Loc'Air = la ligne directrice (décidé le 24/11/2026)
+
+La convention de partenariat (V11), le playbook Cellule 1 (V3), la to-do
+list Cellule 1 et la présentation investisseurs & partenaires (V2) sont la
+référence pour tout ce qu'on construit. Ce qui y est écrit et qui manque
+au site, à l'admin, à l'espace partenaire ou aux emails est à créer, sans
+attendre une demande précise (le propriétaire l'a demandé le 24/11/2026).
+Une décision du propriétaire écrite dans ce fichier passe avant un
+document (ex. vol/casse payés par Loc'Air, livraison à domicile gardée).
+
+## L'ADN de Loc'Air : simplicité et clarté
+
+Tout ce qu'on fabrique (site, emails, flyers, présentations, écrans du
+commerçant et du client) suit la même règle :
+
+- **Le moins de mots possible.** Une idée par bloc, une phrase courte par
+  idée. Si une image ou une couleur peut remplacer un texte, on la prend.
+- **Un écran = une action.** Le client ou le commerçant sait tout de suite
+  quoi faire.
+- **Des repères visuels constants** : au comptoir, vert ✓ = retrait,
+  bleu ↩ = retour, orange ⇄ = échange. Partout pareil.
+- **Pas d'information inutile.** Ce qui n'aide pas à agir tout de suite
+  disparaît (dates, rappels, explications déjà connues).
+- Avant de livrer, se demander : « Qu'est-ce que je peux enlever ? »
+
+## Style commun (typographie, couleurs) — celui de la page Click & Collect
+
+Décidé le 21/11/2026 : tout le système Loc'Air a le style de
+`click-and-collect.html`. Une seule police : **DM Sans** (titres en 900,
+jamais de police à empattements : ni Playfair, ni Cormorant, ni Georgia).
+Bleu d'action `#1A5EDB` (foncé `#0D3FA0`, clair `#EFF4FD`), encre
+`#0E1726`, gris `#4B5873`, fond `#F4F7FC`, boutons en pilule. Logo :
+« Loc<em>’Air</em> » en DM Sans 900, « ’Air » en italique, bleu sur fond
+clair, blanc sur photo. Pas d'orange, pas d'or.
+
+- **Où ça vit :** `cc-theme.css` (à charger EN DERNIER : il redéfinit les
+  couleurs et la police des pages qui ont leurs propres noms de variables),
+  `atelier.css` / `locair-design.css` / `menu.css` (pages villes, blog,
+  légales), `api/_lib/emailTemplates.js` (emails clients).
+- **Ne jamais réécrire un fichier `.css` existant sans l'avoir lu** :
+  `locair.css` est la grosse feuille de style de l'accueil et des pages
+  villes, pas un fichier de jetons.
+- Tout nouvel écran (client, commerçant, partenaire, email) suit ce style.
+
+## Présentation commerçants (book vendeur) — toujours synchronisée
+
+La présentation pour signer les commerçants points de retrait :
+https://claude.ai/artifact/SznzrctwqcdPXHqjGns7fj (diaporama).
+
+**À chaque changement du parcours Click & Collect** (écrans de `retrait.html`,
+flyer `admin/flyers-commercants.html`, affiche `affiche-retrait.html`,
+espace partenaire, prix, commission, virement, règles de retrait/retour),
+mettre à jour la présentation dans la même session : refaire les captures
+concernées (vrais écrans, client d'exemple) et corriger le texte des diapos.
+Le propriétaire l'a demandé le 21/11/2026 : le site et la présentation
+disent toujours la même chose.
+
+Structure (24/11/2026, « démonstration du fonctionnement », 8 diapos) :
+mission → 1 · Le client réserve (le site) → 2 · Au comptoir (retrait :
+écran vert + pièce d'identité ; retour : code commerçant) → 3 · Ce que vous
+recevez (affiche QR, flyer, climatiseurs, espace partenaire) → 4 · Ce que
+vous gagnez (20 %) → 5 · L'essentiel (6 règles de la convention) → **la
+démo (test du QR code) → puis la signature** (« On signe ensemble ? », en
+dernier). **Signature** (changé le 25/11/2026 par le propriétaire) : jamais
+sur place ; le commerçant reçoit la présentation + la convention par e-mail
+et signe chez lui, en ligne, du doigt (voir « Prospection terrain des points
+de retrait ») ; le papier en 2 exemplaires reste possible
+(admin → Terrain → « Signé sur papier ») ; prévoir SIRET, RIB, horaires.
+La page `/contrat-point-retrait` reste une simple demande de rappel. Les autres diapos restent dans les
+fichiers, hors de l'ordre. La diapo démo fait scanner `locair.fr/retrait?p=test-locair` :
+le numéro **0000** sur ce point lance un mode démo dans le téléphone
+(`retrait.html`, fonction `demo`), rien n'est envoyé ni enregistré.
+
+Version à envoyer par email (22/11/2026), à tenir à jour en même temps :
+https://claude.ai/artifact/JLju4FoAqkFuP36kpFTi1M — mêmes 4 parties, diapos qui se lisent
+seules (liens cliquables, aucune note interne), envoyée en PDF.
+
 ## Déploiement
 
 Quand une pull request de correctifs/améliorations est prête sur la branche de
@@ -13,23 +90,33 @@ fonctionnement. `main` est la branche déployée en production (Vercel).
 
 ## Migrations SQL
 
-Cette session n'a aucun accès à la base Supabase de production (pas
-d'identifiants) — un changement de schéma (nouvelle colonne/table dans
-`supabase/schema.sql` ou `supabase/migration_2026-07-09.sql`) ne prend jamais
-effet tout seul en prod, même après merge et déploiement du code. Le code déjà
-vécu ça en cassant Réservations/Livraisons (colonne `reservations.masquee`
-utilisée par le code déployé mais absente de la vraie base).
+**Depuis le 25/11/2026, l'agent est relié à la base Supabase** (connecteur
+Supabase, projet « LocAir's Project », id `ynnohdfxitfimzmolion`). Le
+propriétaire l'a demandé : **ne plus lui demander de coller du SQL**.
 
-Donc : avant de merger une PR qui touche au schéma, prévenir explicitement le
-propriétaire et lui donner le SQL exact à coller dans Supabase → SQL Editor.
-Ne jamais supposer que la migration a été appliquée juste parce que le code
-est en prod.
+Un changement de schéma (nouvelle colonne/table) ne prend jamais effet tout
+seul en prod, même après merge et déploiement du code. Le code a déjà vécu ça
+en cassant Réservations/Livraisons (colonne `reservations.masquee` utilisée
+par le code déployé mais absente de la vraie base).
+
+Donc, pour chaque PR qui touche au schéma :
+1. Écrire le fichier `supabase/migration_AAAA-MM-JJ_<sujet>.sql` et mettre à
+   jour `supabase/schema.sql` (toujours `if not exists`, jamais destructif).
+2. **Avant de merger**, appliquer ce SQL soi-même avec `apply_migration`,
+   puis vérifier (liste des tables / colonnes) qu'il est bien là.
+3. Dire au propriétaire, en une ligne, que la base est à jour.
+- Rien de destructif (suppression de table, de colonne ou de données) sans
+  son accord écrit.
+- Si le connecteur ne répond pas : revenir à l'ancienne méthode (lui donner
+  le SQL exact à coller dans Supabase → SQL Editor).
+- Vérifié le 25/11/2026 : toutes les tables et colonnes du dépôt existent
+  dans la vraie base.
 
 ## Offre B2B (Loc'Air Pro)
 
 Une seule offre pro, pour **tous les appareils** loués par Loc'Air.
-Sources de vérité : `pro.html` (rafraîchisseur), `api/_lib/pricing.js`
-(barèmes), `api/_lib/julieKnowledge.js` (PortaSplit). Si un chiffre change,
+Sources de vérité : `api/_lib/pricing.js` (barèmes, dont le
+rafraîchisseur pro), `api/_lib/julieKnowledge.js` (PortaSplit). Si un chiffre change,
 le changer partout. Ne jamais inventer un prix, un délai ou une promesse
 qui n'est pas écrit ici.
 
@@ -88,8 +175,9 @@ Comptée sur le nombre d'appareils d'**une même commande** :
   valide** (le site vérifie le numéro). Sans SIRET valide, prix normal.
 - **Climatiseur : programmée sur le site** (`reserver.html` pour le total
   affiché, `api/checkout.js` pour le montant payé, barème dans
-  `api/_lib/pricing.js` → `remiseQuantitePct`). Les trois doivent rester
-  identiques. En ligne, on peut prendre 5 appareils au maximum ; 10 et
+  `api/_lib/pricing.js` → `remiseQuantitePct`) et prix proposé dans l'admin
+  pour une commande par téléphone (`admin/index.html` → `nrCalcTotal`,
+  jusqu'à 20 appareils, −20 % dès 10). Tous doivent rester identiques. En ligne, on peut prendre 5 appareils au maximum ; 10 et
   plus passe par un devis.
 - **PortaSplit : sur devis** (téléphone ou WhatsApp). Le paiement en ligne
   du PortaSplit ne gère qu'un appareil à la fois.
@@ -157,6 +245,303 @@ Toujours partir du problème, pas de la machine.
 - Climatiseur mobile : il ne marche que dans une pièce fermée, et
   jusqu'à environ 15 m² par appareil.
 - PortaSplit : jusqu'à environ 42 m² par appareil.
+
+## Tarification dynamique (Click & Collect)
+
+Réglages et barrières dans `api/_lib/tarifDynamique.js` (seul endroit où
+changer un chiffre). Inspirée de Beyond / PriceLabs.
+
+- **Prix Click & Collect** : location **dès 3 jours** (décidé le 21/11/2026).
+  - **3 jours : 99 €** en temps normal, qui est aussi le plus bas ;
+    **jamais plus de 119 €**.
+  - **7 jours : 150 €** en temps normal (décidé le 19/11/2026), **jamais
+    moins de 139 €, jamais plus de 189 €**.
+  - 4 à 6 jours : entre les deux. Plus de 7 jours : même proportion du
+    barème que les 7 jours.
+  - La livraison (`/reserver`) garde son propre barème (7 jours minimum).
+- **Signaux** : stock déjà réservé dans la ville (80 % → maximum), chaleur
+  prévue sur la période (7 jours, Open-Meteo), dernière minute (seulement
+  si la demande est déjà là), période calme (temps frais ET peu de
+  réservations → minimum).
+- **Barrières, jamais franchies** : jamais sous 99 €/3 jours ni 139 €/7
+  jours ; jamais au-dessus de 119 €/3 jours ni 189 €/7 jours ; même prix pour tout le monde au même moment (aucune
+  donnée personnelle) ; un signal en panne compte pour rien (prix plus bas,
+  jamais plus haut) ; prix affiché garanti 30 min (devis signé) ;
+  prolongations jamais majorées.
+- **Prolongations (décidé le 21/11/2026)** : barème dégressif gardé : les
+  jours ajoutés coûtent la différence entre le prix de la nouvelle durée et
+  celui de la durée actuelle (3 → 7 jours = 150 − 99 = 51 €). Un client
+  qui avait payé moins que le prix normal garde sa réduction ; jamais plus
+  cher que le prix normal (`coefPrixPaye`, `api/_lib/prolongCC.js`).
+- **Interrupteur** : variable Vercel `TARIF_DYNAMIQUE=off` → barème seul.
+- Toujours dire au client pourquoi le prix monte (« chaleur annoncée »,
+  « peu d'appareils restants »), et ne jamais changer les seuils sans
+  l'accord du propriétaire.
+
+## Click & Collect — ouvrir un nouveau point de retrait
+
+À rappeler au propriétaire à chaque nouveau commerçant (il l'a demandé le
+20/11/2026) :
+
+0. Le commerçant signe la convention **sur papier** (2 exemplaires), en
+   rendez-vous, après la démo. Il peut aussi laisser une demande sur
+   `locair.fr/contrat-point-retrait` : Loc'Air reçoit un email + une
+   notification, l'appelle et passe signer. Entretien des climatiseurs : un passage
+   de l'agent tous les 10 jours (convention).
+   Décidé le 22/11/2026 : nombre de climatiseurs selon la place du
+   commerçant (fixé à la signature) ; fin septembre, Loc'Air reprend les climatiseurs
+   (dépose du 10 au 15 mai ; une offre de
+   stockage hivernal payée au commerçant est à l'étude : ne pas en
+   parler par écrit tant qu'elle n'est pas décidée) ; vol ou casse dans
+   la boutique (pas par un client) : Loc'Air paie, **toujours** (« sauf
+   faute grave » retiré le 25/11/2026 par le propriétaire) ; un seul point de retrait par quartier (le premier qui
+   signe a l'exclusivité) ; saison 2027 de fin mai à fin septembre ;
+   parrainage (changé le 22/11/2026) : **50 € au parrain ET 50 € au
+   nouveau commerçant**, versés à la main avec le virement qui suit la
+   1re location du nouveau point — même règle que la signature ait lieu
+   avant ou pendant la saison (décidé le 22/11/2026). Le site compte 20 %
+   comme d'habitude. Le lien de parrainage (espace partenaire,
+   « Parrainer un commerçant ») : `locair.fr/parrainage?parrain=<commerce>`,
+   une demande de rappel très courte (commerce, nom, téléphone) qui
+   déclenche le parrainage ; si le commerçant signe, il est activé.
+   Présenté au commerçant comme « Développer mes revenus » (espace
+   partenaire) : il y voit ses demandes « En attente », « Signé · 50 €
+   activé » ou « Pas cette fois ». Admin → Points de retrait → Parrainages :
+   boutons « Signé » / « Refusé ». Table `parrainages`
+   (`supabase/migration_2026-11-22_parrainages.sql`).
+   **Détection automatique** (`api/_lib/parrainage.js`) : quand l'admin
+   crée ou active la fiche du commerçant (même téléphone ou même nom de
+   commerce qu'une demande en attente), le parrainage passe à « signé »,
+   fenêtre « 🎁 Parrainage détecté » + notification admin + email au
+   parrain. À la 1re location payée du nouveau point : notification et
+   email « À verser » (50 € au parrain et 50 € au nouveau).
+   Même commerce parrainé par deux commerçants : **le premier qui a
+   parrainé gagne** ; les autres demandes passent à « Pas cette fois ».
+1. Ajouter le point dans `api/_lib/pointsRetrait.js` (adresse, horaires,
+   `tel` de la boutique, `partenaire_code`, `exemple: false`). Commission
+   du commerçant : **20 %** de la location payée (décidé le 21/11/2026).
+2. Créer le commerçant dans l'admin (onglet Partenaires) avec son téléphone.
+3. Imprimer l'**affiche du comptoir** (QR code client) :
+   `locair.fr/affiche-retrait?p=<id>`.
+4. Imprimer et **remettre en main propre le demi-flyer commerçant** (A5) :
+   son code retour + le QR code de son espace partenaire —
+   `locair.fr/admin/flyers-commercants?p=<id>` (connecté à l'admin).
+   À garder derrière le comptoir, jamais affiché.
+5. Faire un essai complet (retrait puis retour) avec le point.
+
+**Créer ou modifier un point sans toucher au code (26/11/2026)** : Admin →
+Points de retrait → Points → « + Nouveau point de retrait » (gérant
+seulement) : nom, adresse choisie dans la Base Adresse Nationale (position
+et ville remplies d'office), téléphone, climatiseurs (3/4/5 ou 1 à 20),
+heures, jours fermés, **fiche partenaire du commerçant choisie dans la liste** (onglet Partenaires ; une fiche = un seul point, vérifié par le serveur ; « Modifier sa fiche » l'ouvre par-dessus, « + Créer une fiche » si elle n'existe pas ; si le code d'une fiche change dans Partenaires, le point relié suit tout seul), « Ouvert aux réservations »
+(décoché = exemple, paiement refusé). Bouton « Modifier » sur chaque carte ;
+« Retirer ce point » seulement pour un point créé dans l'admin et sans
+location à venir. Table `points_retrait`
+(`supabase/migration_2026-11-26_points_retrait.sql`) ; même id qu'un point
+du code (ex. un exemple) = le remplace. Chargement : `chargerPoints()`
+(`api/_lib/pointsRetrait.js`), appelé au début de chaque fonction api/ qui
+lit les points (relu toutes les 60 s). Le stock se change ensuite avec
+« Stock ». Les étapes 2 à 5 ci-dessus restent à faire.
+
+Page `click-and-collect.html` (22/11/2026) : paiement express Apple Pay /
+Google Pay sans formulaire (coordonnées prises dans le téléphone, mention
+« En payant, vous acceptez les conditions ») ; carte avec le stock en direct
+(`api/points-dispo.js` : vert disponible, orange dernier appareil, gris
+complet, pour un retrait demain — jamais le nombre exact) ; « Bonjour
+{prénom}, même point qu'avant » pour un client qui revient ; carte chargée
+au premier geste (page plus rapide). `/retrait` s'ouvre sans réseau
+(`retrait-sw.js`). Apple Pay n'apparaît que si le domaine locair.fr est
+validé dans Stripe.
+**Client sans réseau au comptoir (26/11/2026)** : sans réseau, pas d'écran
+vert (la vérification passe par le serveur, voulu contre les faux écrans).
+Deux parades : 1) affiche du comptoir (`affiche-retrait?p=<id>`) : champs
+« Wi-Fi invité » (avec l'accord du commerçant) → 2e petit QR code qui
+connecte le téléphone au Wi-Fi d'un geste (rien n'est enregistré sur le
+site) ; 2) SMS + e-mail de confirmation et e-mail de la veille : « Pas de
+réseau dans la boutique ? Ouvrez locair.fr/retrait?p=<id> avant d'entrer ».
+
+**Convention de partenariat (V11, reçue le 24/11/2026) = référence.**
+Contact des commerçants : **partenaires.locair@outlook.com** (pages et emails
+partenaires, réponses des emails envoyés aux commerçants ; les notifications
+internes restent sur contact@locair.fr). **Envoi depuis Outlook** (décidé
+le 25/11/2026 : tout ce qui touche les points de retrait et les partenaires
+part de cette boîte) : tout e-mail envoyé avec `replyTo`
+partenaires.locair@outlook.com passe par Microsoft Graph
+(`api/_lib/outlook.js`, branché dans `sendBrevoEmail`) quand la boîte est
+reliée (admin → accueil → Envoi rapide → « Relier Outlook » ; variables
+Vercel `MS_CLIENT_ID`, `MS_CLIENT_SECRET` ; table `outlook_connexion`,
+`supabase/migration_2026-11-25_outlook.sql`). Sinon, ou si Outlook refuse,
+Brevo prend le relais depuis contact@locair.fr : l'e-mail part toujours.
+**Changé le 25/11/2026 au soir (accord du propriétaire) :** Microsoft a
+bloqué puis bridé la boîte gratuite (e-mails « partis » mais jamais reçus).
+Les e-mails partenaires partent donc de **partenaires@locair.fr par Brevo**
+(nom « Loc’Air Partenaires », réponses vers partenaires.locair@outlook.com ;
+repli contact@locair.fr si Brevo refuse l'adresse). L'envoi par Outlook ne
+se fait plus que si la variable Vercel `OUTLOOK_ENVOI=on`.
+**Relié et testé le 25/11/2026** (appli Azure « Loc'air site », adresse de
+retour exacte `https://locair.fr/api/outlook`, nom d'expéditeur « Loc'Air
+Partenaires »). L'agent a aussi accès à Vercel (équipe `loc-air`, projet
+`locair-julie`, id `prj_LSmjqEtiKrRx1gXiSorTLXYBpNUv`) : erreurs en ligne,
+variables, relance du site.
+Nouvel e-mail aux commerçants = toujours avec ce `replyTo`. Dépose des climatiseurs **du 10 au 15 mai 2027**, saison **fin mai → fin
+septembre** (≈ 120 jours), stock fixe par point (souvent 3, 4 ou 5, mais
+**pas rigide**, décidé le 25/11/2026 : nombre fixé à la signature, de 1 à
+20, puis **modifiable à tout moment depuis l'admin avec l'accord du gérant** :
+bouton « Stock » de la carte du point, raison obligatoire, historique gardé
+(`stock_points`, `stock_points_historique`,
+`supabase/migration_2026-11-25_stock_points.sql`, `api/_lib/stockPoints.js` ;
+le chiffre de `pointsRetrait.js` n'est que la valeur de départ), e-mail de
+confirmation au commerçant. **Appareil en retard** (décidé le 25/11/2026) :
+tant qu'il n'est pas rendu, il bloque sa place au point aujourd'hui et
+demain (`lignesEnRetard`, `api/_lib/clickCollect.js`). Retour pas validé au
+comptoir : bouton **« Débloquer »** (Admin → Points de retrait → À faire et
+liste Retards ; gérant seulement, raison obligatoire, gardée sur la
+réservation) = appareil noté rendu, place libérée. **Retour sans incident** (décidé le
+25/11/2026) : l'appareil reste disponible et peut repartir ; « à
+reconditionner » n'est qu'une note pour le passage de l'agent (tous les 7 à
+10 jours). **Avec un incident** (panne, casse : reprise ouverte au point),
+il bloque sa place jusqu'à la fin de la reprise (`lignesEnPanne`). Contrôle quotidien (« À faire ») : « Stock
+dépassé » quand les locations prévues sur 60 jours dépassent le stock d'un
+point, « Flotte dépassée » quand les points annoncent plus de climatiseurs
+que la flotte de la cellule ; selon
+la place, ≈ 40 × 40 cm chacun, sans rotation), rangés sous
+**housse bleue unie sans logo**, gaine au-dessus ; retrait et retour **au
+même point** ; agent Loc'Air **tous les 10 jours** ; 20 % virés **entre le
+1er et le 5 du mois suivant** ; résiliation libre par email ou SMS avec
+**7 jours de préavis**. **Retrait : le client montre l'écran vert et sa
+pièce d'identité**, que le commerçant regarde seulement (pas de copie, rien
+à cocher). **Vol ou casse dans la boutique : Loc'Air paie, sans
+exception** (« sauf faute grave » retiré le 25/11/2026 ; décision du propriétaire du 24/11/2026 : l'article 6 de la
+convention, qui met ces vols à la charge du commerçant, est à corriger ; la
+« mise en service …/2026 » aussi, c'est la saison 2027).
+
+**Playbook Cellule 1 (V3, reçu le 24/11/2026).** Axe Nice–Cannes seulement
+(8 à 10 points, 40 climatiseurs, 1 micro-box pour les pannes). Points
+d'exemple hors de l'axe retirés (Grasse, Villefranche, Beausoleil, Menton).
+La livraison à domicile reste proposée à côté (choix du propriétaire).
+Fiche mémo « 3 gestes au comptoir » (espace partenaire + flyer commerçant) :
+✓ retrait = écran vert + pièce d'identité regardée ; ↩ retour = appareil,
+housse et gaine récupérés → code ; ! un souci (accessoire manquant, abîmé,
+sale) → le commerçant reprend l'appareil et prévient tout de suite, avec
+une photo (WhatsApp / email partenaires / 06 63 79 87 56). Admin → Points de
+retrait → « Remplissage · 7 prochains jours » par ville : 85 % = baisser
+la pub, 90 % = pub en pause. Même écran : « Passage fait » sur chaque
+point (table `passages_agent`, `supabase/migration_2026-11-24_passages_agent.sql`),
+en rouge au-delà de 10 jours ; et « Saison · point mort » : jours-machine
+loués depuis le 1er mai face aux 313–369 du playbook (charges 1 465 €/mois :
+box 165, agent 700, pub 600). En haut de l'écran : la phase de la saison
+(avant dépose / dépose / saison / reprise / hors saison), la micro-box
+(40 − climatiseurs déposés dans les vrais points) et **« À faire aujourd'hui »**,
+une ligne = une action, la plus urgente en haut : signalements et pannes
+ouverts (remplacer avec la micro-box), retards, 20 % à virer (rouge après le
+5 du mois), passages agent, pub à baisser, à reconditionner, commerçant non
+relié, RIB manquant. Le bloc point mort montre aussi l'occupation de la
+saison (jours-machine / 4 800 possibles = 40 × 120 jours).
+**Retour anticipé (décidé le 24/11/2026)** : accepté à tout moment au même
+point ; les jours non utilisés ne sont **pas remboursés**, sauf panne ou
+rétractation dans les 14 jours (CGV 10 ter, FAQ de la page, Julie).
+**Cellules (24/11/2026)** : `CELLULES` dans `api/_lib/pointsRetrait.js`
+(flotte, charges box/agent/pub, saison, dépose, prix repères, pub/jour) ;
+chaque point a un champ `cellule` (`c1` par défaut). Admin → Points de
+retrait : une carte par cellule (occupation vs point mort, remplissage
+7 jours + consigne pub, nombre de choses à faire, chiffre de la saison et
+20 % commerçants, micro-box) ; un clic filtre tout l'écran sur la cellule.
+Ouvrir une cellule = une ligne dans `CELLULES` + `cellule: 'c2'` sur ses
+points. Point mort calculé : charges × mois ÷ (prix repère × 0,8).
+Relevé récapitulatif (convention art. 2) : le 1er du mois, chaque
+commerçant reçoit par email son relevé du mois précédent (locations, encaissé,
+sa part, date du virement ou RIB manquant) — `runReleveCommercants`
+(`api/cron-monthly.js`, lancé par `cron-daily.js`). Transfert à la société
+d'exploitation (art. 7) : Admin → Points de retrait → « Transfert à la
+société d'exploitation » (aperçu puis envoi email + SMS à chaque commerçant
+d'un point ouvert ; propriétaire seulement ; jamais deux fois).
+**Saison du Click & Collect (playbook)** : une location doit tenir entre
+l'`ouverture` (16 mai) et la `fin_saison` (30 septembre) de la cellule du
+point — `horsSaison()` dans `_lib/pointsRetrait.js`, vérifié au prix
+(`click-collect-prix`, la page affiche « Hors saison »), au paiement et à la
+prolongation. Le point de test est ouvert toute l'année. Écrit aussi dans
+les CGV 10 ter et dans Julie.
+Page `click-and-collect.html` : si le point choisi est complet aux dates
+choisies, bouton « Prendre {point le plus proche libre} · à X km » (cherche
+parmi les 3 points ouverts les plus proches, même calcul que le paiement).
+
+### Prospection terrain des points de retrait (25/11/2026)
+
+Demandé par le propriétaire le 25/11/2026. Une visite = 5 gestes :
+
+1. **Accroche + QR code** : le prospecteur ouvre `locair.fr/prospection`
+   (son code d'équipe ; rôle **« prospecteur »** = l'appli terrain
+   seulement, rien d'autre de l'admin, voir `checkProspecteur` dans
+   `api/_lib/auth.js`), choisit sa zone (Nice, Antibes / Juan-les-Pins,
+   Cannes) et touche « Nouvelle visite » : QR code de session.
+2. **3 · 4 · 5 + e-mail** : le commerçant scanne avec son téléphone
+   (`/partenaires?s=…`), lit les règles, choisit **3, 4 ou 5
+   climatiseurs** (gros boutons ; « Un autre nombre ? » de 1 à 20 ; stock
+   modifiable ensuite dans l'admin), remplit dans l'ordre **commerce**
+   (+ son téléphone, facultatif), **prénom, nom, portable du gérant,
+   e-mail** (obligatoires ; les deux numéros vont dans la convention,
+   colonne `tel_commerce`, `migration_2026-11-25_prospection_tel_commerce.sql`) — le
+   téléphone propose de tout remplir d'un toucher (champs `autocomplete`) ;
+   en tapant le nom du commerce, l'**annuaire officiel** (recherche-entreprises,
+   gratuit, action `entreprises`) propose sa fiche : il **confirme** « Oui,
+   c'est exact » (SIRET, adresse, gérant) ou « Non, ce n'est pas moi » ; le
+   SIRET confirmé va dans la convention (colonne `siret`) —, touche
+   « OK — Recevoir par e-mail ». La présentation + la convention
+   pré-remplie partent tout de suite (bouton « Signer en ligne »). Le
+   prospecteur le voit tout de suite.
+3. **1 photo + GPS** (emplacement prévu, ou devanture) : la fiche
+   est créée, sans saisie obligatoire. Pas de « OK » (gérant absent) :
+   fiche « À repasser » ; « Saisie rapide » = boutique + tél./e-mail.
+4. **Il signe chez lui** (décidé le 25/11/2026 : démarche progressive,
+   **on ne parle pas de signature sur place**) : il étudie l'e-mail chez
+   lui, puis « Signer en ligne » → `/partenaires?s=…&signer=1` → signature
+   du doigt (convention signée en PDF, copie au commerçant et à Loc'Air).
+- **Envoi rapide** (accueil de l'admin, demandé le 25/11/2026) : quelqu'un
+  rencontré par hasard (rue, téléphone) → e-mail (+ prénom, commerce
+  facultatifs) → « Merci pour votre intérêt pour Loc'Air » + tous les
+  supports (présentation + convention + « Signer en ligne »). La fiche
+  entre dans Terrain (« À signer », note « Envoi rapide ») ; même e-mail =
+  même fiche (`envoi_rapide`, `api/prospection.js`). Bouton « Faire scanner
+  le QR code » de la même carte : ouvre `/prospection?visite=1`, le QR code
+  s'affiche tout de suite ; le commerçant tape son e-mail lui-même et reçoit
+  tout.
+5. **Point signé** : compte dans l'objectif (8–10 points, 40 clims).
+   Il faut encore l'ajouter à `api/_lib/pointsRetrait.js` et créer le
+   commerçant (onglet Partenaires), comme avant.
+
+- **Fichiers :** `api/prospection.js` (tout le serveur), `prospection.html`
+  (appli), `partenaires.html` (commerçant ; sans `?s=` : demande de rappel
+  très courte, QR code de la fiche mémo), `guide-prospecteur.html`
+  (tutoriel des recrues, lié dans l'onglet Tutoriels), `api/_lib/prospection.js`
+  (e-mails, SMS, modèle « avant passage »), `api/_lib/conventionPdf.js`
+  (convention V11 en PDF, pré-remplie, avec la signature). Table
+  `prospection_points` (`supabase/migration_2026-11-25_prospection.sql`,
+  ajoute aussi le rôle « prospecteur »). Admin → Points de retrait →
+  **Terrain** : tableau par zone, fiches, boutons, messages types.
+- **Pièces jointes :** la présentation `documents/locair-devenez-point-de-retrait.pdf`
+  (les 8 diapos de la démonstration, allégées à 0,9 Mo ; Brevo refuse
+  plus de 10 Mo) + la convention pré-remplie (ou signée). À refaire si la
+  présentation change. Expéditeur partenaires.locair@outlook.com quand
+  Outlook est relié (sinon contact@locair.fr par Brevo, réponses vers
+  partenaires.locair@outlook.com).
+- **Convention générée :** texte V11 avec les décisions du propriétaire
+  (article 6 : vol ou casse dans la boutique payés par Loc'Air, sans
+  exception ; saison 2027 ; stock 3 à 5).
+- **E-mails aux commerçants rencontrés** (après visite, signature,
+  relance) : autorisés par le propriétaire le 25/11/2026. **Relance du
+  lendemain** (`relancerProspection`, `cron-daily.js`) : une seule fois,
+  fiches d'hier « À repasser » ou « À signer » avec e-mail/téléphone et
+  sans documents envoyés. Le message **« avant passage »** (premier
+  contact) n'est jamais envoyé par le site : modèle à copier, envoyé à la
+  main depuis partenaires.locair@outlook.com.
+- **Suivi Google Sheet :** « Loc'Air — CRM terrain points de retrait »
+  (Drive du propriétaire, créée le 25/11/2026 : onglets Tableau de bord et
+  Points terrain, statuts en liste, formules au point-virgule).
+
+Le code retour fait 4 caractères (lettres majuscules et chiffres, ex.
+« K7P3 »), fixe pour chaque point (voir `codeRetour` dans
+`api/_lib/clickCollect.js`). Ne jamais écrire cette règle
+dans une page publique, un email client ou une réponse de Julie.
 
 ## Outils de prospection (« cerveau + bras »)
 

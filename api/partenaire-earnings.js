@@ -1,18 +1,19 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyPartenaireToken } = require('./_lib/auth');
 const { pushToAdmin } = require('./_lib/push');
+const { pointDuPartenaire, tauxAffiche } = require('./_lib/pointsRetrait');
+const { codeRetour } = require('./_lib/clickCollect');
+const { debutJourParisISO: debutParisISO } = require('./_lib/dates');
 
-function startOfDayISO() {
-  const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
-}
-function startOfMonthISO() {
-  const d = new Date(); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
-}
-function startOfYearISO() {
-  const d = new Date(); d.setUTCMonth(0, 1); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
-}
+// Débuts de jour / mois / année à l'heure de PARIS (pas de Londres) : une
+// location payée le 1er à 0 h 30 compte bien dans le nouveau mois.
+const aujParis = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+function startOfDayISO() { return debutParisISO(aujParis()); }
+function startOfMonthISO() { return debutParisISO(aujParis().slice(0, 8) + '01'); }
+function startOfYearISO() { return debutParisISO(aujParis().slice(0, 5) + '01-01'); }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const supabase = getSupabase();
@@ -99,10 +100,28 @@ module.exports = async (req, res) => {
       // manuelle (les montants déjà calculés par réservation restent eux
       // corrects, seul ce texte explicatif était faux).
       const { data: partenaireRow } = await supabase
-        .from('partenaires').select('taux_commission_pct').eq('id', partenaireId).maybeSingle();
+        .from('partenaires').select('taux_commission_pct, code, telephone, iban').eq('id', partenaireId).maybeSingle();
+      // Commerçant point de retrait Click & Collect : son code retour (voir
+      // clickCollect.codeRetour), à donner au client qui rapporte un
+      // climatiseur. Montré seulement à lui, une fois connecté.
+      const pointCC = partenaireRow ? pointDuPartenaire(partenaireRow.code) : null;
+
+      // Ses parrainages (demandes de rappel venues de son lien). Table
+      // absente (migration pas passée) : rien, sans erreur.
+      let parrainages = null;
+      try {
+        const { data: pr, error: prErr } = await supabase.from('parrainages')
+          .select('id, commerce, statut, created_at').eq('parrain_id', partenaireId)
+          .order('created_at', { ascending: false }).limit(30);
+        if (!prErr) parrainages = pr || [];
+      } catch (e) { /* table absente */ }
 
       return res.status(200).json({
-        taux_commission_pct: partenaireRow?.taux_commission_pct ?? null,
+        parrainages,
+        taux_commission_pct: tauxAffiche(partenaireRow),
+        // Virement mensuel : le partenaire voit s'il manque son RIB (jamais le RIB lui-même).
+        rib_ok: !!(partenaireRow && partenaireRow.iban && String(partenaireRow.iban).trim()),
+        point_retrait: pointCC ? { nom: pointCC.nom, code_retour: codeRetour(pointCC, partenaireRow) } : null,
         reservations_aujourdhui: reservationsAujourdhui,
         gain_aujourdhui_euros:   gainAujourdhui / 100,
         reservations_mois:       reservationsMois,
@@ -121,7 +140,7 @@ module.exports = async (req, res) => {
           id: r.id, ref: r.ref,
           client: fullName.length > 30 ? fullName.slice(0, 29) + '…' : (fullName || null),
           date_debut: r.date_debut, date_fin: r.date_fin,
-          montant_cents: r.prix_total_cents || 0,
+          montant_cents: require('./_lib/encaisse').encaisseCents(r.prix_total_cents, r.partenaire_commission_cents, tauxAffiche(partenaireRow)),
           commission_cents: r.partenaire_commission_cents || 0,
           payee: r.partenaire_commission_payee,
           created_at: r.created_at,
@@ -135,12 +154,18 @@ module.exports = async (req, res) => {
     if (action === 'demander_virement') {
       const { data: resas, error: resasErr } = await supabase
         .from('reservations')
-        .select('partenaire_commission_cents')
+        .select('partenaire_commission_cents, created_at')
         .eq('partenaire_id', partenaireId).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .eq('partenaire_commission_payee', false);
       if (resasErr) throw resasErr;
-      const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
-      if (montant <= 0) return res.status(400).json({ error: 'Aucun montant à virer pour le moment' });
+      // Commerçant point de retrait : les 20 % d'un mois sont virés entre le
+      // 1er et le 5 du mois suivant (convention) — le mois en cours attend.
+      const { data: pc } = await supabase.from('partenaires').select('code').eq('id', partenaireId).maybeSingle();
+      const { debutJourParisISO, todayParis } = require('./_lib/dates');
+      const debutMois = debutJourParisISO(todayParis().slice(0, 8) + '01');
+      const lignes = pc && pointDuPartenaire(pc.code) ? (resas || []).filter((r) => String(r.created_at || '') < debutMois) : (resas || []);
+      const montant = lignes.reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
+      if (montant <= 0) return res.status(400).json({ error: pc && pointDuPartenaire(pc.code) ? 'Les 20 % de ce mois-ci seront virés entre le 1er et le 5 du mois prochain.' : 'Aucun montant à virer pour le moment' });
 
       const { data: enCours, error: enCoursErr } = await supabase
         .from('partenaire_virements').select('id').eq('partenaire_id', partenaireId).eq('statut', 'demande').limit(1);

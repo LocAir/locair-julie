@@ -119,6 +119,7 @@ async function findEligibleActiveClients(supabase, cityId, newDateFin) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
   const admin = await checkAdminRole(req, supabase);
@@ -134,7 +135,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, express, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, creneau_recuperation, date_recuperation_souhaitee, created_at, forfait_id, forfait:forfaits ( nom ), partenaire:partenaires ( nom ), reservation_appareils ( appareil:appareils ( numero ) )')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, source_channel, installation, express, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, creneau_recuperation, date_recuperation_souhaitee, created_at, forfait_id, forfait:forfaits ( nom ), partenaire:partenaires!reservations_partenaire_id_fkey ( nom ), reservation_appareils ( appareil:appareils ( numero ) )')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -244,7 +245,9 @@ module.exports = async (req, res) => {
         d.setUTCDate(d.getUTCDate() + 7);
         dateFin = d.toISOString().slice(0, 10);
       }
-      const quantite   = Math.min(5, Math.max(1, parseInt(body.quantite) || 1));
+      // Commande par téléphone : jusqu'à 20 appareils (les pros à 10+ passent
+      // justement par l'admin ; le site, lui, s'arrête à 5).
+      const quantite   = Math.min(20, Math.max(1, parseInt(body.quantite) || 1));
       const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       const logement    = (body.logement     || '').trim().slice(0, 100);
       const parrainCode     = (body.parrain_code    || '').trim().slice(0, 50);
@@ -815,7 +818,7 @@ module.exports = async (req, res) => {
         return res.status(403).json({ error: "Seul un compte finances peut marquer manuellement une réservation remboursée — utilise l'action de remboursement Stripe." });
       }
       if (body.statut != null && STATUTS_VALIDES.includes(body.statut)) patch.statut = body.statut;
-      if (body.quantite != null) patch.quantite = Math.max(1, parseInt(body.quantite) || 1);
+      if (body.quantite != null) patch.quantite = Math.min(20, Math.max(1, parseInt(body.quantite) || 1));
       if (body.prix_total_cents != null) {
         patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);
         // Audit 2026-08-06 I6 : la commission partenaire n'était pas
@@ -1142,6 +1145,26 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase.storage.from('missions').createSignedUrl(resa.fenetre_photo_path, 3600);
       if (error) throw error;
       return res.status(200).json({ url: data.signedUrl });
+    }
+
+    // Pièce d'identité Click & Collect — select('*') : marche avant comme
+    // après la migration piece_identite_paths (sans la colonne, les chemins
+    // sont relus dans instructions_acces, voir checkout-click-collect.js).
+    if (action === 'identite_urls') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: resa } = await supabase.from('reservations').select('*').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+      let chemins = Array.isArray(resa.piece_identite_paths) ? resa.piece_identite_paths : [];
+      if (!chemins.length) chemins = String(resa.instructions_acces || '').match(/identites\/[\w-]+\/(?:recto|verso|passeport)\.\w+/g) || [];
+      if (!chemins.length) return res.status(404).json({ error: 'Aucune pièce d’identité (ou déjà supprimée après la location)' });
+      const urls = [];
+      for (const path of chemins) {
+        const { data, error } = await supabase.storage.from('missions').createSignedUrl(path, 3600);
+        if (!error && data) urls.push({ face: path.split('/').pop().split('.')[0], url: data.signedUrl });
+      }
+      if (!urls.length) return res.status(404).json({ error: 'Fichiers introuvables (déjà supprimés ?)' });
+      return res.status(200).json({ urls });
     }
 
     return res.status(400).json({ error: 'Action inconnue' });

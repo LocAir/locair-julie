@@ -6,6 +6,7 @@ const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplAmbassadeurCredentials } = require('./_lib/emailTemplates');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
 const { hashPin } = require('./_lib/pinHash');
+const { detecterParrainage } = require('./_lib/parrainage');
 
 function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIComponent(code)}`; }
 
@@ -20,7 +21,7 @@ async function notifyPartenaireCredentials(supabase, { nom, email, code, pin }) 
   const sig  = await getSignature(supabase);
   const html = withSignature(tplAmbassadeurCredentials({ nom, lien: partenaireLinkFor(code), pin }), sig);
 
-  const result = await sendBrevoEmail({ to: email, subject: "Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
+  const result = await sendBrevoEmail({ to: email, subject: "Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur, replyTo: 'partenaires.locair@outlook.com' });
   // Pas de reservation_id pour un email ambassadeur (email_log est structuré
   // autour des réservations) — reservation_id:null reste consultable en base
   // même sans apparaître dans le panneau Communications admin, qui ne liste
@@ -84,33 +85,43 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'create') {
-      const nom = (body.nom || '').trim();
+      const nom = String(body.nom || '').trim();
       if (!nom) return res.status(400).json({ error: 'Nom requis' });
       const taux = Math.min(100, Math.max(0, parseInt(body.taux_commission_pct) || 10));
-      const base = (body.code || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '') || slugifyNom(nom);
-      const pinProvided = (body.pin || '').trim();
+      const codeDemande = String(body.code || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const base = codeDemande || slugifyNom(nom);
+      const pinProvided = String(body.pin || '').trim();
+      // Code secret choisi à la main : 4 à 8 chiffres (sinon trop facile à deviner).
+      if (pinProvided && !/^\d{4,8}$/.test(pinProvided)) return res.status(400).json({ error: 'Le code secret doit faire 4 à 8 chiffres.' });
 
       for (let attempt = 0; attempt < 5; attempt++) {
         const code     = attempt === 0 ? base : `${base}${crypto.randomInt(10, 100)}`;
         const pinPlain = pinProvided || String(crypto.randomInt(100000, 1000000));
         const { data: created, error } = await supabase.from('partenaires').insert({
           nom,
-          contact_nom:         (body.contact_nom || '').trim() || null,
-          email:               (body.email || '').trim().toLowerCase() || null,
-          telephone:           (body.telephone || '').trim() || null,
+          contact_nom:         String(body.contact_nom || '').trim() || null,
+          email:               String(body.email || '').trim().toLowerCase() || null,
+          telephone:           String(body.telephone || '').trim() || null,
           code,
           pin:        hashPin(pinPlain),
           pin_hashed: true,
           taux_commission_pct: taux,
-          titulaire_compte:    (body.titulaire_compte || '').trim() || null,
+          titulaire_compte:    String(body.titulaire_compte || '').trim() || null,
           iban:                normalizeIban(body.iban),
           bic:                 normalizeBic(body.bic),
         }).select('id, code').single();
         if (!error) {
-          await notifyPartenaireCredentials(supabase, { nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: pinPlain });
-          return res.status(200).json({ ok: true, code: created.code, pin: pinPlain });
+          await notifyPartenaireCredentials(supabase, { nom, email: String(body.email || '').trim().toLowerCase(), code: created.code, pin: pinPlain });
+          // Fiche créée : un parrainage en attente lui correspond ? (même
+          // téléphone ou même commerce) → signé + notifications.
+          const parrainage = await detecterParrainage(supabase, { id: created.id, nom, telephone: body.telephone });
+          return res.status(200).json({ ok: true, code: created.code, pin: pinPlain, parrainage });
         }
         if (error.code !== '23505') throw error;
+        // Code choisi à la main (ex. celui de son point de retrait) déjà pris :
+        // on ne le change pas en silence, sinon le commerçant n'est plus relié
+        // à son point (ni commission, ni code retour dans son espace).
+        if (codeDemande) return res.status(409).json({ error: `Le code « ${codeDemande} » est déjà utilisé par un autre partenaire.` });
       }
       return res.status(500).json({ error: 'Impossible de générer un code unique, réessaie' });
     }
@@ -119,13 +130,13 @@ module.exports = async (req, res) => {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const patch = {};
-      if (body.nom != null)         patch.nom         = body.nom.trim();
-      if (body.contact_nom != null) patch.contact_nom = body.contact_nom.trim() || null;
-      if (body.email != null)       patch.email       = body.email.trim().toLowerCase() || null;
-      if (body.telephone != null)   patch.telephone   = body.telephone.trim() || null;
+      if (body.nom != null)         patch.nom         = String(body.nom).trim();
+      if (body.contact_nom != null) patch.contact_nom = String(body.contact_nom).trim() || null;
+      if (body.email != null)       patch.email       = String(body.email).trim().toLowerCase() || null;
+      if (body.telephone != null)   patch.telephone   = String(body.telephone).trim() || null;
       if (body.actif != null)       patch.actif       = Boolean(body.actif);
       if (body.taux_commission_pct != null) patch.taux_commission_pct = Math.min(100, Math.max(0, parseInt(body.taux_commission_pct) || 0));
-      if (body.code != null && body.code.trim()) patch.code = body.code.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (body.code != null && String(body.code).trim()) patch.code = String(body.code).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       let newPinPlain = null;
       if (body.pin != null && body.pin.trim()) {
         newPinPlain     = body.pin.trim();
@@ -137,10 +148,23 @@ module.exports = async (req, res) => {
       if (body.bic != null)              patch.bic             = normalizeBic(body.bic);
       if (!Object.keys(patch).length) return res.status(400).json({ error: 'Rien à modifier' });
 
+      const { data: avantPart } = patch.code ? await supabase.from('partenaires').select('code').eq('id', id).maybeSingle() : { data: null };
+      const ancienCode = avantPart && avantPart.code ? String(avantPart.code).toLowerCase() : '';
       const { error } = await supabase.from('partenaires').update(patch).eq('id', id);
       if (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'Ce code ou ce PIN est déjà utilisé par un autre partenaire, réessaie' });
         throw error;
+      }
+      // Le code a changé : le point de retrait relié suit (sinon il perdrait
+      // son commerçant, sa commission et son code retour).
+      if (ancienCode && ancienCode !== patch.code) {
+        const PRet = require('./_lib/pointsRetrait');
+        await PRet.chargerPoints(supabase, { force: true });
+        for (const pt of PRet.POINTS_RETRAIT.filter((x) => x.partenaire_code && String(x.partenaire_code).toLowerCase() === ancienCode)) {
+          const { data: l } = await supabase.from('points_retrait').select('data, actif').eq('id', pt.id).maybeSingle();
+          await supabase.from('points_retrait').upsert({ id: pt.id, data: { ...((l && l.data) || {}), partenaire_code: patch.code }, actif: l ? l.actif : true, updated_at: new Date().toISOString() }, { onConflict: 'id' }).then(() => {}, () => {});
+        }
+        await PRet.chargerPoints(supabase, { force: true });
       }
       // Le code personnel a changé : renvoyer automatiquement le nouveau code
       // par email, comme à la création.
@@ -148,7 +172,13 @@ module.exports = async (req, res) => {
         const { data: fresh } = await supabase.from('partenaires').select('nom, email, code').eq('id', id).maybeSingle();
         if (fresh) await notifyPartenaireCredentials(supabase, { ...fresh, pin: newPinPlain });
       }
-      return res.status(200).json({ ok: true });
+      // Fiche activée, ou téléphone / nom renseigné : parrainage à détecter.
+      let parrainage = null;
+      if (patch.actif === true || patch.telephone || patch.nom) {
+        const { data: fiche } = await supabase.from('partenaires').select('id, nom, telephone, actif').eq('id', id).maybeSingle();
+        if (fiche && fiche.actif !== false) parrainage = await detecterParrainage(supabase, fiche);
+      }
+      return res.status(200).json({ ok: true, parrainage });
     }
 
     if (action === 'delete') {

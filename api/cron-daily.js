@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { numeroComptoir: numComptoir } = require('./_lib/clickCollect');
 const Stripe = require('stripe');
 const { getSupabase }          = require('./_lib/supabase');
 const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
@@ -7,7 +8,7 @@ const { getAvailability }      = require('./_lib/stock');
 const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runFactureTransporteurHebdo } = require('./_lib/transporteurFacture');
-const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
+const { runMonthlyRecap, runDormantClientsWinback, runRecapPartenaires, runReleveCommercants } = require('./cron-monthly');
 const { dailyRate, getPricingConfig } = require('./_lib/pricing');
 const { todayParis, dateInParis }     = require('./_lib/dates');
 const { scenariosDueToday, isSupersededReservation } = require('./_lib/emailSchedule');
@@ -30,6 +31,7 @@ function verifyCronAuth(req) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
 
@@ -143,7 +145,7 @@ module.exports = async (req, res) => {
   try {
     const { data: retards } = await supabase
       .from('livraisons')
-      .select('id, date_prevue, reservation_id, reservation:reservations(ref, nom, adresse, email, stripe_customer_id, stripe_payment_intent_id, city_id)')
+      .select('id, date_prevue, reservation_id, reservation:reservations(ref, nom, adresse, email, stripe_customer_id, stripe_payment_intent_id, city_id, source_channel)')
       .eq('type', 'recuperation')
       .in('statut', ['a_faire', 'acceptee'])
       .lt('date_prevue', todayStr);
@@ -152,6 +154,12 @@ module.exports = async (req, res) => {
     for (const liv of retards || []) {
       const joursRetard = Math.round((new Date(todayStr) - new Date(liv.date_prevue)) / 86400000);
       const resa = liv.reservation || {};
+      // Click & Collect : pas de récupération par un transporteur (le client
+      // rapporte l'appareil au point). Une vieille mission qui traînerait ne
+      // déclenche ni alerte ici ni, surtout, prélèvement automatique : le
+      // retard Click & Collect a son propre bloc ci-dessous (alerte admin
+      // seulement, jamais de prélèvement).
+      if (resa.source_channel === 'click_collect') continue;
 
       await pushToAdmin(supabase, {
         title: `🚨 Retard récupération — ${resa.nom || '?'} (${joursRetard}j)`,
@@ -262,7 +270,7 @@ module.exports = async (req, res) => {
   try {
     const { data: retardsLivraison } = await supabase
       .from('livraisons')
-      .select('id, date_prevue, reservation:reservations(ref, nom)')
+      .select('id, date_prevue, reservation:reservations(ref, nom, source_channel)')
       .eq('type', 'livraison')
       .in('statut', ['a_faire', 'acceptee'])
       .lt('date_prevue', todayStr);
@@ -271,6 +279,8 @@ module.exports = async (req, res) => {
     for (const liv of retardsLivraison || []) {
       const joursRetard = Math.round((new Date(todayStr) - new Date(liv.date_prevue)) / 86400000);
       const resa = liv.reservation || {};
+      // Click & Collect : personne ne livre, le client vient au point.
+      if (resa.source_channel === 'click_collect') continue;
       await pushToAdmin(supabase, {
         title: `🚨 Retard livraison — ${resa.nom || '?'} (${joursRetard}j)`,
         body:  `Livraison prévue le ${liv.date_prevue}, non effectuée. Dossier ${resa.ref || '?'}.`,
@@ -283,6 +293,106 @@ module.exports = async (req, res) => {
     console.error('[Cron retards livraison]', e.message);
   }
 
+  // ── 3ter. Click & Collect : appareil pas rendu à temps ─────────────────
+  // Règles des CGV (article « Click & Collect », décidées par le propriétaire
+  // le 20/11/2026) :
+  //   - retour possible jusqu'à la fermeture du point le jour de fin
+  //     (date_fin, repoussée par chaque prolongation payée) ;
+  //   - ensuite, jours 1 à 7 : chaque jour de retard = un jour de location
+  //     en plus, au tarif Click & Collect, prélevé sur la carte enregistrée
+  //     au paiement (si AUTO_LATE_CHARGE=true sur Vercel, sinon alerte admin
+  //     seulement) + un SMS chaque jour au client ;
+  //   - au-delà de 7 jours : appareil « non rendu ». Plus de prélèvement
+  //     automatique : l'admin est alerté pour facturer la valeur de
+  //     remplacement (sur justificatif) et porter plainte.
+  // Sans retrait confirmé (remis_at vide), jamais de prélèvement : alerte seulement.
+  try {
+    const { data: ccNonRendus, error: ccErr } = await supabase
+      .from('reservations')
+      .select('id, ref, prenom, nom, tel, lang, city_id, quantite, stripe_customer_id, date_fin, point_retrait_id, adresse, remis_at, rendu_at, source')
+      .eq('source_channel', 'click_collect')
+      .eq('statut', 'confirmee')
+      .is('rendu_at', null)
+      .lt('date_fin', todayStr)
+      .limit(200);
+    if (ccErr) {
+      if (ccErr.code === '42703' || /does not exist/i.test(ccErr.message || '')) report.ccRetoursNonSuivis = 'migration rendu_at à passer';
+      else throw ccErr;
+    } else {
+      const { montantProlongationCC } = require('./_lib/prolongCC');
+      const { calcTieredPrice } = require('./_lib/pricing');
+      const pricingCC = await getPricingConfig(supabase);
+      const jourCents = montantProlongationCC(calcTieredPrice(1, pricingCC) * 100, pricingCC); // 1 jour au tarif Click & Collect
+      // Minuit à Nice (pas à Londres) : sinon, entre 0 h et 2 h, le retard du jour était facturé une 2e fois.
+      const debutJour = require('./_lib/dates').debutJourParisISO(todayStr);
+      let ccRetard = 0, ccFactures = 0;
+      for (const r of ccNonRendus || []) {
+        if (r.source === 'site_prolongation') continue; // la fiche d'origine porte le suivi
+        const joursRetard = Math.round((new Date(todayStr) - new Date(r.date_fin)) / 86400000);
+        const point = String(r.adresse || '').replace(/^CLICK & COLLECT — /, '').split(' — ')[0];
+        ccRetard++;
+        if (!r.remis_at) {
+          await pushToAdmin(supabase, { title: `⚠️ Click & Collect — retrait jamais confirmé — ${r.nom || '?'}`,
+            body: `Location finie le ${r.date_fin} (point ${point}) sans retrait ni retour confirmés. Dossier ${r.ref || '?'} — vérifier avec le point.`, tag: `cc-retour-retard-${r.id}` });
+          continue;
+        }
+        if (joursRetard > 7) {
+          await pushToAdmin(supabase, { title: `🚨 Click & Collect — appareil NON RENDU — ${r.nom || '?'} (${joursRetard}j)`,
+            body: `Plus de 7 jours de retard (retour prévu le ${r.date_fin}, point ${point}). Dossier ${r.ref || '?'}${r.tel ? ' · ' + r.tel : ''}. Selon les CGV : facturer la valeur de remplacement sur justificatif et porter plainte.`, tag: `cc-non-rendu-${r.id}` });
+          continue;
+        }
+        // une seule fois par jour : déjà traité aujourd'hui ?
+        const { data: dejaJour } = await supabase.from('email_log').select('id').eq('reservation_id', r.id).eq('scenario', 'cc_retard').gte('created_at', debutJour).limit(1);
+        if (dejaJour && dejaJour.length) continue;
+        const qte = Math.max(1, r.quantite || 1), montant = jourCents * qte;
+        const l = r.lang === 'en' || r.lang === 'es' ? r.lang : 'fr';
+        const Tx = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+        const eur = (c) => (c / 100).toFixed(2).replace('.', l === 'en' ? '.' : ',') + ' €';
+        let facture = false;
+        if (process.env.AUTO_LATE_CHARGE === 'true' && r.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
+          try {
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+            const methods = await stripe.paymentMethods.list({ customer: r.stripe_customer_id, type: 'card' });
+            if (methods.data.length) {
+              const intent = await stripe.paymentIntents.create({
+                amount: montant, currency: 'eur', customer: r.stripe_customer_id, payment_method: methods.data[0].id,
+                off_session: true, confirm: true,
+                description: `Loc'Air — Click & Collect, jour ${joursRetard} de retard · ${r.ref || ''}`,
+                metadata: { type: 'retard_cc', jour: String(joursRetard), reservation_id: String(r.id) },
+              }, { idempotencyKey: `cc-retard-${r.id}-${todayStr}` });
+              await supabase.from('incidents').insert({ city_id: r.city_id || null, reservation_id: r.id, type: 'retard', description: `Click & Collect — jour ${joursRetard} de retard facturé (${eur(montant)}) · ${intent.id}`, montant_facture_cents: montant, statut: 'resolu' });
+              facture = true; ccFactures++;
+            }
+          } catch (eStripe) {
+            console.error('[Cron retard CC]', r.ref, eStripe.message);
+            await pushToAdmin(supabase, { title: `❌ Retard Click & Collect non prélevé — ${r.nom || '?'}`, body: `Dossier ${r.ref || '?'} : ${eStripe.message}. À facturer à la main.`, tag: `cc-retard-echec-${r.id}` }).catch(() => {});
+          }
+        }
+        if (!facture) {
+          await pushToAdmin(supabase, { title: `🚨 Click & Collect — appareil pas rendu — ${r.nom || '?'} (${joursRetard}j)`,
+            body: `Retour prévu le ${r.date_fin} au point ${point}. Dossier ${r.ref || '?'}${r.tel ? ' · ' + r.tel : ''}. Jour ${joursRetard}/7 : ${eur(montant)} à facturer (prélèvement automatique ${process.env.AUTO_LATE_CHARGE === 'true' ? 'impossible' : 'désactivé'}).`, tag: `cc-retour-retard-${r.id}` });
+        }
+        // SMS du jour au client
+        // Pas de lien « prolonger » : une location dont la date de fin est
+        // passée ne peut plus être prolongée (prolong-lookup.js la refuse).
+        const dfin = r.date_fin.split('-').reverse().join('/');
+        const sms = qte > 1
+          ? Tx(`Loc'Air : vos ${qte} climatiseurs devaient être rendus le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour pour les ${qte}. Rapportez-les au point ${point}. Une question ? 06 63 79 87 56`,
+            `Loc'Air: your ${qte} air conditioners were due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day for all ${qte}. Bring them back to ${point}. Questions? +33 6 63 79 87 56`,
+            `Loc'Air: tus ${qte} aparatos debían devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día por los ${qte}. Devuélvelos en ${point}. ¿Dudas? +33 6 63 79 87 56`)
+          : Tx(`Loc'Air : votre climatiseur devait être rendu le ${dfin}. Votre location continue : jour ${joursRetard} de retard, ${eur(montant)} par jour. Rapportez-le au point ${point}. Une question ? 06 63 79 87 56`,
+            `Loc'Air: your air conditioner was due back on ${dfin}. Your rental continues: day ${joursRetard} late, ${eur(montant)} a day. Bring it back to ${point}. Questions? +33 6 63 79 87 56`,
+            `Loc'Air: tu aire acondicionado debía devolverse el ${dfin}. Tu alquiler continúa: día ${joursRetard} de retraso, ${eur(montant)} al día. Devuélvelo en ${point}. ¿Dudas? +33 6 63 79 87 56`);
+        if (r.tel) await sendBrevoSms({ to: r.tel, content: sms }).catch(() => {});
+        await supabase.from('email_log').insert({ reservation_id: r.id, scenario: 'cc_retard', canal: 'sms', destinataire: r.tel || null, modele: 'cc_retard', statut: 'envoye', contenu: sms }).then(() => {}, () => {});
+      }
+      if (ccRetard) report.ccRetoursEnRetard = ccRetard;
+      if (ccFactures) report.ccRetardsFactures = ccFactures;
+    }
+  } catch (e) {
+    console.error('[Cron retours Click & Collect]', e.message);
+  }
+
   // ── 3bis. Relance des réservations en_attente jamais payées (Module 8) ──────
   // Un panier abandonné sur le site, ou un lien de paiement envoyé par
   // l'admin jamais finalisé, laissait jusqu'ici la réservation en_attente
@@ -293,7 +403,7 @@ module.exports = async (req, res) => {
   try {
     const { data: enAttente } = await supabase
       .from('reservations')
-      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, stripe_payment_intent_id, created_at, source, lang, reservation_origine_id')
+      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, stripe_payment_intent_id, created_at, source, source_channel, lang, reservation_origine_id')
       .eq('statut', 'en_attente')
       .or('email.not.is.null,tel.not.is.null')
       .limit(500);
@@ -302,6 +412,15 @@ module.exports = async (req, res) => {
     if ((enAttente || []).length && process.env.STRIPE_SECRET_KEY) {
       const stripeRelance = new Stripe(process.env.STRIPE_SECRET_KEY);
       for (const resa of enAttente) {
+        // Click & Collect : jamais de relance de paiement (le lien envoyé
+        // parle de livraison et d'un détail de prix « à domicile »). Un
+        // panier abandonné depuis plus de 2 h est simplement annulé, pour
+        // libérer l'appareil du point (le stock d'un point est petit).
+        if (resa.source_channel === 'click_collect') {
+          if (today - new Date(resa.created_at) < 2 * 3600000) continue;
+          if (await annulerPanierClickCollect(supabase, stripeRelance, resa)) annuleCount++;
+          continue;
+        }
         if (!resa.email && !resa.tel) continue;
         const ageJours = Math.floor((today - new Date(resa.created_at)) / 86400000);
         if (ageJours < 1) continue;
@@ -905,7 +1024,7 @@ module.exports = async (req, res) => {
 
     const { data: candidats } = await supabase
       .from('reservations')
-      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source, reservation_origine_id')
+      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source, source_channel, reservation_origine_id')
       .eq('statut', 'confirmee')
       .lte('date_debut', in14dStr)
       .gte('date_fin', todayStr)
@@ -1060,7 +1179,7 @@ module.exports = async (req, res) => {
     const hierEnd = new Date(hierStart); hierEnd.setUTCDate(hierEnd.getUTCDate() + 1);
     const { data: installsHier } = await supabase
       .from('livraisons')
-      .select('reservation:reservations!inner(id, statut, prenom, tel, lang, ref)')
+      .select('reservation:reservations!inner(id, statut, prenom, tel, lang, ref, source_channel)')
       .eq('type', 'livraison').eq('statut', 'fait')
       .eq('reservation.statut', 'confirmee')
       .gte('fait_at', hierStart.toISOString()).lt('fait_at', hierEnd.toISOString());
@@ -1069,6 +1188,9 @@ module.exports = async (req, res) => {
     for (const row of installsHier || []) {
       const resa = row.reservation;
       if (!resa) continue;
+      // Click & Collect : la « livraison » est le dépôt au point de retrait,
+      // pas une installation chez le client — pas de SMS de suivi ici.
+      if (resa.source_channel === 'click_collect') continue;
       try {
         const result = await sendSuiviInstallationSms(supabase, resa);
         if (result.sent) smsSuiviInstallation++;
@@ -1107,6 +1229,29 @@ module.exports = async (req, res) => {
     console.error('[Cron monthly via daily]', e.message);
   }
   try {
+    if (today.getDate() === 1) { // 1er du mois — virement mensuel des commissions partenaires
+      report.partenaires = await runRecapPartenaires(supabase);
+    }
+  } catch (e) {
+    console.error('[Cron partenaires via daily]', e.message);
+  }
+  // ── Prospection terrain : relance du lendemain matin (une seule fois) ──
+  // Fiche « À repasser » ou « À signer » d'hier (ou des 7 derniers jours),
+  // avec un e-mail ou un téléphone, à qui rien n'a encore été envoyé :
+  // la présentation + la convention par e-mail, et/ou un SMS avec le lien.
+  try {
+    report.relancesProspection = await relancerProspection(supabase);
+  } catch (e) {
+    console.error('[Cron relance prospection]', e.message);
+  }
+  try {
+    if (today.getDate() <= 3) { // du 1er au 3 du mois — relevé récapitulatif à chaque commerçant (convention, art. 2) ; jamais deux fois (email_log), un envoi raté est retenté
+      report.releves = await runReleveCommercants(supabase);
+    }
+  } catch (e) {
+    console.error('[Cron relevés commerçants]', e.message);
+  }
+  try {
     if (today.getDate() === 1) { // 1er du mois — même cadence que le récap virements
       report.dormants = await runDormantClientsWinback(supabase);
     }
@@ -1114,5 +1259,300 @@ module.exports = async (req, res) => {
     console.error('[Cron dormants via daily]', e.message);
   }
 
+  // ── Pièces d'identité Click & Collect : effacées 30 jours après la fin de
+  // la location (RGPD — on ne garde pas une copie d'identité plus longtemps
+  // que nécessaire ; promesse affichée au client sur la page). Deux cas :
+  // la colonne piece_identite_paths (après migration), et les chemins mis
+  // dans instructions_acces tant que la migration n'est pas passée.
+  try {
+    const limite = new Date(Date.UTC(...todayStr.split('-').map((n, i) => i === 1 ? Number(n) - 1 : Number(n))) - 30 * 864e5).toISOString().slice(0, 10);
+    let effacees = 0;
+    // Click & Collect pas encore rendu au point (remis au client, rendu_at
+    // vide) : on GARDE la pièce d'identité tant que l'appareil n'est pas
+    // revenu. Seulement si la colonne rendu_at existe (migration du
+    // 19/11) ; sinon, comportement d'avant (effacement à 30 jours).
+    let { data: avecColonne, error: colErr } = await supabase.from('reservations')
+      .select('id, piece_identite_paths, source_channel, remis_at, rendu_at').not('piece_identite_paths', 'is', null).lt('date_fin', limite).limit(200);
+    if (colErr && (colErr.code === '42703' || /does not exist/i.test(colErr.message || ''))) {
+      ({ data: avecColonne, error: colErr } = await supabase.from('reservations')
+        .select('id, piece_identite_paths').not('piece_identite_paths', 'is', null).lt('date_fin', limite).limit(200));
+    }
+    if (!colErr) {
+      for (const r of avecColonne || []) {
+        if ('rendu_at' in r && r.source_channel === 'click_collect' && r.remis_at && !r.rendu_at) continue;
+        // Fichier pas effacé (stockage en panne) → on garde le lien pour
+        // réessayer demain, sinon la pièce resterait stockée sans trace.
+        if (r.piece_identite_paths && r.piece_identite_paths.length) {
+          const { error: rmErr } = await supabase.storage.from('missions').remove(r.piece_identite_paths);
+          if (rmErr) { console.error('[Cron pièces d’identité] effacement', r.id, rmErr.message); continue; }
+        }
+        await supabase.from('reservations').update({ piece_identite_paths: null }).eq('id', r.id);
+        effacees++;
+      }
+    }
+    const { data: enConsigne } = await supabase.from('reservations')
+      .select('id, instructions_acces').eq('source_channel', 'click_collect').ilike('instructions_acces', '%identites/%').lt('date_fin', limite).limit(200);
+    for (const r of enConsigne || []) {
+      const chemins = String(r.instructions_acces || '').match(/identites\/[\w-]+\/(?:recto|verso|passeport)\.\w+/g) || [];
+      if (chemins.length) {
+        const { error: rmErr } = await supabase.storage.from('missions').remove(chemins);
+        if (rmErr) { console.error('[Cron pièces d’identité] effacement', r.id, rmErr.message); continue; }
+      }
+      await supabase.from('reservations').update({ instructions_acces: String(r.instructions_acces).replace(/ \| PIÈCE D'IDENTITÉ[\s\S]*$/, ' | Pièce d’identité supprimée (30 j après la location)') }).eq('id', r.id);
+      effacees++;
+    }
+    report.piecesIdentiteEffacees = effacees;
+  } catch (e) {
+    console.error('[Cron pièces d’identité]', e.message);
+  }
+
+  // ── Pièces d'identité orphelines : envoyées depuis la page Click & Collect
+  // mais jamais rattachées à une réservation (paiement abandonné). Effacées
+  // 48 h après l'envoi. Prudence : au moindre doute (liste illisible,
+  // requête en erreur), on n'efface RIEN.
+  try {
+    report.piecesIdentiteOrphelines = await effacerIdentitesOrphelines(supabase);
+  } catch (e) {
+    console.error('[Cron pièces d’identité orphelines]', e.message);
+  }
+
+  // ── Click & Collect : rappels la veille du retrait et la veille du retour
+  // (fr / en / es), une seule fois par réservation (verrou email_sent).
+  try {
+    report.ccRappels = await envoyerRappelsClickCollect(supabase, todayStr);
+    // « Nettoyez le filtre » chaque semaine : retiré le 21/11/2026 (message
+    // en trop, décision du propriétaire). La fonction reste plus bas si besoin.
+  } catch (e) {
+    console.error('[Cron rappels Click & Collect]', e.message);
+  }
+
   return res.status(200).json({ ok: true, date: todayStr, ...report });
 };
+
+// ── Click & Collect : panier abandonné depuis plus de 2 h ─────────────────
+// Annule le paiement Stripe s'il n'a pas abouti, puis la réservation, pour
+// libérer l'appareil du point. Jamais d'annulation d'un paiement réussi
+// (le webhook peut simplement être en retard) : dans ce cas on ne touche à rien.
+async function annulerPanierClickCollect(supabase, stripe, resa) {
+  try {
+    if (resa.stripe_payment_intent_id) {
+      const pi = await stripe.paymentIntents.retrieve(resa.stripe_payment_intent_id);
+      if (['succeeded', 'processing', 'requires_capture'].includes(pi.status)) return false;
+      if (pi.status !== 'canceled') await stripe.paymentIntents.cancel(pi.id).catch(() => {});
+    }
+    const { data } = await supabase.from('reservations').update({ statut: 'annulee' })
+      .eq('id', resa.id).eq('statut', 'en_attente').select('id');
+    return !!(data && data.length);
+  } catch (e) {
+    console.error('[CC panier abandonné]', resa.ref, e.message);
+    return false;
+  }
+}
+
+// ── Pièces d'identité orphelines ──────────────────────────────────────────
+// Envoyées depuis la page Click & Collect, puis paiement abandonné : aucune
+// réservation n'y renvoie. La date d'envoi est dans le nom du dossier
+// (identites/<millisecondes>-<hasard>, voir upload-identite.js). Effacées
+// 48 h après l'envoi. Prudence : au moindre doute (liste illisible, requête
+// en erreur, nom inattendu), on n'efface RIEN.
+async function effacerIdentitesOrphelines(supabase) {
+  const bucket = supabase.storage.from('missions');
+  const { data: dossiers, error } = await bucket.list('identites', { limit: 1000 });
+  if (error || !Array.isArray(dossiers)) return 'liste illisible';
+  const limite = Date.now() - 48 * 3600000;
+  const vieux = dossiers.map((d) => d && d.name).filter((n) => {
+    const m = /^(\d{13})-[a-f0-9]{18}$/.exec(n || '');
+    return m && Number(m[1]) < limite;
+  });
+  if (!vieux.length) return 0;
+  // Dossiers encore rattachés à une réservation (colonne ou note de consigne) : on garde.
+  const gardes = new Set();
+  const a = await supabase.from('reservations').select('piece_identite_paths').not('piece_identite_paths', 'is', null);
+  if (a.error && !(a.error.code === '42703' || /does not exist/i.test(a.error.message || ''))) return 'réservations illisibles';
+  for (const r of a.data || []) for (const c of r.piece_identite_paths || []) gardes.add(String(c).split('/')[1]);
+  const b = await supabase.from('reservations').select('instructions_acces').ilike('instructions_acces', '%identites/%');
+  if (b.error) return 'réservations illisibles';
+  for (const r of b.data || []) for (const m of String(r.instructions_acces || '').matchAll(/identites\/([\w-]+)\//g)) gardes.add(m[1]);
+  let effaces = 0;
+  for (const nom of vieux.slice(0, 100)) {
+    if (gardes.has(nom)) continue;
+    const { data: fichiers, error: e2 } = await bucket.list(`identites/${nom}`, { limit: 10 });
+    if (e2 || !Array.isArray(fichiers)) continue;
+    const chemins = fichiers.map((f) => f && f.name).filter((n) => /^(recto|verso|passeport)\.\w+$/.test(n || '')).map((n) => `identites/${nom}/${n}`);
+    if (!chemins.length) continue;
+    const { error: e3 } = await bucket.remove(chemins);
+    if (!e3) effaces++;
+  }
+  return effaces;
+}
+
+// ── Click & Collect : rappels la veille du retrait et la veille du retour ─
+async function envoyerRappelsClickCollect(supabase, todayStr) {
+  const { rappelsClickCollectDus } = require('./_lib/emailSchedule');
+  const { getPointRetrait } = require('./_lib/pointsRetrait');
+  const demain = new Date(new Date(todayStr + 'T12:00:00Z').getTime() + 864e5).toISOString().slice(0, 10);
+  let { data: rows, error } = await supabase.from('reservations')
+    .select('id, ref, prenom, email, tel, lang, statut, source, source_channel, date_debut, date_fin, point_retrait_id, adresse, quantite, remis_at, rendu_at')
+    .eq('source_channel', 'click_collect').eq('statut', 'confirmee')
+    .or(`date_debut.eq.${demain},date_fin.eq.${demain}`).limit(300);
+  if (error && (error.code === '42703' || /does not exist/i.test(error.message || ''))) {
+    ({ data: rows, error } = await supabase.from('reservations')
+      .select('id, ref, prenom, email, tel, lang, statut, source, source_channel, date_debut, date_fin, point_retrait_id, adresse')
+      .eq('source_channel', 'click_collect').eq('statut', 'confirmee')
+      .or(`date_debut.eq.${demain},date_fin.eq.${demain}`).limit(300));
+  }
+  if (error) throw error;
+  const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let envoyes = 0;
+  for (const r of rows || []) {
+    if (!r.email && !r.tel) continue;
+    for (const scenario of rappelsClickCollectDus(r, todayStr)) {
+      // Veille du RETOUR : un SMS seulement (l'email disait la même chose).
+      // Veille du RETRAIT : l'email (itinéraire, horaires, numéro).
+      const parSms = scenario === 'cc_rappel_retour' && !!r.tel;
+      if (!parSms && !r.email) continue;
+      // verrou : jamais deux fois le même rappel pour la même réservation
+      const { error: lockErr } = await supabase.from('email_sent')
+        .insert({ reservation_id: r.id, scenario, sent_at: new Date().toISOString() });
+      if (lockErr) continue;
+      const l = r.lang === 'en' || r.lang === 'es' ? r.lang : 'fr';
+      const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+      const pt = getPointRetrait(r.point_retrait_id || '') || null;
+      if (parSms) {
+        const lien = `https://www.locair.fr/prolongation?ref=${encodeURIComponent(r.ref || '')}${l !== 'fr' ? '&lang=' + l : ''}`;
+        const nomPoint = pt ? pt.nom : T('votre point de retrait', 'your pick-up point', 'tu punto de recogida');
+        const n = Math.max(1, r.quantite || 1);
+        // heure de fermeture du point : après, le jour de retard est compté
+        const h = pt && pt.ouverture ? pt.ouverture[1] : 19;
+        const avant = T(` avant ${h}h`, ` before ${h > 12 ? h - 12 + 'pm' : h + 'am'}`, ` antes de las ${h}:00`);
+        // fin de saison : plus de prolongation possible, on ne la propose pas
+        const lendemain = require('./_lib/dates').addDays(r.date_fin, 1);
+        const prolongeable = !(pt && require('./_lib/pointsRetrait').horsSaison(pt, r.date_debut, lendemain));
+        const garder = !prolongeable ? '' : n > 1
+          ? T(` Envie de les garder ? Prolongez : ${lien}`, ` Want to keep them? Extend: ${lien}`, ` ¿Quieres quedártelos? Amplía: ${lien}`)
+          : T(` Envie de le garder ? Prolongez : ${lien}`, ` Want to keep it? Extend: ${lien}`, ` ¿Quieres quedártelo? Amplía: ${lien}`);
+        const sms = (n > 1
+          ? T(`Loc'Air : votre location se termine demain. Rapportez les ${n} climatiseurs au point ${nomPoint}${avant}, en scannant le QR code du comptoir.`,
+            `Loc'Air: your rental ends tomorrow. Bring the ${n} air conditioners back to ${nomPoint}${avant} and scan the QR code at the counter.`,
+            `Loc'Air: tu alquiler termina mañana. Devuelve los ${n} aparatos en ${nomPoint}${avant} y escanea el código QR del mostrador.`)
+          : T(`Loc'Air : votre location se termine demain. Rapportez le climatiseur au point ${nomPoint}${avant}, en scannant le QR code du comptoir.`,
+            `Loc'Air: your rental ends tomorrow. Bring the air conditioner back to ${nomPoint}${avant} and scan the QR code at the counter.`,
+            `Loc'Air: tu alquiler termina mañana. Devuelve el aire acondicionado en ${nomPoint}${avant} y escanea el código QR del mostrador.`)) + garder;
+        const rs = await sendBrevoSms({ to: r.tel, content: sms }).catch((e) => ({ ok: false, error: e.message }));
+        if (!rs || !rs.ok) {
+          await supabase.from('email_sent').delete().eq('reservation_id', r.id).eq('scenario', scenario).then(() => {}, () => {});
+          continue;
+        }
+        await supabase.from('email_log').insert({ reservation_id: r.id, scenario, canal: 'sms', destinataire: r.tel, modele: scenario, statut: 'envoye', contenu: sms }).then(() => {}, () => {});
+        envoyes++;
+        continue;
+      }
+      const lieu = pt ? `${pt.nom} — ${pt.adresse}` : String(r.adresse || '').replace(/^CLICK & COLLECT — /, '');
+      const o = (pt && pt.ouverture) || [9, 19];
+      const heures = T(`de ${o[0]}h à ${o[1]}h`, `${o[0]}:00–${o[1]}:00`, `de ${o[0]}:00 a ${o[1]}:00`);
+      const itin = pt ? `https://www.google.com/maps/dir/?api=1&destination=${pt.lat},${pt.lng}` : '';
+      const retrait = scenario === 'cc_rappel_retrait';
+      const nb = Math.max(1, r.quantite || 1);
+      const combien = nb > 1 ? T(`<b>${nb} climatiseurs</b>, un seul numéro pour tous. `, `<b>${nb} air conditioners</b>, one number for all. `, `<b>${nb} aparatos</b>, un solo número para todos. `) : '';
+      const subject = retrait
+        ? T('Demain : retrait de votre climatiseur', 'Tomorrow: pick up your air conditioner', 'Mañana: recogida de tu aire acondicionado')
+        : T('Demain : retour de votre climatiseur', 'Tomorrow: return your air conditioner', 'Mañana: devolución de tu aire acondicionado');
+      const texte = retrait
+        ? T(`Votre climatiseur vous attend demain au point <b>${esc(lieu)}</b>, ouvert ${heures}. En arrivant, scannez le QR code du comptoir.`,
+            `Your air conditioner is waiting for you tomorrow at <b>${esc(lieu)}</b>, open ${heures}. When you arrive, scan the QR code at the counter.`,
+            `Tu aire acondicionado te espera mañana en <b>${esc(lieu)}</b>, abierto ${heures}. Al llegar, escanea el código QR del mostrador.`)
+        : T(`Votre location se termine demain. Rapportez le climatiseur au point <b>${esc(lieu)}</b>, ouvert ${heures}. En arrivant, scannez le QR code du comptoir. Envie de le garder ? Prolongez sur <a href="https://www.locair.fr/client">locair.fr/client</a>.`,
+            `Your rental ends tomorrow. Bring the air conditioner back to <b>${esc(lieu)}</b>, open ${heures}. When you arrive, scan the QR code at the counter. Want to keep it? Extend at <a href="https://www.locair.fr/client?lang=en">locair.fr/client</a>.`,
+            `Tu alquiler termina mañana. Devuelve el aire acondicionado en <b>${esc(lieu)}</b>, abierto ${heures}. Al llegar, escanea el código QR del mostrador. ¿Quieres quedártelo más tiempo? Amplía en <a href="https://www.locair.fr/client?lang=es">locair.fr/client</a>.`);
+      const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
+<h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
+<p>${combien}${texte}</p>
+${retrait && pt ? `<p style="font-size:15px">${T('Pas de réseau dans la boutique ?', 'No signal in the shop?', '¿Sin cobertura en la tienda?')} <a href="https://www.locair.fr/retrait?p=${encodeURIComponent(pt.id)}" style="color:#1A5EDB;font-weight:bold">${T('Ouvrez votre écran de retrait', 'Open your pick-up screen', 'Abre tu pantalla de recogida')}</a> ${T('juste avant d’entrer.', 'just before going in.', 'justo antes de entrar.')}</p>` : ''}
+${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
+<p style="font-size:15px">${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:20px;letter-spacing:.12em">${numComptoir(r.ref)}</b></p>
+<p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
+      const res = await sendBrevoEmail({ to: r.email, subject, html, senderName: "Loc'Air" });
+      if (!res.ok) {
+        await supabase.from('email_sent').delete().eq('reservation_id', r.id).eq('scenario', scenario).then(() => {}, () => {});
+        continue;
+      }
+      await supabase.from('email_log').insert({ reservation_id: r.id, scenario, canal: 'email', destinataire: r.email, modele: scenario, statut: 'envoye' }).then(() => {}, () => {});
+      envoyes++;
+    }
+  }
+  return envoyes;
+}
+
+// ── Click & Collect : « nettoyez le filtre » une fois par semaine ─────────
+// Pour qu'un appareil rendu reparte tout de suite chez le client suivant
+// (décision du propriétaire, 20/11/2026) : housse + filtre rincé chaque
+// semaine par le client. Envoyé tous les 7 jours après le retrait, jamais la
+// veille ni le jour du retour (le rappel du retour en parle déjà).
+// Doublons évités par email_log (pas de nouvelle table ni de scénario).
+async function rappelerFiltreClickCollect(supabase, todayStr) {
+  const jours = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 864e5);
+  let { data: rows, error } = await supabase.from('reservations')
+    .select('id, ref, prenom, email, tel, lang, date_debut, date_fin, source, remis_at, rendu_at')
+    .eq('source_channel', 'click_collect').eq('statut', 'confirmee')
+    .lte('date_debut', todayStr).gt('date_fin', todayStr).limit(500);
+  if (error) return 'colonnes manquantes';
+  let n = 0;
+  for (const r of rows || []) {
+    // Le client n'a pas l'appareil (jamais retiré) : pas de conseil filtre.
+    if (r.source === 'site_prolongation' || r.rendu_at || !r.remis_at) continue;
+    const ecoule = jours(r.date_debut, todayStr), reste = jours(todayStr, r.date_fin);
+    if (ecoule < 7 || ecoule % 7 !== 0 || reste <= 1) continue;
+    const depuis = new Date(Date.now() - 5 * 864e5).toISOString();
+    const { data: deja } = await supabase.from('email_log').select('id').eq('reservation_id', r.id)
+      .eq('scenario', 'cc_filtre').gte('created_at', depuis).limit(1);
+    if (deja && deja.length) continue;
+    const l = r.lang === 'en' || r.lang === 'es' ? r.lang : 'fr';
+    const T = (fr, en, es) => (l === 'en' ? en : l === 'es' ? es : fr);
+    const sms = T("Loc'Air : petit geste de la semaine, rincez le filtre de votre climatiseur (2 min) : éteignez et débranchez, retirez le filtre, rincez-le à l'eau tiède, laissez sécher, remettez-le. Il refroidira mieux. Merci !",
+      "Loc'Air: weekly tip, rinse your air conditioner's filter (2 min): switch off and unplug, take out the filter, rinse it in lukewarm water, let it dry, put it back. It will cool better. Thanks!",
+      "Loc'Air: gesto de la semana, enjuaga el filtro de tu aire acondicionado (2 min): apágalo y desenchúfalo, saca el filtro, enjuágalo con agua tibia, déjalo secar y vuelve a ponerlo. Enfriará mejor. ¡Gracias!");
+    let ok = false;
+    if (r.tel) { const x = await sendBrevoSms({ to: r.tel, content: sms }).catch(() => ({ ok: false })); ok = !!(x && x.ok); }
+    if (!ok && r.email) {
+      const x = await sendBrevoEmail({ to: r.email, subject: T('Le petit geste de la semaine : rincer le filtre', 'This week’s quick tip: rinse the filter', 'El gesto de la semana: enjuagar el filtro'),
+        html: `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px"><p>${sms.replace(/^Loc'Air ?: ?/, '')}</p><p style="color:#4B5873;font-size:13px">Loc’Air · ${r.ref || ''}</p></div>`, senderName: "Loc'Air" }).catch(() => ({ ok: false }));
+      ok = !!(x && x.ok);
+    }
+    if (ok) {
+      await supabase.from('email_log').insert({ reservation_id: r.id, scenario: 'cc_filtre', canal: r.tel ? 'sms' : 'email', destinataire: r.tel || r.email, modele: 'cc_filtre', statut: 'envoye', contenu: sms }).then(() => {}, () => {});
+      n++;
+    }
+  }
+  return n;
+}
+module.exports.effacerIdentitesOrphelines = effacerIdentitesOrphelines; // pour les tests
+module.exports.rappelerFiltreClickCollect = rappelerFiltreClickCollect;
+
+async function relancerProspection(supabase) {
+  const { debutJourParisISO, todayParis, addDays } = require('./_lib/dates');
+  const { envoyerDocuments, envoyerSmsRelance } = require('./_lib/prospection');
+  const auj = todayParis();
+  const { data, error } = await supabase.from('prospection_points')
+    .select('*').in('statut', ['a_repasser', 'en_attente_signature'])
+    .is('relance_at', null).is('docs_envoyes_at', null)
+    .lt('created_at', debutJourParisISO(auj)).gte('created_at', debutJourParisISO(addDays(auj, -7)))
+    .limit(50);
+  if (error) {
+    if (error.code === '42P01' || /does not exist/.test(error.message || '')) return 'table absente';
+    throw error;
+  }
+  let n = 0;
+  for (const f of data || []) {
+    if (!f.email && !f.tel) continue;
+    // Verrou d'abord : jamais deux relances, même si l'envoi échoue.
+    const { data: pris } = await supabase.from('prospection_points').update({ relance_at: new Date().toISOString() }).eq('id', f.id).is('relance_at', null).select('id');
+    if (!pris || !pris.length) continue;
+    let ok = false;
+    if (f.email) { const r = await envoyerDocuments(f, { relance: true }).catch(() => ({ ok: false })); if (r.ok) { ok = true; await supabase.from('prospection_points').update({ docs_envoyes_at: new Date().toISOString() }).eq('id', f.id); } }
+    if (f.tel) { const r = await envoyerSmsRelance(f).catch(() => ({ ok: false })); ok = ok || !!r.ok; }
+    if (ok) n++;
+  }
+  return n;
+}
+module.exports.relancerProspection = relancerProspection;
+

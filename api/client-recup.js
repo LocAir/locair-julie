@@ -4,7 +4,7 @@ const { fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { pushToAdmin } = require('./_lib/push');
-const { todayParis, isValidDate } = require('./_lib/dates');
+const { todayParis, isValidDate, addDays, heureParis } = require('./_lib/dates');
 
 // Tiret long + espaces — même format que partout ailleurs dans la base
 // (audit 2026-08-06 C4 : tiret court sans espaces ne correspondait jamais
@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Action inconnue' });
   }
 
-  const newDate = (body.date || '').slice(0, 10);
+  const newDate = String(body.date || '').slice(0, 10);
   // isValidDate() (pas juste la forme AAAA-MM-JJ) : sans ça, une date de
   // calendrier qui n'existe pas (ex. "2026-02-30") passait comme valide et
   // s'enregistrait telle quelle dans livraisons.date_prevue — la même faille
@@ -33,12 +33,18 @@ module.exports = async (req, res) => {
   if (!isValidDate(newDate)) {
     return res.status(400).json({ error: 'Date invalide' });
   }
+  // Même règle que la livraison : demandé avant 20h → au plus tôt demain,
+  // après 20h → après-demain (le transporteur doit pouvoir s'organiser, et un
+  // créneau de ce matin est déjà passé).
   const today = todayParis();
-  if (newDate < today) {
-    return res.status(400).json({ error: 'La date ne peut pas être dans le passé' });
+  const auPlusTot = addDays(today, heureParis() < 20 ? 1 : 2);
+  if (newDate < auPlusTot) {
+    const lg = body.lang === 'en' || body.lang === 'es' ? body.lang : 'fr';
+    const pre = { fr: 'Au plus tôt le', en: 'At the earliest on', es: 'Como pronto el' }[lg];
+    return res.status(400).json({ error: `${pre} ${fmtDate(auPlusTot, lg)}.`, au_plus_tot: auPlusTot });
   }
 
-  const creneau = (body.creneau || '').trim();
+  const creneau = String(body.creneau || '').trim();
   if (!CRENEAUX_AUTORISES.includes(creneau)) {
     return res.status(400).json({ error: 'Créneau invalide' });
   }
@@ -60,6 +66,12 @@ module.exports = async (req, res) => {
 
     if (liv.statut === 'en_route' || liv.statut === 'arrivee') {
       return res.status(409).json({ error: 'Un transporteur est déjà en route — la modification de créneau n\'est plus possible.' });
+    }
+
+    // Pas avant la livraison elle-même.
+    const { data: debutResa } = await supabase.from('reservations').select('date_debut').eq('id', reservationId).maybeSingle();
+    if (debutResa && debutResa.date_debut && newDate <= debutResa.date_debut) {
+      return res.status(400).json({ error: 'La récupération doit être après la livraison.' });
     }
 
     if (newDate >= liv.date_prevue) {
@@ -103,6 +115,8 @@ module.exports = async (req, res) => {
       let content;
       if (lg === 'en') {
         content = `Loc'Air - Your collection has been rescheduled to ${dateFmt}, time slot ${creneau}. Questions? Call us at +33 6 63 79 87 56.`;
+      } else if (lg === 'es') {
+        content = `Loc'Air - Su recogida se ha adelantado al ${dateFmt}, franja ${creneau}. ¿Alguna pregunta? Llámenos al +33 6 63 79 87 56.`;
       } else if (lg === 'zh') {
         content = `Loc'Air - 您的取回时间已更改为${dateFmt}，时间段：${creneau}。如有疑问，请致电 +33 6 63 79 87 56。`;
       } else if (lg === 'ru') {

@@ -14,7 +14,7 @@ const { matchPromoPct } = require('./promo');
 // Renvoie null si les conditions sont remplies, sinon un code expliquant
 // pourquoi l'offre ne s'applique pas à cette réservation.
 function checkPromotionConditions(promo, { days, cityId, dateDebut }) {
-  const today = dateDebut || new Date().toISOString().slice(0, 10);
+  const today = dateDebut || require('./dates').todayParis();
   if (promo.date_debut && today < promo.date_debut) return 'pas_encore_active';
   if (promo.date_fin && today > promo.date_fin) return 'expiree';
   if (promo.duree_min_jours != null && days < promo.duree_min_jours) return 'duree_trop_courte';

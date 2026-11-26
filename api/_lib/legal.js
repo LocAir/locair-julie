@@ -3,7 +3,7 @@
 // incrémenter manuellement (date du jour) à chaque changement substantiel du
 // contenu de cgv.html, pour que les acceptations déjà enregistrées gardent
 // une trace fidèle de la version réellement lue par le client à l'époque.
-const CGV_VERSION = '2026-07-14';
+const CGV_VERSION = '2026-11-21'; // article 10 ter « Click & Collect » ajouté
 
 // Types d'acceptation distincts trackés en base (table cgv_acceptations) —
 // trois cases à cocher séparées côté client (#f-cgv, #f-conditions, #f-retard

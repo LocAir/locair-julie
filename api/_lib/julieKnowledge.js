@@ -20,8 +20,29 @@ const PRODUITS = `### Climatiseur mobile
 - Frais de livraison et installation : 60 € (aller + retour inclus)
 - Puissance : 9 000 – 12 000 BTU · jusqu'à 15 m²
 - Zéro perçage, zéro travaux · kit fenêtre inclus · installé en moins de 20 minutes
-- Livraison J+1 ou Express 2 h selon dispo · Durée minimum : 7 jours
+- Livraison le lendemain (commande avant 20h) ou Express 2 h le jour même (commande avant 18h, +60 €), selon dispo · Durée minimum : 7 jours
 - Réservation : https://locair.fr/reservation-climatiseur
+
+### Click & Collect (climatiseur mobile à retirer soi-même)
+- Page : https://locair.fr/click-and-collect
+- Le client réserve et paie en ligne, à toute heure, puis récupère son climatiseur mobile chez un commerçant partenaire près de chez lui (point de retrait), aux horaires de ce point, et le rapporte au même point à la fin.
+- Prix Click & Collect (différent de la livraison) : 99 € les 3 jours et 150 € les 7 jours en temps normal ; les autres durées s'affichent sur la page. Tarification dynamique selon la demande (chaleur, stock), jamais en dehors : de 99 € à 119 € les 3 jours, de 139 € à 189 € les 7 jours. 3 jours minimum, aucune caution. Pas de livraison : le client vient chercher l'appareil au point (ne pas présenter ça comme « livraison gratuite »).
+- Click & Collect, saison : les climatiseurs sont chez les commerçants du 16 mai au 30 septembre (axe Nice–Cannes). Une location doit tenir dans cette période : retrait à partir du 16 mai, retour au plus tard le 30 septembre. Hors saison, proposer la livraison à domicile (page /reserver).
+- Click & Collect : 3 appareils au plus par commande en ligne, 90 jours de location au plus. Prolongation en ligne possible jusqu'à la date de fin, jamais après (en retard, chaque jour est facturé 21 €, voir plus bas).
+- Click & Collect, retour anticipé : le client peut rendre l'appareil plus tôt, à tout moment, au même point (même démarche que le retour). Les jours non utilisés ne sont PAS remboursés, sauf panne ou rétractation dans les 14 jours après le paiement (dans ces deux cas, transmettre à Loc'Air, sans promettre de montant).
+- Si le point choisi est complet aux dates voulues, la page propose tout de suite le point libre le plus proche (un bouton « Prendre … »).
+- Le kit de fenêtre n'est PAS fourni en Click & Collect (seulement l'appareil) : ne jamais le promettre.
+- Pièce d'identité (carte ou passeport) : montrée en original au comptoir, simplement regardée par le commerçant (jamais copiée ni gardée). Rien à envoyer en ligne.
+- Au comptoir (retrait et retour), le client scanne le QR code affiché chez le commerçant et tape son numéro de commande (4 chiffres, dans l'email et le SMS de confirmation). C'est le seul numéro à garder : il reste le même après une prolongation, jusqu'au retour. RETRAIT : il valide sur son téléphone ; un écran vert s'affiche (son nom, son numéro, l'heure qui défile à la seconde) ; il montre cet écran et sa pièce d'identité au commerçant, qui n'a rien à faire sur son téléphone, et repart avec l'appareil sous sa housse (avec sa gaine). RETOUR : il dépose le climatiseur dans sa housse avec sa gaine d'évacuation, scanne le QR code, tape son numéro, prend une photo de l'appareil dans sa housse, demande le code commerçant au commerçant, le tape et valide. Il reçoit aussitôt sa confirmation de retour et sa facture par email. Ne jamais dire comment le code commerçant est fabriqué : seul le commerçant le donne.
+- Click & Collect, panne pendant la location : il la déclare sur locair.fr/panne, puis rapporte l'appareil au MÊME point (le commerce où il l'a retiré, jamais un autre) (sous sa housse, avec la gaine) : au comptoir il scanne le QR code, tape son numéro, touche « Un problème ? » puis « Il ne marche pas » ; il montre l'écran orange « Échange validé » au commerçant et repart avec un autre. Sa location continue.
+- Click & Collect, problème avec l'appareil (décidé le 22/11/2026) : le client peut aussi METTRE FIN à sa location en en parlant avec toi. Il rapporte l'appareil au même point : il scanne le QR code du comptoir, tape son numéro de commande à 4 chiffres, puis le code que lui donne le commerçant ; quelques secondes après, l'écran bleu « Retour validé » s'affiche. Tu transmets la demande à Loc'Air (escalade « annulation ») : en cas de panne, les jours restants sont remboursés. Ne promets jamais un montant ni un délai de remboursement.
+- Click & Collect, retour pas validé (le client a laissé l'appareil au point sans finir sur son téléphone, ou sans le code commerçant) : le rassurer, lui demander son numéro de commande et le nom du point, puis transmettre à Loc'Air [ESCALADE]. Loc'Air vérifie avec le commerçant et note le retour à la main. Ne rien promettre sur d'éventuels frais de retard déjà prélevés.
+- Click & Collect : au comptoir (retrait ou retour), le client peut toucher « Un problème ? » (casse, appareil abîmé, élément manquant, ne marche pas) : Loc'Air est prévenu tout de suite et organise le remplacement de l'appareil au point (un transporteur apporte un appareil en bon état). Ne jamais promettre une heure précise. Ça ne bloque pas la validation.
+- Click & Collect, règles (CGV article 10 ter) : annulation gratuite et remboursement intégral avant le retrait ; 14 jours de rétractation après le paiement (si l'appareil est déjà retiré, le client paie seulement les jours utilisés). Retard : jusqu'à 7 jours, chaque jour de retard = un jour de location en plus (21 € par jour et par appareil), prévenu par SMS ; au-delà de 7 jours, l'appareil est considéré comme non rendu et sa valeur de remplacement est facturée. Casse due au client, perte ou élément manquant : prix réel de réparation ou de remplacement, sur justificatif. Usure normale : rien.
+- Click & Collect : pas de télécommande fournie, ni de kit fenêtre. Le client reçoit l'appareil sous sa housse, avec sa gaine d'évacuation.
+- Click & Collect : l'appareil est TOUJOURS sous sa housse de protection, en boutique et pendant le trajet. Le client l'enlève seulement chez lui et la remet avant de le rapporter. Le client rince le filtre une fois par semaine (éteindre et débrancher, retirer le filtre, rincer à l'eau tiède, laisser sécher, remettre). Au retour : appareil sous sa housse (remise par le client chez lui), avec sa gaine, filtre propre. Ainsi l'appareil repart tout de suite chez le client suivant.
+- Les points de retrait sont en cours d'ouverture : si le paiement en ligne n'est pas encore ouvert pour un point (marqué « Exemple »), le client peut réserver par WhatsApp.
+- Un commerçant qui veut devenir point de retrait : onglet « Devenez point de retrait » en bas de la page Click & Collect.
 
 ### PortaSplit réversible A++
 - Avec engagement 6 mois : 99 €/mois + 229 € à la souscription (installation offerte)
@@ -46,7 +67,7 @@ const PRODUITS_COURT = `Climatiseur mobile : 12 €/j (10 € dès le 8e jour ·
 PortaSplit réversible A++ : 99 €/mois (engagement 6 mois, 229 € à la souscription) ou 29 €/j sans engagement. Réservation : locair.fr/reservation-portasplit`;
 
 const GARANTIES = `- Aucune caution sur tous les produits
-- Panne ou problème → technicien dépêché le jour même ou le lendemain
+- Panne ou problème → déclaration en 1 minute sur locair.fr/panne ; climatiseur mobile : échange dans un point Click & Collect proche (le client rapporte l'appareil et repart avec un autre). Jamais de technicien chez le client pour une panne.
 - Remplacement immédiat si l'appareil est défaillant
 - Aucun engagement sur le climatiseur mobile (résiliable à tout moment)`;
 
@@ -55,10 +76,10 @@ Hors zone → expliquer gentiment qu'on ne livre pas encore là, et proposer de 
 
 const DEPANNAGE = `1. Gaine d'évacuation : bien fixée et orientée vers l'extérieur ?
 2. Filtre : retiré et nettoyé récemment ? Un filtre bouché divise la puissance par deux.
-3. Mode refroidissement ❄️ : sélectionné sur la télécommande (pas ventilation seule) ?
+3. Mode refroidissement ❄️ : sélectionné sur l'appareil ou la télécommande (pas ventilation seule) ? (Click & Collect : pas de télécommande, réglage sur l'appareil.)
 4. Redémarrage : éteindre, débrancher 30 secondes, rebrancher.
 5. Bac à condensats : si l'appareil s'arrête seul, le bac est peut-être plein → utiliser le cordon de vidange à l'arrière.
-Si le problème persiste après ces vérifications, dis au client qu'un technicien le rappellera dans les 2 heures — et termine ta réponse par [ESCALADE].`;
+Si le problème persiste après ces vérifications, donne-lui ce lien pour déclarer la panne en 1 minute : https://www.locair.fr/panne (numéro de commande + 4 derniers chiffres de son téléphone). La suite est automatique et il reçoit un SMS avec son numéro de dossier : climatiseur mobile (livré ou Click & Collect) → il rapporte l'appareil au point Click & Collect indiqué (le plus proche pour un client livré) et repart avec un autre ; s'il n'en reste plus au point, on en apporte un et il est prévenu par SMS. Jamais de technicien chez le client pour une panne. PortaSplit ou rafraîchisseur → Loc'Air le rappelle pour organiser la suite. N'escalade [ESCALADE] que s'il n'arrive pas à utiliser la page ou s'il est en colère.`;
 
 // Ajouté pour que Julie ne soit pas qu'un centre d'aide passif : elle doit
 // activement aider un visiteur intéressé à passer à la réservation, sans
@@ -69,14 +90,14 @@ const TECHNIQUE_VENTE = `Ton but n'est pas seulement de répondre : c'est d'aide
 - Objections courantes — réponds avec les vrais arguments déjà listés plus haut, jamais inventés :
   - "C'est cher" → aucune caution, installation et SAV inclus, remplacement immédiat en cas de panne : un prix tout compris, sans mauvaise surprise.
   - "Je vais réfléchir" → ne relance pas agressivement ; propose simplement de laisser ses coordonnées pour qu'Aly le recontacte s'il a des questions, sans obligation.
-  - "Et si ça tombe en panne ?" → technicien dépêché le jour même ou le lendemain, remplacement immédiat si besoin.
+  - "Et si ça tombe en panne ?" → déclaration en 1 minute sur locair.fr/panne, puis échange immédiat dans un point Click & Collect proche : aucune caution, aucun frais.
   - "C'est bruyant ?" (PortaSplit) → classe A++, technologie inverter, ultra-silencieux.
 - Conseille, ne te contente pas de lister les deux produits : pour une pièce ≤15 m² ou un besoin ponctuel/court, le climatiseur mobile convient mieux (pas d'engagement). Pour un besoin permanent sur plusieurs mois ou une pièce plus grande, le PortaSplit est plus adapté.
 - Propose une solution concrète dès que tu as assez d'infos (surface, durée, budget) plutôt que d'attendre que le client comprenne seul lequel choisir.
 - Ne crée jamais de fausse urgence ("plus que 2 disponibles") si tu n'en es pas sûre — la seule urgence réelle à mentionner est l'Express (livraison sous 2h, selon disponibilité).`;
 
 const ESCALADE_10 = `1. Client en colère ou ton agressif — toute frustration forte, insultes, impatience marquée
-2. Panne persistante — le client a suivi le guide de dépannage et ça ne fonctionne toujours pas
+2. Panne persistante ET le client n'arrive pas à la déclarer sur locair.fr/panne
 3. Demande de remboursement — partiel ou total, peu importe la raison
 4. Demande d'annulation — le client veut annuler sa réservation ou son abonnement
 5. Le client demande à parler à un humain — "je veux parler à quelqu'un", "je veux Aly", etc.

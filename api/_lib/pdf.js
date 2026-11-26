@@ -1,4 +1,7 @@
-const PDFDocument = require('pdfkit');
+// Chargé seulement quand un PDF est vraiment fabriqué (pdfkit pèse ≈ 0,1 s
+// au démarrage d'une fonction : inutile pour les appels sans PDF).
+let _PDFKit;
+function PDFDocument(...a) { _PDFKit = _PDFKit || require('pdfkit'); return new _PDFKit(...a); }
 const { SELLER } = require('./legal');
 const { calcTieredPrice, DEFAULT_PRICING_CONFIG } = require('./pricing');
 const { buildContratContent } = require('./contratContent');
@@ -25,6 +28,15 @@ const PW = 595.28;   // largeur page
 const PH = 841.89;   // hauteur page
 const W  = PW - 2*M; // largeur utile = 495.28
 
+// Adresse du client sur les documents. En Click & Collect, « adresse » est
+// celle du point de retrait : l'adresse du client est dans adresse_client
+// (ou, avant la migration du 20/11, dans les consignes).
+function adresseLocataire(reservation) {
+  if (reservation.source_channel !== 'click_collect') return reservation.adresse || '—';
+  const m = String(reservation.instructions_acces || '').match(/ADRESSE CLIENT : ([^|]+)/);
+  return reservation.adresse_client || (m ? m[1].trim() : '') || '—';
+}
+
 function renderPdf(draw) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: M });
@@ -40,14 +52,14 @@ function fmtDate(d) {
   if (!d) return '—';
   const date = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
 }
 
 function fmtDateHeure(d) {
   if (!d) return '—';
   const date = d instanceof Date ? d : new Date(d);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
 }
 
 function eur(cents) {
@@ -318,7 +330,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version, pri
     doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.body)
       .text(locataireNom + entreprise, rx, bY + 22, { width: halfW - 20 });
     doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
-      .text(reservation.adresse || '—', rx, bY + 35, { width: halfW - 20 })
+      .text(adresseLocataire(reservation), rx, bY + 35, { width: halfW - 20 })
       .text(reservation.email || '', rx, bY + 47, { width: halfW - 20 });
 
     doc.x = M;
@@ -430,7 +442,7 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
       clientLines.push(['Raison sociale', reservation.raison_sociale]);
       clientLines.push(['SIRET client', reservation.siret || '—']);
     }
-    clientLines.push(['Adresse', reservation.adresse || '—']);
+    clientLines.push(['Adresse', adresseLocataire(reservation)]);
     clientLines.push(['Email', reservation.email || '—']);
     drawClientBox(doc, clientLines);
 
@@ -461,14 +473,22 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
     // préexistant, ex. code promo).
     const totalUn  = calcTieredPrice(jours, pricing);
     const tarifMoy = totalUn / jours;
-    const locCents = forfait ? forfait.prix_cents : Math.round(totalUn * qty * 100);
+    // Click & Collect : prix propre (150 € les 7 jours, tarification
+    // dynamique) — la ligne de location montre le prix réellement payé.
+    const locCents = (reservation.source_channel === 'click_collect') ? (reservation.prix_total_cents || 0)
+      : (forfait ? forfait.prix_cents : Math.round(totalUn * qty * 100));
     const horsZone = !!reservation.hors_zone;
-    const livCents = (horsZone ? 120 : 60) * 100;
+    // Click & Collect : le client vient chercher l'appareil au point de
+    // retrait — aucune livraison à facturer (sinon la facture afficherait
+    // 60 € de livraison puis une « remise » de −60 € : faux et confus).
+    const isCC     = reservation.source_channel === 'click_collect';
+    const livCents = isCC ? 0 : (horsZone ? 120 : 60) * 100;
     const isTech    = (reservation.installation || '').startsWith('Technicien');
     const instCents = isTech ? 80 * 100 : 0;
     const isExpress = !!reservation.express;
     const expCents  = isExpress ? 60 * 100 : 0;
-    const modele    = modeleLabel(appareils);
+    // Click & Collect : appareil pas encore attribué → pas de marque inventée
+    const modele    = (isCC && !(appareils && appareils.length)) ? '9 000 à 12 000 BTU' : modeleLabel(appareils);
     const totalReel = reservation.prix_total_cents || 0;
     const sousTotal = locCents + livCents + instCents + expCents;
     const ecart     = totalReel - sousTotal;
@@ -480,7 +500,9 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
         `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — pack à prix fixe (hors livraison/installation)`,
       ] : [
         `Période : du ${fmtDate(reservation.date_debut)} au ${fmtDate(reservation.date_fin)} (${jours} jours)`,
-        `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — tarif moyen ${eur(Math.round(tarifMoy * 100))}/jour (tarif dégressif)`,
+        reservation.source_channel === 'click_collect'
+          ? `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — Click & Collect, tarif dynamique (soit ${eur(Math.round((reservation.prix_total_cents || 0) / jours / qty))}/jour${qty > 1 ? ' par appareil' : ''})`
+          : `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — tarif moyen ${eur(Math.round(tarifMoy * 100))}/jour (tarif dégressif)`,
       ],
       amount: eur(locCents),
     });
@@ -489,12 +511,16 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
     // l'admin -- voir admin/index.html) plutot que de nommer une ville : cette
     // facture est generee pour n'importe quelle ville active, pas seulement
     // Nice (voir api/_lib/city.js, resolveCityByAddress).
-    drawInvoiceItem(doc, {
+    drawInvoiceItem(doc, isCC ? {
+      label: 'Click & Collect — retrait et retour au point de retrait',
+      detailLines: [String(reservation.adresse || '').replace(/^CLICK & COLLECT — /, '') || '—'],
+      amount: '0,00 €',
+    } : {
       label: `Livraison & récupération — zone : ${horsZone ? 'hors zone' : 'zone standard'}`,
       amount: eur(livCents),
     });
 
-    drawInvoiceItem(doc, {
+    if (!isCC) drawInvoiceItem(doc, {
       label: isTech ? 'Option installation par technicien qualifié' : 'Installation en autonomie (kit fourni sans perçage)',
       amount: isTech ? eur(instCents) : 'Offert',
     });
@@ -508,7 +534,9 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
 
     if (Math.abs(ecart) >= 1) {
       drawInvoiceItem(doc, {
-        label:  ecart < 0 ? 'Remise commerciale' : 'Ajustement',
+        // Click & Collect à une date très demandée : prix majoré (voir
+        // _lib/clickCollect.js) — on le dit clairement.
+        label:  ecart < 0 ? 'Remise commerciale' : (isCC ? 'Majoration forte demande (dates très demandées)' : 'Ajustement'),
         amount: (ecart < 0 ? '− ' : '+ ') + eur(Math.abs(ecart)),
       });
     }
@@ -575,7 +603,7 @@ function generateFactureVentePdf({ reservation, appareil, numero, montantCents, 
       clientLines.push(['Raison sociale', reservation.raison_sociale]);
       clientLines.push(['SIRET client', reservation.siret || '—']);
     }
-    clientLines.push(['Adresse', reservation.adresse || '—']);
+    clientLines.push(['Adresse', adresseLocataire(reservation)]);
     clientLines.push(['Email', reservation.email || '—']);
     drawClientBox(doc, clientLines);
 

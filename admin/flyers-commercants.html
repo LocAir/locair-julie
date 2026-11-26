@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flyers commerçants — Loc’Air</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,900&display=swap">
+<!-- Demi-flyer (A5) à remettre à CHAQUE commerçant point de retrait :
+     - son code retour (propre à la boutique, calculé côté serveur), à
+       donner au client qui rapporte un climatiseur ;
+     - un QR code vers son espace partenaire (locair.fr/partenaire).
+     À garder derrière le comptoir : il ne s'affiche jamais.
+     Page réservée à l'admin (même connexion que l'appli admin) : le code
+     n'apparaît jamais dans le site public. ?p=<id> = un seul point. -->
+<style>
+:root{--vif:#1A5EDB;--ink:#0E1726;--ink-2:#4B5873;--ok:#0F7A3D;--line:#E3E9F4}
+*{box-sizing:border-box}
+body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;color:var(--ink)}
+.barre{max-width:900px;margin:0 auto;padding:20px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.barre h1{font-size:22px;margin:0}
+.barre p{margin:4px 0 0;color:var(--ink-2);font-size:14px;max-width:560px}
+.barre button{border:0;background:var(--vif);color:#fff;font:800 15px 'DM Sans',sans-serif;padding:12px 20px;border-radius:100px;cursor:pointer;min-height:44px}
+.feuilles{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;padding:0 16px 40px}
+.flyer{width:148mm;height:210mm;background:#fff;border-radius:6mm;padding:0 10mm 8mm;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 10px 30px -14px rgba(11,30,68,.35);break-after:page;page-break-after:always}
+/* bandeau bleu, Loc'Air en blanc — IDENTIQUE à celui de l'affiche du comptoir (affiche-retrait.html) */
+.haut{margin:0 -10mm;height:30mm;padding:0 10mm;display:flex;justify-content:center;align-items:center;background:linear-gradient(160deg,#2468E8 0%,#1A5EDB 45%,#0D3FA0 100%);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.logo{font-weight:900;font-size:12mm;letter-spacing:-.04em;color:#fff}.logo em{font-style:italic}
+.prive{font-size:3mm;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#B42318;border:.4mm solid #B42318;border-radius:2mm;padding:1mm 2mm;flex-shrink:0}
+.ligne-point{display:flex;justify-content:space-between;align-items:center;gap:4mm;margin:8mm 0 0}
+.point{margin:0;font-size:5.4mm;font-weight:900;letter-spacing:-.02em}
+.code.vide{font-size:5mm;letter-spacing:0;color:#B42318}
+.unique{margin:auto 0;display:flex;align-items:center;gap:8mm}
+.unique img{width:68mm;aspect-ratio:540/600;object-fit:cover;border:.6mm solid var(--line);border-radius:5mm;display:block}
+.cote{flex:1;text-align:center;align-self:stretch;display:flex;flex-direction:column;justify-content:center;border-left:.6mm solid #DDE6F5;padding-left:8mm} /* trait : à gauche le retrait, à droite le retour */
+.cote p{margin:0}
+.cote .s{font-size:4.4mm;color:var(--ink-2)}
+.code{font-size:17mm;font-weight:900;letter-spacing:.06em;white-space:nowrap;line-height:1.05;color:var(--ink)}
+.jamais{font-size:3.8mm;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#B42318}
+.gestes{list-style:none;margin:0 0 6mm;padding:0;display:grid;gap:2.6mm}
+.gestes li{display:flex;gap:3mm;align-items:center;font-size:3.6mm;line-height:1.35;color:var(--ink-2)}
+.gestes b{color:var(--ink)}
+.gestes i{flex:none;width:7mm;height:7mm;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;font-size:3.8mm;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.g-v{background:#0F7A3D}.g-b{background:#1A5EDB}.g-r{background:#B42318}
+.bas{margin-top:0;display:flex;gap:5mm;align-items:center}
+.bas img{width:22mm;height:22mm;flex-shrink:0}
+.bas p{margin:0;font-size:3.4mm;line-height:1.5;color:var(--ink-2)}
+.bas b{display:block;font-size:4mm;color:var(--ink)}
+.msg{background:#fff;border-radius:14px;padding:16px;color:var(--ink-2);max-width:600px;margin:0 auto}
+@media print{
+  @page{size:A5;margin:0}
+  body{background:#fff}.barre,.msg{display:none}
+  .feuilles{display:block;padding:0}
+  .flyer{box-shadow:none;border-radius:0;margin:0}
+}
+</style>
+</head>
+<body>
+<div class="barre">
+  <div><h1>Flyers commerçants</h1><p>Un demi-flyer (A5) par point de retrait : le code retour à donner aux clients, et le QR code de l’espace partenaire. À remettre en main propre au commerçant, à garder derrière le comptoir.</p></div>
+  <button type="button" onclick="window.print()">Imprimer</button>
+</div>
+<div class="feuilles" id="feuilles"><p class="msg">Chargement…</p></div>
+<script>
+(function(){
+  var TOKEN = ''; try{ TOKEN = localStorage.getItem('a_token') || ''; }catch(e){}
+  var seul = new URLSearchParams(location.search).get('p');
+  var f = document.getElementById('feuilles');
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  if(!TOKEN){ f.innerHTML = '<p class="msg">Connectez-vous d’abord à l’appli admin (<a href="/admin">/admin</a>) dans ce navigateur, puis revenez ici.</p>'; return; }
+  var qr = 'https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=0&ecc=M&data=' + encodeURIComponent('https://www.locair.fr/partenaire');
+  fetch('/api/admin-cc-retours', {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':TOKEN}, body:JSON.stringify({action:'flyers'})})
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(x){
+      if(!x.ok){ f.innerHTML = '<p class="msg">' + esc(x.d.error || 'Accès refusé. Reconnectez-vous à l’appli admin.') + '</p>'; return; }
+      var pts = (x.d.points || []).filter(function(p){ return !seul || p.id === seul; });
+      if(!pts.length){ f.innerHTML = '<p class="msg">Aucun point de retrait.</p>'; return; }
+      var manque = pts.filter(function(p){ return !p.code_retour; }).length;
+      f.innerHTML = (manque ? '<p class="msg">⚠️ ' + manque + ' point(s) sans code : réglage serveur manquant (TRANSPORTEUR_SECRET sur Vercel).</p>' : '') +
+        pts.map(function(p){
+        return '<section class="flyer">' +
+          '<div class="haut"><div class="logo">Loc<em>’Air</em></div></div>' +
+          '<div class="ligne-point"><p class="point">' + esc(p.nom) + (p.exemple ? ' (exemple)' : '') + '</p><span class="prive">Ne pas afficher</span></div>' +
+          '<div class="unique">' +
+            '<img src="/flyer-ecran-retrait.webp" alt="L’écran que le client vous montre : « Retrait validé », son nom et l’heure qui défile">' +
+            '<div class="cote"><p class="s">Votre code retour</p>' +
+              (p.code_retour ? '<p class="code">' + esc(p.code_retour) + '</p>' : '<p class="code vide">Code indisponible</p>') +
+              '<p class="jamais">Jamais avant</p></div>' +
+          '</div>' +
+          '<ol class="gestes">' +
+            '<li><i class="g-v">✓</i><span><b>Retrait :</b> écran vert + pièce d’identité (regarder, rien à copier).</span></li>' +
+            '<li><i class="g-b">↩</i><span><b>Retour :</b> appareil, housse et gaine récupérés → votre code.</span></li>' +
+            '<li><i class="g-r">!</i><span><b>Un souci :</b> il manque quelque chose, abîmé ou sale → reprenez-le et prévenez-nous, avec une photo.</span></li>' +
+          '</ol>' +
+          '<div class="bas"><img src="' + qr + '" alt="QR code espace partenaire"><p><b>Votre espace partenaire</b>Un souci&nbsp;? 06 63 79 87 56<br>partenaires.locair@outlook.com</p></div>' +
+        '</section>';
+      }).join('');
+    }).catch(function(){ f.innerHTML = '<p class="msg">Pas de connexion. Rechargez la page.</p>'; });
+})();
+</script>
+</body>
+</html>

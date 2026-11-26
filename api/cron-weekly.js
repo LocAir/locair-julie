@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { debutJourParisISO } = require('./_lib/dates'); // minuit à Nice (factures transporteur : mêmes bornes)
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
@@ -41,8 +42,8 @@ async function runWeeklyReport(supabase) {
       .from('livraisons')
       .select('montant_du_cents, type, transporteur_id')
       .eq('statut', 'fait')
-      .gte('fait_at', weekAgoStr + 'T00:00:00Z')
-      .lt('fait_at', todayStr + 'T00:00:00Z');
+      .gte('fait_at', debutJourParisISO(weekAgoStr))
+      .lt('fait_at', debutJourParisISO(todayStr));
 
     const totalCA   = (livDone || []).reduce((s, l) => s + (l.montant_du_cents || 0), 0);
     const nbMissions = (livDone || []).length;
@@ -52,7 +53,7 @@ async function runWeeklyReport(supabase) {
     // Nouvelles réservations
     const { count: newResas } = await supabase
       .from('reservations').select('id', { count: 'exact', head: true })
-      .gte('created_at', weekAgoStr + 'T00:00:00Z').lt('created_at', todayStr + 'T00:00:00Z')
+      .gte('created_at', debutJourParisISO(weekAgoStr)).lt('created_at', debutJourParisISO(todayStr))
       .neq('statut', 'annulee');
 
     // Incidents ouverts
@@ -70,20 +71,20 @@ async function runWeeklyReport(supabase) {
       to:      adminEmail,
       subject: `Rapport hebdo Loc'Air — semaine du ${weekAgoStr}`,
       html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;background:#F4F7FC;margin:0;padding:0}
 .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
-.head{background:#1b3a5f;padding:28px 32px;text-align:center}
+.head{background:#1A5EDB;padding:28px 32px;text-align:center}
 .head h1{color:#fff;font-size:20px;margin:0 0 4px}
 .head p{color:rgba(255,255,255,.7);font-size:13px;margin:0}
 .body{padding:24px 32px}
 .kpi{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:24px}
-.kpi-card{flex:1;min-width:120px;background:#f4f0ea;border-radius:10px;padding:14px 16px;text-align:center}
-.kpi-val{font-size:26px;font-weight:700;color:#1b3a5f}
+.kpi-card{flex:1;min-width:120px;background:#F4F7FC;border-radius:10px;padding:14px 16px;text-align:center}
+.kpi-val{font-size:26px;font-weight:700;color:#1A5EDB}
 .kpi-lbl{font-size:11px;color:#888;margin-top:4px}
 .row{padding:8px 0;border-bottom:1px solid #f0ede8;font-size:13px;display:flex;justify-content:space-between}
 .row:last-child{border-bottom:none}
-.footer{background:#f4f0ea;padding:16px 32px;text-align:center;font-size:12px;color:#888}
-.btn{display:inline-block;background:#1b3a5f;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px;margin-top:16px}
+.footer{background:#F4F7FC;padding:16px 32px;text-align:center;font-size:12px;color:#888}
+.btn{display:inline-block;background:#1A5EDB;color:#fff;padding:10px 24px;border-radius:100px;text-decoration:none;font-weight:700;font-size:13px;margin-top:16px}
 </style></head><body>
 <div class="wrap">
 <div class="head">

@@ -3,11 +3,17 @@ const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/rate
 const { verifyClientToken } = require('./_lib/auth');
 const { getEffectiveDateFin } = require('./_lib/reservations');
 const { todayParis } = require('./_lib/dates');
+const { refDepuisNumero, coefPrixPaye } = require('./_lib/prolongCC');
+const { getPricingConfig, calcTieredPrice } = require('./_lib/pricing');
+const { facteurCC, REGLES } = require('./_lib/tarifDynamique');
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  require('./_lib/traduireErreurs').traduireErreurs(res, req.body && typeof req.body === 'object' ? req.body.lang : null);
 
-  const { email, ref, token } = req.body || {};
+  const { email, token } = req.body || {};
+  let { ref } = req.body || {};
 
   const supabase = getSupabase();
 
@@ -26,14 +32,15 @@ module.exports = async (req, res) => {
     if (!reservationId) return res.status(401).json({ error: 'Session expirée — reconnectez-vous à votre espace client.' });
     ({ data: resa, error } = await supabase
       .from('reservations')
-      .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut')
+      .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut, source_channel, prix_total_cents')
       .eq('id', reservationId)
       .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee')
       .maybeSingle());
   } else {
-    if (!email || !ref) return res.status(400).json({ error: 'Email et référence de commande requis' });
+    if (typeof email !== 'string' || typeof ref !== 'string' || !email || !ref) return res.status(400).json({ error: 'Email et référence de commande requis' });
     const normalizedEmail = String(email).trim().toLowerCase();
+    ref = await refDepuisNumero(supabase, normalizedEmail, ref);
     // .eq('statut','confirmee') indispensable : sans lui, une réservation plus
     // récente mais annulée/en attente sous le même email (tentative abandonnée,
     // doublon) pouvait remonter à la place de la vraie réservation active — la
@@ -42,7 +49,7 @@ module.exports = async (req, res) => {
     // 'lookup_prolongation').
     ({ data: resa, error } = await supabase
       .from('reservations')
-      .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut')
+      .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut, source_channel, prix_total_cents')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
       .or('source.is.null,source.neq.site_prolongation')
@@ -91,5 +98,14 @@ module.exports = async (req, res) => {
     date_fin:   resa.date_fin,
     quantite:   resa.quantite || 1,
     orig_days:  origDays,
+    // Click & Collect : le prix des jours ajoutés = (prix C&C de la nouvelle
+    // durée − prix C&C de la durée actuelle) ×
+    // réduction éventuelle du départ (jamais plus que le prix normal),
+    // exactement comme le calcule prolong-pay.js. 1 = livraison à domicile.
+    ...(await (async () => {
+      if (resa.source_channel !== 'click_collect') return { cc: null };
+      const pricing = await getPricingConfig(supabase);
+      return { cc: { facteur: facteurCC(calcTieredPrice, pricing), court: REGLES.court, semaine: { base: REGLES.baseSemaineEur }, coef: await coefPrixPaye(supabase, resa, pricing) } };
+    })()),
   });
 };

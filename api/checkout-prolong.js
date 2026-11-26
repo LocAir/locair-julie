@@ -6,8 +6,10 @@ const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
+const { estClickCollect, preparerProlongationCC, champsLigneCC, refDepuisNumero } = require('./_lib/prolongCC');
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const supabaseRL = getSupabase();
@@ -74,7 +76,8 @@ module.exports = async (req, res) => {
     await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
     return res.status(400).json({ error: 'Durée de prolongation invalide' });
   }
-  jours = Math.min(90, joursCalc);
+  if (joursCalc > 90) return res.status(400).json({ error: 'Prolongation : 90 jours maximum à la fois.' });
+  jours = joursCalc;
   amountCents = (clientOrigDays > 0 ? _safeIncrement(clientOrigDays, jours) : calcBase(jours)) * qty * 100;
   const today = todayParis();
   if (extDateDebut < today) {
@@ -104,11 +107,11 @@ module.exports = async (req, res) => {
     // et ne se rattache jamais à la bonne réservation. Même filtre déjà en
     // place côté admin (admin-reservations.js, action 'lookup_prolongation').
     let origQuery = supabase
-      .from('reservations').select('id, city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, partenaire_id')
+      .from('reservations').select('*')
       .ilike('email', String(data.email).trim())
       .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee');
-    if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim().toUpperCase());
+    if (data.ref) origQuery = origQuery.eq('ref', String(await refDepuisNumero(supabase, data.email, data.ref)).trim().toUpperCase());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
     if (!city) {
@@ -144,6 +147,7 @@ module.exports = async (req, res) => {
       }
       const joursReel = Math.round((new Date(extDateFin+'T00:00:00Z') - new Date(extDateDebut+'T00:00:00Z')) / 86400000);
       if (joursReel < 1) return res.status(400).json({ error: 'Durée de prolongation invalide' });
+      if (joursReel > 90) return res.status(400).json({ error: 'Prolongation : 90 jours maximum à la fois.' });
       jours = joursReel;
     }
     // Recalcul du montant avec les dates réelles pour empêcher la manipulation de origDays.
@@ -157,12 +161,23 @@ module.exports = async (req, res) => {
         amountCents = _safeIncrement(dbOrigDays, jours) * qty * 100;
       }
     }
+    // Click & Collect : prix, point ouvert, appareil libre au point et
+    // commission du commerçant — règles partagées avec prolong-pay.js
+    // (voir _lib/prolongCC.js).
+    let prolongCC = null;
+    if (estClickCollect(orig)) {
+      prolongCC = await preparerProlongationCC(supabase, { orig, debut: extDateDebut, fin: extDateFin, qty, montantDomicileCents: amountCents, pricing });
+      if (!prolongCC.ok) return res.status(prolongCC.status).json({ error: prolongCC.error });
+      amountCents = prolongCC.amountCents;
+    }
     if (!amountCents || amountCents <= 0) {
       await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
       return res.status(400).json({ error: 'Montant invalide' });
     }
     // Commission partenaire : reprend le taux de la réservation d'origine.
-    if (orig?.partenaire_id) {
+    if (prolongCC) {
+      partenaireCommissionCents = prolongCC.commissionCents;
+    } else if (orig?.partenaire_id) {
       const { data: pt } = await supabase.from('partenaires')
         .select('taux_commission_pct').eq('id', orig.partenaire_id).maybeSingle();
       if (pt) partenaireCommissionCents = Math.round(amountCents * pt.taux_commission_pct / 100);
@@ -175,7 +190,7 @@ module.exports = async (req, res) => {
   try {
     let customerId = '';
     if (data.email) {
-      const email = data.email.trim().toLowerCase();
+      const email = String(data.email).trim().toLowerCase();
       const existing = await stripe.customers.list({ email, limit: 1 });
       if (existing.data.length > 0) {
         customerId = existing.data[0].id;
@@ -238,7 +253,7 @@ module.exports = async (req, res) => {
       tel:                      (data.tel             || '').slice(0, 50),
       tel_secondaire:           orig?.tel_secondaire || null,
       hors_zone:                orig?.hors_zone || false,
-      adresse:                  (data.adresse_origine || '').slice(0, 500),
+      adresse:                  (orig?.source_channel === 'click_collect' ? (orig.adresse || '') : (data.adresse_origine || '')).slice(0, 500),
       // Champs d'accès copiés depuis la réservation d'origine — nécessaires
       // pour que le transporteur puisse accéder au logement lors de la récupération.
       etage:                    orig?.etage               || null,
@@ -269,6 +284,9 @@ module.exports = async (req, res) => {
       // Commission partenaire : héritée du taux de la réservation d'origine.
       partenaire_id:            orig?.partenaire_id || null,
       partenaire_commission_cents: partenaireCommissionCents,
+      // Click & Collect : la prolongation reste rattachée au même point (stock
+      // du point, pas de rappels de récupération à domicile).
+      ...(estClickCollect(orig) ? champsLigneCC(orig) : {}),
       lang:                     ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
     }).select('id, ref').single();
 

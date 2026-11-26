@@ -53,6 +53,14 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Pas plus de 5 codes par heure vers un même numéro (toutes adresses
+    // confondues) : sinon, en changeant d'adresse, on pouvait inonder un
+    // client de SMS (et la facture des SMS).
+    if (await isRateLimited(supabase, `otp-envoi:${telNorm}`, 5, 60)) {
+      return res.status(429).json({ error: 'Trop de codes envoyés à ce numéro. Réessayez dans une heure.' });
+    }
+    await recordFailedAttempt(supabase, `otp-envoi:${telNorm}`).catch(() => {});
+
     // Génère un code à 6 chiffres
     const code = String(crypto.randomInt(100000, 999999));
     if (!process.env.TRANSPORTEUR_SECRET) throw new Error('TRANSPORTEUR_SECRET non configuré');

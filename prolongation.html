@@ -25,8 +25,8 @@
 <link rel="stylesheet" href="/marque.css">
 <link rel="canonical" href="https://www.locair.fr/prolongation"/>
 <meta name="robots" content="noindex,follow"/>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
-<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2"/>
 <script src="https://js.stripe.com/v3/" async></script>
 <style>
 :root{
@@ -140,6 +140,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 <meta name="twitter:image" content="https://www.locair.fr/og-locair.png">
 <link rel="stylesheet" href="/locair-design.css">
   <script src="/locair-nav.js" defer></script>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap">
+<link rel="stylesheet" href="/cc-theme.css">
 </head>
 <body>
 <div class="annbar" style="background:#0D3FA0;color:rgba(255,255,255,.92);font-size:13px;font-weight:500;text-align:center;padding:9px 24px;display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -170,7 +173,7 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
 <span id="nouvel-onglet" class="sr-only">s’ouvre dans un nouvel onglet</span>
 
 <nav class="nav">
-  <a href="/" class="logo lockup" aria-label="Loc'Air, spécialiste du confort thermique"><span class="logo-n">Loc'Air</span><span class="logo-t" aria-hidden="true">Spécialiste du confort thermique</span></a>
+  <a href="/" class="logo lockup" aria-label="Loc'Air, spécialiste du confort thermique"><span class="logo-n">Loc<em>’Air</em></span><span class="logo-t" aria-hidden="true">Spécialiste du confort thermique</span></a>
   <a href="/" class="nav-back">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
     Retour au site
@@ -197,7 +200,7 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
         <input type="text" id="f-ref" name="ref" placeholder="LOC-260710-8129"
           required autocomplete="off" inputmode="text" style="text-transform:uppercase"/>
         <p style="font-size:12px;color:var(--grey);margin-top:6px;line-height:1.5">
-          Disponible dans l’email de confirmation de votre commande initiale.
+          Dans l’email de confirmation. Click &amp; Collect : vos 4 chiffres.
         </p>
       </div>
       <div id="lookup-error" class="alert-error" role="alert" style="display:none"></div>
@@ -293,6 +296,56 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
 
 <script>
 (function(){
+  /* Langue (clients Click & Collect anglais/espagnols) : ?lang=en|es dans le
+     lien du SMS/email, sinon la langue du téléphone. Le français reste la base. */
+  const LG=(function(){const q=(new URLSearchParams(location.search).get('lang')||'').slice(0,2).toLowerCase();if(q==='en'||q==='es'||q==='fr')return q;const n=(navigator.language||'').slice(0,2).toLowerCase();return n==='en'||n==='es'?n:'fr';})();
+  const TX={
+    'Location en cours':['Current rental','Alquiler en curso'],
+    'Prolonger':['Extend','Ampliar'],
+    'ma location':['my rental','mi alquiler'],
+    'Retrouvez votre commande avec votre email et votre numéro de dossier. Le paiement est immédiat — vous recevez une confirmation par email dans la foulée.':['Find your booking with your email and order number. Payment is instant — you get an email confirmation right away.','Encuentra tu reserva con tu email y tu número de pedido. El pago es inmediato — recibes la confirmación por email enseguida.'],
+    'Numéro de commande':['Order number','Número de pedido'],
+    'Dans l’email de confirmation. Click & Collect : vos 4 chiffres.':['In your confirmation email. Click & Collect: your 4 digits.','En el email de confirmación. Click & Collect: tus 4 cifras.'],
+    'Vérifier ma location':['Check my rental','Comprobar mi alquiler'],
+    'Votre location':['Your rental','Tu alquiler'],
+    'Nouvelle date de fin':['New end date','Nueva fecha de fin'],
+    'J’accepte les':['I accept the','Acepto las'],
+    'conditions générales de vente':['terms and conditions','condiciones generales de venta'],
+    'et la durée de prolongation choisie.':['and the chosen extension.','y la ampliación elegida.'],
+    'Payer':['Pay','Pagar'],
+    'Choisissez une nouvelle date et acceptez les CGV pour continuer.':['Choose a new date and accept the terms to continue.','Elige una nueva fecha y acepta las condiciones para continuar.'],
+    '← Modifier mon email / numéro':['← Change my email / number','← Cambiar mi email / número'],
+    'Prolongation':['Extension','Ampliación'],
+    'Paiement sécurisé':['Secure payment','Pago seguro'],
+    'Chargement…':['Loading…','Cargando…'],
+    'Confirmer le paiement':['Confirm payment','Confirmar el pago'],
+    '🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires':['🔒 Secure SSL payment · Stripe · Your card details are never stored','🔒 Pago seguro SSL · Stripe · No guardamos tus datos bancarios'],
+    '← Modifier la date':['← Change the date','← Cambiar la fecha'],
+    'confirmée !':['confirmed!','¡confirmada!'],
+    'Un email de confirmation vous a été envoyé.':['A confirmation email has been sent to you.','Te hemos enviado un email de confirmación.'],
+    'Retour au site':['Back to the website','Volver a la web'],
+    'Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.':['Your bank is still approving the payment — it can take a few minutes. You’ll get a confirmation email as soon as it’s done.','Tu banco aún está validando el pago — puede tardar unos minutos. Recibirás un email de confirmación en cuanto termine.'],
+    'Votre authentification 3D Secure n’a pas abouti. Retrouvez votre commande ci-dessous pour réessayer.':['Your 3D Secure check didn’t go through. Find your booking below to try again.','Tu verificación 3D Secure no se completó. Busca tu reserva abajo para volver a intentarlo.'],
+    'Erreur serveur':['Server error','Error del servidor'],
+    'Délai dépassé — réessayez.':['Timed out — please try again.','Tiempo agotado — inténtalo de nuevo.'],
+    'Recherche…':['Searching…','Buscando…'],
+    'Préparation…':['Preparing…','Preparando…'],
+    'Merci d’accepter les CGV avant de payer.':['Please accept the terms before paying.','Acepta las condiciones antes de pagar.'],
+    'Vérifiez le récapitulatif ci-dessous et réglez par carte. Une confirmation vous sera envoyée par email dès validation.':['Check the summary below and pay by card. You’ll get an email confirmation once it’s approved.','Revisa el resumen y paga con tarjeta. Recibirás la confirmación por email en cuanto se valide.'],
+    'Erreur de chargement du module de paiement. Rechargez la page.':['The payment form didn’t load. Reload the page.','El formulario de pago no se cargó. Recarga la página.'],
+    'Paiement en attente de confirmation. Vérifiez votre email dans quelques minutes, ou réessayez.':['Payment awaiting confirmation. Check your email in a few minutes, or try again.','Pago pendiente de confirmación. Revisa tu email en unos minutos o inténtalo de nuevo.'],
+  };
+  function tx(fr){const t=TX[fr];return LG==='fr'||!t?fr:t[LG==='en'?0:1];}
+  const LOC=LG==='en'?'en-GB':LG==='es'?'es-ES':'fr-FR';
+  const J=function(n){return LG==='en'?(n>1?'days':'day'):LG==='es'?(n>1?'días':'día'):(n>1?'jours':'jour');};
+  if(LG!=='fr'){
+    document.documentElement.lang=LG;
+    document.title=LG==='en'?'Extend my rental — Loc’Air':'Ampliar mi alquiler — Loc’Air';
+    ['main','nav.nav'].forEach(function(sel){const root=document.querySelector(sel);if(!root)return;
+      const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const ns=[];while(w.nextNode())ns.push(w.currentNode);
+      ns.forEach(function(n){const k=n.nodeValue.replace(/\s+/g,' ').trim();if(k&&TX[k])n.nodeValue=n.nodeValue.replace(/\S[\s\S]*\S|\S/,tx(k));});});
+    const pb=document.getElementById('btn-pay');if(pb)pb.title=tx('Choisissez une nouvelle date et acceptez les CGV pour continuer.');
+  }
   const STRIPE_PK='pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
   const SPIN='<svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-opacity=".2"/><path d="M12 3a9 9 0 019 9"/></svg>';
   const ICO_SEARCH='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
@@ -300,8 +353,8 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
   function calcBase(d){d=Math.max(1,d);if(d<=7)return d*12;if(d<=14)return 7*12+(d-7)*10;if(d<=21)return 7*12+7*10+(d-14)*9;return 7*12+7*10+7*9+(d-21)*8;}
   function diffDays(a,b){return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);}
   function addDay(iso){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
-  function fmtLong(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}
-  function fmtShort(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{day:'numeric',month:'long'});}
+  function fmtLong(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString(LOC,{weekday:'long',day:'numeric',month:'long'});}
+  function fmtShort(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString(LOC,{day:'numeric',month:'long'});}
 
   function breakdown(origDays,extDays){
     const lines=[];let d=origDays+1,end=origDays+extDays;
@@ -332,10 +385,10 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
     }else if(status === 'processing'){
       show('step-success');
       const m = document.getElementById('success-msg');
-      if(m) m.textContent = 'Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.';
+      if(m) m.textContent = tx('Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.');
     }else{
-      show(‘step-1’);
-      err(‘lookup-error’, ‘Votre authentification 3D Secure n’a pas abouti. Retrouvez votre commande ci-dessous pour réessayer.’);
+      show('step-1');
+      err('lookup-error', 'Votre authentification 3D Secure n’a pas abouti. Retrouvez votre commande ci-dessous pour réessayer.');
     }
   }
 
@@ -380,9 +433,9 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
     if(!token)return;
     hide('step-1');
     try{
-      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({token})});
+      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({token,lang:LG})});
       const d=await r.json();
-      if(!r.ok)throw new Error(d.error||'Erreur serveur');
+      if(!r.ok)throw new Error(d.error||tx('Erreur serveur'));
       email=d.email;ref=d.ref;resa=d;goStep2();
     }catch(ex){
       // Jeton expiré, invalide, ou réservation qui ne correspond plus aux
@@ -400,25 +453,25 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
     ref=document.getElementById('f-ref').value.trim().toUpperCase();
     if(!email||!ref)return;
     const btn=document.getElementById('btn-lookup');
-    btn.disabled=true;btn.innerHTML=SPIN+' Recherche…';noerr('lookup-error');
+    btn.disabled=true;btn.innerHTML=SPIN+' '+tx('Recherche…');noerr('lookup-error');
     try{
       const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),12000);
-      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref}),signal:ctrl.signal});
+      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,lang:LG}),signal:ctrl.signal});
       clearTimeout(t);
       const d=await r.json();
-      if(!r.ok)throw new Error(d.error||'Erreur serveur');
+      if(!r.ok)throw new Error(d.error||tx('Erreur serveur'));
       resa=d;goStep2();
     }catch(ex){
-      err('lookup-error',ex.name==='AbortError'?'D\xe9lai d\xe9pass\xe9 — r\xe9essayez.':ex.message);
-      btn.disabled=false;btn.innerHTML=ICO_SEARCH+' V\xe9rifier ma location';
+      err('lookup-error',ex.name==='AbortError'?tx('Délai dépassé — réessayez.'):ex.message);
+      btn.disabled=false;btn.innerHTML=ICO_SEARCH+' '+tx('Vérifier ma location');
     }
   });
 
   function goStep2(){
     hide('step-1');show('step-2');
     document.getElementById('resa-name').textContent=(resa.prenom?resa.prenom+' \xb7 ':'')+'№ '+(resa.ref||ref);
-    document.getElementById('resa-dates').textContent='Du '+fmtShort(resa.date_debut)+' au '+fmtLong(resa.date_fin)+' inclus ( '+resa.orig_days+' j )';
-    const inp=document.getElementById('f-newdate');inp.min=addDay(resa.date_fin);inp.value='';
+    document.getElementById('resa-dates').textContent=LG==='en'?('From '+fmtShort(resa.date_debut)+' to '+fmtLong(resa.date_fin)+' ('+resa.orig_days+' '+J(resa.orig_days)+')'):LG==='es'?('Del '+fmtShort(resa.date_debut)+' al '+fmtLong(resa.date_fin)+' ('+resa.orig_days+' '+J(resa.orig_days)+')'):('Du '+fmtShort(resa.date_debut)+' au '+fmtLong(resa.date_fin)+' inclus ( '+resa.orig_days+' j )');
+    const inp=document.getElementById('f-newdate');inp.min=addDay(resa.date_fin);inp.max=(function(){const d=new Date(resa.date_fin+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+90);return d.toISOString().slice(0,10);})();inp.value='';
     hide('price-box');noerr('extend-error');
     document.getElementById('f-cgv').checked=false;
     document.getElementById('btn-pay').disabled=true;
@@ -436,15 +489,23 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
   function updatePrice(){
     newDate=document.getElementById('f-newdate').value;
     if(!newDate||!resa){hide('price-box');noerr('extend-error');priceValid=false;updateBtnPayState();return;}
-    if(newDate<=resa.date_fin){hide('price-box');err('extend-error','La nouvelle date doit être après le '+fmtLong(resa.date_fin)+' (date de fin actuelle).');priceValid=false;updateBtnPayState();return;}
+    if(newDate<=resa.date_fin){hide('price-box');err('extend-error',(LG==='en'?'The new date must be after ':LG==='es'?'La nueva fecha debe ser posterior al ':'La nouvelle date doit être après le ')+fmtLong(resa.date_fin)+(LG==='en'?' (current end date).':LG==='es'?' (fecha de fin actual).':' (date de fin actuelle).'));priceValid=false;updateBtnPayState();return;}
     noerr('extend-error');
     const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
-    const price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
+    let price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
+    /* Click & Collect : même calcul que le serveur (_lib/prolongCC.js) :
+       prix C&C de la nouvelle durée − prix C&C de la durée actuelle, × réduction du départ */
+    if(resa.cc&&resa.cc.facteur){
+      const k=resa.cc.court,sem=resa.cc.semaine;
+      const ccBase=function(j){if(k&&sem&&j<7){const t=Math.max(0,(j-k.jours)/(7-k.jours));return Math.round(k.base+(sem.base-k.base)*t);}return Math.round(calcBase(j)*resa.cc.facteur);};
+      const d=ccBase(tot)-ccBase(resa.orig_days);
+      price=Math.round((d>0?d*(resa.quantite||1):Math.round(price*resa.cc.facteur))*(resa.cc.coef||1));
+    }
     cents=price*100;
-    document.getElementById('price-days').textContent='+ '+ext+' jour'+(ext>1?'s':'');
+    document.getElementById('price-days').textContent='+ '+ext+' '+J(ext);
     document.getElementById('price-amount').textContent=price+' €';
-    const note=breakdown(resa.orig_days,ext);
-    document.getElementById('price-note').textContent=note+' · grille depuis le j1 de votre location';
+    const note=resa.cc?(ext+' '+J(ext)+(LG==='en'?' at the Click & Collect rate (cheaper per day the longer you keep it)':LG==='es'?' con la tarifa Click & Collect (más barata por día cuanto más tiempo)':' au tarif Click & Collect, dégressif')+((resa.quantite||1)>1?' · '+resa.quantite+(LG==='en'?' units':LG==='es'?' aparatos':' appareils'):'')):breakdown(resa.orig_days,ext);
+    document.getElementById('price-note').textContent=resa.cc?note:note+' · grille depuis le j1 de votre location';
     show('price-box');
     document.getElementById('btn-pay-label').textContent=price+' €';
     priceValid=true;
@@ -457,44 +518,44 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
   /* ── Payer → créer PI + afficher Stripe ── */
   document.getElementById('btn-pay').addEventListener('click',async function(){
     if(!resa||!newDate)return;
-    if(!document.getElementById(‘f-cgv’).checked){
-      document.querySelector(‘.cgv-row’).style.outline=’2px solid var(--red)’;
-      document.querySelector(‘.cgv-row’).style.outlineOffset=’3px’;
-      err(‘extend-error’,’Merci d’accepter les CGV avant de payer.’);
+    if(!document.getElementById('f-cgv').checked){
+      document.querySelector('.cgv-row').style.outline='2px solid var(--red)';
+      document.querySelector('.cgv-row').style.outlineOffset='3px';
+      err('extend-error',tx('Merci d’accepter les CGV avant de payer.'));
       return;
     }
-    document.querySelector(‘.cgv-row’).style.outline=’’;
-    document.querySelector(‘.cgv-row’).style.outlineOffset=’’;
-    this.disabled=true;this.innerHTML=SPIN+' Pr\xe9paration…';noerr('extend-error');
+    document.querySelector('.cgv-row').style.outline='';
+    document.querySelector('.cgv-row').style.outlineOffset='';
+    this.disabled=true;this.innerHTML=SPIN+' '+tx('Préparation…');noerr('extend-error');
     try{
       const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
-      const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,new_date_fin:newDate,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()}),signal:ctrl.signal});
+      const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,new_date_fin:newDate,lang:LG,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()}),signal:ctrl.signal});
       clearTimeout(t);
       const d=await r.json();
-      if(!r.ok)throw new Error(d.error||'Erreur serveur');
+      if(!r.ok)throw new Error(d.error||tx('Erreur serveur'));
       cents=d.amountCents;
       await goStep3(d.clientSecret,d.amountCents,d.jours,newDate);
     }catch(ex){
-      err('extend-error',ex.name==='AbortError'?'D\xe9lai d\xe9pass\xe9 — r\xe9essayez.':ex.message);
-      this.disabled=false;this.innerHTML='Payer <span id="btn-pay-label">'+(cents/100)+' €</span>';
+      err('extend-error',ex.name==='AbortError'?tx('Délai dépassé — réessayez.'):ex.message);
+      this.disabled=false;this.innerHTML=tx('Payer')+' <span id="btn-pay-label">'+(cents/100)+' €</span>';
     }
   });
 
   document.getElementById('btn-back-1').addEventListener('click',function(){
     hide('step-2');show('step-1');noerr('extend-error');
-    const b=document.getElementById('btn-lookup');b.disabled=false;b.innerHTML=ICO_SEARCH+' V\xe9rifier ma location';
+    const b=document.getElementById('btn-lookup');b.disabled=false;b.innerHTML=ICO_SEARCH+' '+tx('Vérifier ma location');
   });
 
   async function goStep3(clientSecret,amtCents,jours,dateFin){
     hide('step-2');show('step-3');
     const psub=document.getElementById('page-sub-txt');if(psub)psub.textContent='Vérifiez le récapitulatif ci-dessous et réglez par carte. Une confirmation vous sera envoyée par email dès validation.';
-    const amtFmt=(amtCents/100).toLocaleString('fr-FR')+' €';
-    document.getElementById('pay-summary-detail').textContent='+'+jours+' jour'+(jours>1?'s':'')+' jusqu’au '+fmtLong(dateFin);
+    const amtFmt=(amtCents/100).toLocaleString(LOC)+' €';
+    document.getElementById('pay-summary-detail').textContent='+'+jours+' '+J(jours)+(LG==='en'?' until ':LG==='es'?' hasta el ':' jusqu’au ')+fmtLong(dateFin);
     document.getElementById('pay-summary-price').textContent=amtFmt;
-    document.getElementById('btn-confirm-label').textContent='Payer '+amtFmt;
+    document.getElementById('btn-confirm-label').textContent=tx('Payer')+' '+amtFmt;
     if(typeof Stripe==='undefined'){err('payment-error','Erreur de chargement du module de paiement. Rechargez la page.');return;}
     strInst=Stripe(STRIPE_PK);
-    strEl=strInst.elements({clientSecret,locale:'fr',/* Stripe s'affiche dans une IFRAME : les variables CSS de la page n'y
+    strEl=strInst.elements({clientSecret,locale:LG,/* Stripe s'affiche dans une IFRAME : les variables CSS de la page n'y
        entrent pas. Ces valeurs doivent donc etre ecrites en clair, et
        tenues a la main d'accord avec MARQUE.md — #0E1F35 est --ink,
        12px est le rayon --r. La police aussi : DM Sans, plus Inter. */
@@ -520,23 +581,23 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
       err('payment-error',error.message);this.disabled=false;this.innerHTML=orig;
     }else if(paymentIntent?.status==='succeeded'){
       hide('step-3');show('step-success');
-      document.getElementById('success-msg').textContent='Votre location est prolong\xe9e jusqu’au '+fmtLong(newDate)+'. Un email de confirmation a \xe9t\xe9 envoy\xe9 \xe0 '+email+'.';
+      document.getElementById('success-msg').textContent=LG==='en'?('Your rental is extended until '+fmtLong(newDate)+'. A confirmation email has been sent to '+email+'.'):LG==='es'?('Tu alquiler se ha ampliado hasta el '+fmtLong(newDate)+'. Hemos enviado un email de confirmación a '+email+'.'):('Votre location est prolong\xe9e jusqu’au '+fmtLong(newDate)+'. Un email de confirmation a \xe9t\xe9 envoy\xe9 \xe0 '+email+'.');
     }else if(paymentIntent?.status==='processing'){
       hide('step-3');show('step-success');
-      document.getElementById('success-msg').textContent='Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.';
+      document.getElementById('success-msg').textContent=tx('Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.');
     }else{
-      err('payment-error','Paiement en attente de confirmation. Vérifiez votre email dans quelques minutes, ou réessayez.');
+      err('payment-error',tx('Paiement en attente de confirmation. Vérifiez votre email dans quelques minutes, ou réessayez.'));
       this.disabled=false;this.innerHTML=orig;
     }
   });
 
   document.getElementById('btn-back-2').addEventListener('click',function(){
     if(strEl){try{strEl.getElement('payment')?.unmount();}catch(e){}strEl=null;strInst=null;}
-    document.getElementById('prolong-payment-element').innerHTML='<p style="color:var(--grey);font-size:13px;text-align:center;padding:32px 0">Chargement…</p>';
+    document.getElementById('prolong-payment-element').innerHTML='<p style="color:var(--grey);font-size:13px;text-align:center;padding:32px 0">'+tx('Chargement…')+'</p>';
     document.getElementById('btn-confirm').disabled=true;noerr('payment-error');
     hide('step-3');show('step-2');
-    const psub2=document.getElementById('page-sub-txt');if(psub2)psub2.textContent='Retrouvez votre commande avec votre email et votre numéro de dossier. Le paiement est immédiat — vous recevez une confirmation par email dans la foulée.';
-    const b=document.getElementById('btn-pay');b.disabled=false;b.innerHTML='Payer <span id="btn-pay-label">'+(cents/100)+' €</span>';
+    const psub2=document.getElementById('page-sub-txt');if(psub2)psub2.textContent=tx('Retrouvez votre commande avec votre email et votre numéro de dossier. Le paiement est immédiat — vous recevez une confirmation par email dans la foulée.');
+    const b=document.getElementById('btn-pay');b.disabled=false;b.innerHTML=tx('Payer')+' <span id="btn-pay-label">'+(cents/100)+' €</span>';
   });
 })();
 </script>
@@ -585,5 +646,6 @@ body>:is(.ann,.nav,.bar,.mm):not(.ld-navbar):not(.annbar){display:none!important
     <span><a href="/cgv" style="color:rgba(255,255,255,.4);text-decoration:none;">CGV</a> &middot; <a href="/mentions-legales" style="color:rgba(255,255,255,.4);text-decoration:none;">Mentions légales</a> &middot; <a href="/confidentialite" style="color:rgba(255,255,255,.4);text-decoration:none;">Confidentialité</a></span>
   </div>
 </footer>
+<script src="/chat-widget.js" defer></script>
 </body>
 </html>

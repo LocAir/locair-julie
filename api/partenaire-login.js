@@ -1,13 +1,15 @@
 const { getSupabase } = require('./_lib/supabase');
+const { tauxAffiche } = require('./_lib/pointsRetrait');
 const { safeEqual, signPartenaireToken } = require('./_lib/auth');
 const { hashPin, verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const pin  = ((req.body || {}).pin  || '').trim();
-  const code = ((req.body || {}).code || '').trim().toLowerCase();
+  const pin  = String((req.body || {}).pin || '').trim();
+  const code = String((req.body || {}).code || '').trim().toLowerCase();
   if (!pin) return res.status(400).json({ error: 'Code secret manquant' });
   if (!process.env.TRANSPORTEUR_SECRET) {
     console.error('[Partenaire login] TRANSPORTEUR_SECRET manquant');
@@ -20,6 +22,13 @@ module.exports = async (req, res) => {
   try {
     if (await isRateLimited(supabase, rateKey)) {
       return res.status(429).json({ error: 'Trop de tentatives. Réessaie dans 15 minutes ou contacte Loc\'Air.' });
+    }
+    // Aussi par commerçant (pas seulement par adresse IP) : sinon, en changeant
+    // d'adresse, on pouvait essayer les 10 000 codes à 4 chiffres d'un même
+    // commerçant. 20 essais ratés par heure et par code, puis pause.
+    const codeKey = code ? `partenaire-code:${code.slice(0, 40)}` : null;
+    if (codeKey && await isRateLimited(supabase, codeKey, 20, 60)) {
+      return res.status(429).json({ error: 'Trop de tentatives sur ce compte. Réessaie dans une heure ou contacte Loc\'Air.' });
     }
 
     // Quand le code d'affiliation est fourni (nouveau formulaire), on cible
@@ -44,6 +53,7 @@ module.exports = async (req, res) => {
     );
     if (!match) {
       await recordFailedAttempt(supabase, rateKey);
+      if (codeKey) await recordFailedAttempt(supabase, codeKey);
       return res.status(401).json({ error: 'Code incorrect' });
     }
 
@@ -64,7 +74,7 @@ module.exports = async (req, res) => {
       partenaire_id: match.id,
       nom: match.nom,
       code: match.code,
-      taux_commission_pct: match.taux_commission_pct,
+      taux_commission_pct: tauxAffiche(match),
     });
   } catch (err) {
     console.error('[Partenaire login]', err.message);

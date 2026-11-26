@@ -81,7 +81,7 @@ function checkMediaAllowed(liv, kind) {
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase
     .from('livraisons')
-    .select('*, reservation:reservations(installation, city_id, hors_zone, express, prenom, nom, tel, email, ref, adresse, creneau, lang, quantite, date_debut, date_fin)')
+    .select('*, reservation:reservations(installation, city_id, hors_zone, express, prenom, nom, tel, email, ref, adresse, creneau, lang, quantite, date_debut, date_fin, source_channel, point_retrait_id)')
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
@@ -96,6 +96,7 @@ async function closeMissionIncident(supabase, liv) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const supabase = getSupabase();
@@ -580,7 +581,13 @@ module.exports = async (req, res) => {
       // Emails de scénario (moteur central _lib/emailEngine.js) — jamais
       // envoyés deux fois, historisés dans email_log. Ne doit jamais faire
       // échouer la validation de la mission si Brevo est indisponible.
-      if (expectedType === 'livraison') {
+      // Click & Collect : pas de livraison ni de récupération chez le client
+      // (il vient chercher et rapporte l'appareil au point). Si une mission
+      // traîne quand même (ancienne réservation), on n'envoie aucun email
+      // « installation » / « fin de location » : ils parleraient d'un
+      // technicien qui n'est jamais venu.
+      const estCC = liv.reservation?.source_channel === 'click_collect';
+      if (expectedType === 'livraison' && !estCC) {
         try {
           await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'post_installation' });
         } catch (e) {
@@ -590,10 +597,12 @@ module.exports = async (req, res) => {
 
       if (expectedType === 'recuperation') {
         await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id).eq('statut', 'confirmee');
-        try {
-          await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' });
-        } catch (e) {
-          console.error('[Email fin_location]', e.message);
+        if (!estCC) {
+          try {
+            await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' });
+          } catch (e) {
+            console.error('[Email fin_location]', e.message);
+          }
         }
       }
 
@@ -642,6 +651,17 @@ module.exports = async (req, res) => {
       if (changementUpdErr) throw changementUpdErr;
       if (!changementClaimed || !changementClaimed.length) return res.status(409).json({ error: 'Étape déjà validée (double envoi ?)' });
       await closeMissionIncident(supabase, liv);
+      // Panne, remplacement URGENT (plus d'appareil au point, voir
+      // _lib/panne.js) : le client est prévenu qu'un appareil l'attend au point.
+      // (missions de panne au point : adresse_libre = « nom — adresse » du point)
+      if (liv.adresse_libre && String(liv.creneau || '').startsWith('URGENT') && liv.reservation?.tel) {
+        const l = liv.reservation.lang;
+        const nom = String(liv.adresse_libre).split(' — ')[0];
+        const content = l === 'en' ? `Loc'Air: a replacement air conditioner is waiting for you at ${nom}. Scan the QR code at the counter and enter your order number ${liv.reservation.ref || ''}.`
+          : l === 'es' ? `Loc'Air: un aire acondicionado de sustitución te espera en ${nom}. Escanea el código QR del mostrador y escribe tu número de pedido ${liv.reservation.ref || ''}.`
+          : `Loc'Air : un climatiseur de remplacement vous attend au point ${nom}. Scannez le QR code du comptoir et tapez votre numéro de commande ${liv.reservation.ref || ''}.`;
+        await sendBrevoSms({ to: liv.reservation.tel, content }).catch((e) => console.error('[changement_ok sms cc]', e.message));
+      }
       await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
         typeEvenement: 'changement', livraisonId: liv.id, utilisateur: 'transporteur',
       }).catch(e => console.error('[changement_ok appareilSync]', e.message));
@@ -750,7 +770,9 @@ module.exports = async (req, res) => {
         tag:   `incident-${liv.id}`,
       });
 
-      if (problemeType === 'client_absent') {
+      // Click & Collect : personne ne passe chez le client, donc jamais de
+      // SMS « nous sommes passés, vous étiez absent ».
+      if (problemeType === 'client_absent' && liv.reservation?.source_channel !== 'click_collect') {
         const { data: resa } = await supabase
           .from('reservations').select('prenom, tel, lang').eq('id', liv.reservation_id).maybeSingle();
         if (resa?.tel) {

@@ -2,6 +2,7 @@ const { sendBrevoEmail } = require('./brevo');
 const tpl = require('./emailTemplates');
 const { addDays } = require('./dates');
 const { getEffectiveDateFin, getActiveRecuperationMission } = require('./dateFin');
+const { scenarioInterditClickCollect } = require('./emailSchedule');
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -17,6 +18,7 @@ function fmtDate(iso, lang) {
     return `${d.getUTCFullYear()}年${months[d.getUTCMonth()]}${d.getUTCDate()}日（${days[d.getUTCDay()]}）`;
   }
   if (lang === 'ru') return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (lang === 'es') return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
@@ -102,7 +104,7 @@ async function buildEmailContext(supabase, reservation) {
     // (capture d'écran à l'appui, 2026-08-05).
     modeleClimatiseur: lang === 'en' ? 'Air conditioner' : lang === 'zh' ? '空调' : lang === 'ru' ? 'Кондиционер' : 'Climatiseur',
     lienEspaceClient: 'https://www.locair.fr/client',
-    lienProlongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(reservation.ref || '')}`,
+    lienProlongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(reservation.ref || '')}${reservation.lang === 'en' || reservation.lang === 'es' ? '&lang=' + reservation.lang : ''}`,
   };
 }
 
@@ -164,6 +166,9 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
 
   const { data: reservation } = await supabase.from('reservations').select('*').eq('id', reservationId).maybeSingle();
   if (!reservation) return { sent: false, reason: 'no_reservation' };
+  // Click & Collect : jamais de message « livraison / technicien /
+  // récupération à domicile » (voir SCENARIOS_DOMICILE, _lib/emailSchedule.js).
+  if (scenarioInterditClickCollect(reservation, scenario)) return { sent: false, reason: 'click_collect' };
 
   if (!(await isScenarioActive(supabase, scenario))) return { sent: false, reason: 'scenario_disabled' };
   if (await wasScenarioSkipped(supabase, reservationId, scenario)) return { sent: false, reason: 'skipped_by_admin' };

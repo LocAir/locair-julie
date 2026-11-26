@@ -314,6 +314,10 @@ create table reservations (
                              )),
   source                   text,
   source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
+  piece_identite_paths     text[], -- Click & Collect : pièce d'identité (bucket privé missions, identites/), effacée 30 j après la fin
+  point_retrait_id         text, -- Click & Collect : id du point (api/_lib/pointsRetrait.js) — stock figé, prix fort à 80 %
+  remis_at                 timestamptz, -- Click & Collect : remise validée par le commerçant (scan QR)
+  remis_par_partenaire_id  bigint references partenaires(id),
   parrain_code             text, -- code parrain saisi par le client (programme parrainage)
   -- Lien fiable vers la réservation prolongée (posé uniquement quand source =
   -- 'site_prolongation') — voir migration_reservation_origine.sql.
@@ -744,6 +748,24 @@ create table partenaire_virements (
 );
 create index partenaire_virements_partenaire_idx on partenaire_virements (partenaire_id, statut);
 
+-- Parrainages entre commerçants points de retrait (22/11/2026) : une ligne
+-- par demande de rappel venue d'un lien de parrainage (/parrainage).
+create table parrainages (
+  id          bigint generated always as identity primary key,
+  parrain_id  bigint references partenaires(id),
+  parrain_nom text,
+  commerce    text not null,
+  contact_nom text,
+  tel         text,
+  statut      text not null default 'en_attente' check (statut in ('en_attente','signe','refuse')),
+  created_at  timestamptz not null default now(),
+  signe_at    timestamptz,
+  filleul_id  bigint references partenaires(id),        -- fiche du nouveau commerçant (détectée à sa création)
+  premiere_resa_id bigint references reservations(id)  -- sa 1re location payée (alerte « à verser »)
+);
+create index parrainages_parrain_idx on parrainages (parrain_id, created_at desc);
+create index parrainages_filleul_idx on parrainages (filleul_id) where filleul_id is not null;
+
 create table incidents (
   id                    bigint generated always as identity primary key,
   city_id               bigint references cities(id), -- indispensable dès qu'une 2e ville partage cette base
@@ -1018,7 +1040,7 @@ create table admin_users (
   -- lieu du code en clair — bascule progressive à la prochaine connexion
   -- réussie (voir admin-user-login.js), jamais en masse.
   pin_hashed    boolean not null default false,
-  role          text not null check (role in ('administrateur','operateur','comptabilite','support_client')),
+  role          text not null check (role in ('administrateur','operateur','comptabilite','support_client','prospecteur')),
   actif         boolean not null default true,
   created_at    timestamptz not null default now(),
   last_login_at timestamptz
@@ -1041,3 +1063,103 @@ insert into appareils (city_id, numero)
 -- pour en ajouter/modifier directement sans repasser par ce fichier)
 update appareils set reference = 'SN 5400L478501B12902K0132'
   where numero = 3 and city_id = (select id from cities where slug = 'nice');
+
+-- Passages de l'agent Loc'Air dans les points de retrait (24/11/2026).
+-- Convention : un passage tous les 10 jours (entretien des climatiseurs).
+-- Une ligne par passage, posée depuis l'admin (Points de retrait →
+-- « Passage fait »). L'admin affiche le dernier passage de chaque point,
+-- en rouge au-delà de 10 jours.
+create table if not exists passages_agent (
+  id         bigint generated always as identity primary key,
+  point_id   text not null,
+  fait_le    date not null default current_date,
+  created_at timestamptz not null default now()
+);
+create index if not exists passages_agent_point_idx on passages_agent (point_id, fait_le desc);
+alter table passages_agent enable row level security;
+create table if not exists prospection_points (
+  id              bigint generated always as identity primary key,
+  session_token   text not null unique,
+  statut          text not null default 'session'
+                  check (statut in ('session','a_repasser','en_attente_signature','signe','refuse')),
+  zone            text,
+  enseigne        text,
+  gerant          text,
+  tel             text,
+  email           text,
+  adresse         text,
+  capacite        int check (capacite between 1 and 20),
+  accepte_at      timestamptz,
+  photo_path      text,
+  lat             double precision,
+  lng             double precision,
+  gps_precision   double precision,
+  signataire      text,
+  signature_path  text,
+  signe_at        timestamptz,
+  docs_envoyes_at timestamptz,
+  relance_at      timestamptz,
+  prospecteur     text,
+  notes           text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+alter table prospection_points add column if not exists tel_commerce text;
+alter table prospection_points add column if not exists siret text; -- SIRET confirmé par le commerçant (25/11/2026) -- téléphone de l'établissement (25/11/2026)
+create index if not exists prospection_points_statut_idx on prospection_points (statut, created_at desc);
+alter table prospection_points enable row level security;
+
+create table if not exists stock_points (
+  point_id   text primary key,
+  stock      int not null check (stock between 0 and 30),
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+alter table stock_points enable row level security;
+
+create table if not exists stock_points_historique (
+  id            bigint generated always as identity primary key,
+  point_id      text not null,
+  ancien        int,
+  nouveau       int not null,
+  raison        text,
+  accord_gerant boolean not null default false,
+  par           text,
+  created_at    timestamptz not null default now()
+);
+create index if not exists stock_points_historique_idx on stock_points_historique (point_id, created_at desc);
+alter table stock_points_historique enable row level security;
+
+-- Points de retrait créés ou modifiés depuis l'admin (26/11/2026).
+-- Une ligne = un point. `data` reprend les champs de api/_lib/pointsRetrait.js
+-- (nom, ville, adresse, lat, lng, horaires, ouverture, fermes, stock, tel,
+-- partenaire_code, exemple…). Même id qu'un point du code = le remplace.
+-- actif = false : point retiré (seulement pour un point créé ici).
+create table if not exists points_retrait (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  actif boolean not null default true,
+  cree_par text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table points_retrait enable row level security;
+
+-- (prospection_points.capacite : voir plus haut)
+-- Prospection terrain : le nombre de climatiseurs à la signature n'est plus
+-- limité à 3–5 (souvent 3, 4 ou 5, mais libre de 1 à 20).
+alter table prospection_points drop constraint if exists prospection_points_capacite_check;
+alter table prospection_points add constraint prospection_points_capacite_check check (capacite between 1 and 20);
+-- Boîte Outlook partenaires (25/11/2026) : les e-mails aux commerçants
+-- partent de partenaires.locair@outlook.com. Une seule ligne (id = 1) :
+-- le jeton longue durée donné par Microsoft quand le gérant relie la boîte
+-- depuis l'admin (accueil → Envoi rapide → « Relier Outlook »).
+create table if not exists outlook_connexion (
+  id               int primary key default 1 check (id = 1),
+  compte           text,
+  refresh_token    text,
+  connecte_at      timestamptz,
+  dernier_envoi_at timestamptz,
+  derniere_erreur  text
+);
+alter table outlook_connexion enable row level security;

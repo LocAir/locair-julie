@@ -63,6 +63,15 @@ module.exports = async (req, res) => {
         if (i.created_at >= since30j && parMois[i.type] != null && ACTIFS_STATUTS.includes(i.statut)) parMois[i.type]++;
       });
 
+      // Photos (signalements Click & Collect, transporteurs) : liens privés valables 1 h.
+      for (const i of (data || [])) {
+        if (!Array.isArray(i.photos) || !i.photos.length) continue;
+        i.photos_urls = [];
+        for (const ph of i.photos.slice(0, 3)) {
+          const { data: su } = await supabase.storage.from('missions').createSignedUrl(ph, 3600);
+          if (su && su.signedUrl) i.photos_urls.push(su.signedUrl);
+        }
+      }
       return res.status(200).json({ incidents: data || [], par_type_30j: parMois });
     }
 

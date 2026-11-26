@@ -6,7 +6,7 @@ const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/rate
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const pin = ((req.body || {}).pin || '').trim();
+  const pin = String((req.body || {}).pin || '').trim();
   if (!pin) return res.status(400).json({ error: 'Code manquant' });
   if (!process.env.TRANSPORTEUR_SECRET) {
     console.error('[Transporteur login] TRANSPORTEUR_SECRET manquant');
@@ -17,6 +17,13 @@ module.exports = async (req, res) => {
   const rateKey = `transporteur:${getClientIp(req)}`;
 
   try {
+    // Connexion par code seul (sans identifiant) : le code est comparé à
+    // TOUS les comptes. En plus de la limite par adresse IP, une limite
+    // globale empêche de deviner un code en changeant d'adresse : 30 essais
+    // ratés en 15 min, toutes adresses confondues, puis pause.
+    if (await isRateLimited(supabase, 'transporteur:global', 30, 15)) {
+      return res.status(429).json({ error: 'Trop de tentatives. Réessaie dans 15 minutes ou contacte Aly.' });
+    }
     if (await isRateLimited(supabase, rateKey)) {
       return res.status(429).json({ error: 'Trop de tentatives. Réessaie dans 15 minutes ou contacte Aly.' });
     }
@@ -29,6 +36,7 @@ module.exports = async (req, res) => {
     );
     if (!match) {
       await recordFailedAttempt(supabase, rateKey);
+      await recordFailedAttempt(supabase, 'transporteur:global').catch(() => {});
       return res.status(401).json({ error: 'Code incorrect' });
     }
 

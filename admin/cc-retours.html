@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Click & Collect — à reconditionner</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap">
+<!-- Appareils Click & Collect rendus (photo du dépôt dans la housse) :
+     « À reconditionner », puis « Reconditionné ✓ » une fois remis en état.
+     Utilise la connexion de l'appli admin (même navigateur). -->
+<style>
+:root{--vif:#1A5EDB;--vif-d:#0D3FA0;--ink:#0E1726;--ink-2:#4B5873;--line:#E3E9F4;--mist:#F2F6FD;--ok:#0F7A3D}
+*{box-sizing:border-box}
+body{margin:0;background:var(--mist);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif}
+main{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:28px;font-weight:900;letter-spacing:-.03em;margin:0 0 4px}
+.sous{color:var(--ink-2);margin:0 0 18px}
+.onglets{display:flex;gap:8px;margin-bottom:16px}
+.onglets button{border:1px solid var(--line);background:#fff;border-radius:100px;padding:10px 16px;font:700 14px 'DM Sans',sans-serif;cursor:pointer;min-height:44px}
+.onglets button[aria-pressed="true"]{background:var(--vif);color:#fff;border-color:var(--vif)}
+.liste{display:grid;gap:12px}
+.ligne{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:center;background:#fff;border-radius:18px;padding:12px;box-shadow:0 8px 24px -14px rgba(11,30,68,.25)}
+.ligne img,.ligne .vide{width:96px;height:96px;border-radius:12px;object-fit:cover;background:var(--mist);display:flex;align-items:center;justify-content:center;color:var(--ink-2);font-size:12px}
+.ligne b{display:block;font-size:16px}
+.ligne small{color:var(--ink-2);font-size:13.5px}
+.ligne button{border:0;background:var(--ok);color:#fff;border-radius:100px;padding:12px 16px;font:800 14px 'DM Sans',sans-serif;cursor:pointer;min-height:44px}
+.pret{color:var(--ok);font-weight:800;font-size:14px}
+.msg{background:#fff;border-radius:14px;padding:16px;color:var(--ink-2)}
+@media(max-width:560px){.ligne{grid-template-columns:72px 1fr}.ligne img,.ligne .vide{width:72px;height:72px}.ligne button,.ligne .pret{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<main>
+  <h1>À reconditionner</h1>
+  <p class="sous">Climatiseurs Click &amp; Collect rendus au point de retrait, avec la photo du dépôt dans leur housse. Une fois l’appareil remis en état, touchez « Reconditionné ».</p>
+  <div class="onglets" id="onglets"><button data-f="a_reconditionner" aria-pressed="true">À reconditionner</button><button data-f="pret" aria-pressed="false">Prêts</button></div>
+  <div id="sortie"><p class="msg">Chargement…</p></div>
+</main>
+<script>
+(function(){
+  var TOKEN = ''; try{ TOKEN = localStorage.getItem('a_token') || ''; }catch(e){}
+  var out = document.getElementById('sortie'), filtre = 'a_reconditionner', donnees = [];
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function api(corps){ return fetch('/api/admin-cc-retours', {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':TOKEN}, body:JSON.stringify(corps)}).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); }); }
+  function dessiner(){
+    var l = donnees.filter(function(x){ return x.etat === filtre; });
+    if(!l.length){ out.innerHTML = '<p class="msg">' + (filtre === 'pret' ? 'Aucun appareil reconditionné pour l’instant.' : 'Rien à reconditionner. 👍') + '</p>'; return; }
+    out.innerHTML = '<div class="liste">' + l.map(function(x){
+      var quand = x.rendu_at ? new Date(x.rendu_at).toLocaleString('fr-FR', {dateStyle:'medium', timeStyle:'short'}) : '';
+      return '<div class="ligne">' + (x.photo ? '<a href="' + esc(x.photo) + '" target="_blank" rel="noopener"><img src="' + esc(x.photo) + '" alt="Photo du dépôt"></a>' : '<span class="vide">Pas de photo</span>') +
+        '<div><b>' + esc(x.point || 'Point de retrait') + '</b><small>' + esc(x.ref) + ' · ' + esc(x.client) + '<br>Rendu le ' + esc(quand) + '</small></div>' +
+        (x.etat === 'a_reconditionner' ? '<button data-pret="' + x.id + '">Reconditionné ✓</button>' : '<span class="pret">✓ Prêt</span>') + '</div>';
+    }).join('') + '</div>';
+  }
+  function charger(){
+    if(!TOKEN){ out.innerHTML = '<p class="msg">Connectez-vous d’abord à l’appli admin (<a href="/admin">/admin</a>) dans ce navigateur, puis revenez ici.</p>'; return; }
+    api({action:'liste'}).then(function(x){
+      if(!x.ok){ out.innerHTML = '<p class="msg">' + esc(x.d.error || 'Accès refusé. Reconnectez-vous à l’appli admin.') + '</p>'; return; }
+      if(x.d.manque_colonnes){ out.innerHTML = '<p class="msg">À activer : collez le SQL <b>supabase/migration_2026-11-20_cc_retour_photo.sql</b> dans Supabase → SQL Editor.</p>'; return; }
+      donnees = x.d.retours || []; dessiner();
+    }).catch(function(){ out.innerHTML = '<p class="msg">Pas de connexion. Rechargez la page.</p>'; });
+  }
+  out.addEventListener('click', function(e){
+    var b = e.target.closest('[data-pret]'); if(!b) return; b.disabled = true; b.textContent = '…';
+    api({action:'pret', id:+b.dataset.pret}).then(function(x){ if(x.ok){ donnees.forEach(function(d){ if(d.id === +b.dataset.pret) d.etat = 'pret'; }); dessiner(); } else { b.disabled = false; b.textContent = 'Reconditionné ✓'; alert(x.d.error || 'Échec'); } });
+  });
+  [].forEach.call(document.querySelectorAll('#onglets button'), function(b){ b.onclick = function(){ filtre = b.dataset.f; [].forEach.call(document.querySelectorAll('#onglets button'), function(x){ x.setAttribute('aria-pressed', String(x === b)); }); dessiner(); }; });
+  charger();
+})();
+</script>
+</body>
+</html>

@@ -16,11 +16,16 @@ module.exports = async (req, res) => {
   }
   await recordFailedAttempt(supabase, rateKey).catch(() => {});
 
-  const email = ((req.body || {}).email || '').trim().toLowerCase();
+  const email = String((req.body || {}).email || '').trim().toLowerCase();
   // Toujours la même réponse, que l'email existe ou non — évite de révéler
   // quels emails sont enregistrés (énumération de comptes).
   const genericResponse = { ok: true, message: "Si ce compte existe, un email vient d'être envoyé." };
   if (!email) return res.status(200).json(genericResponse);
+  // Au plus 3 nouveaux codes par heure pour un même e-mail (toutes adresses
+  // confondues) : sinon on pouvait changer le code de quelqu'un en boucle et
+  // le bloquer hors de son espace. Même réponse, pour ne rien révéler.
+  if (await isRateLimited(supabase, `forgot-transporteur-email:${email.slice(0, 120)}`, 3, 60)) return res.status(200).json(genericResponse);
+  await recordFailedAttempt(supabase, `forgot-transporteur-email:${email.slice(0, 120)}`).catch(() => {});
 
   try {
     const { data: transp } = await supabase

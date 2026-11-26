@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Retrait et retour — Loc’Air</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#1A5EDB">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
+<!-- Page ouverte par le QR code collé chez le commerçant (Click & Collect).
+     Le client s'identifie avec son numéro de commande. Retrait : il valide et
+     montre l'écran vert. Retour : photo sous housse + code commerçant.
+     Panne : « Un problème ? » › « Il ne marche pas » = échange ici (voir api/_lib/panne.js).
+     Serveur : api/cc-comptoir.js. -->
+<style>
+:root{--vif:#1A5EDB;--vif-d:#0D3FA0;--ink:#0E1726;--ink-2:#4B5873;--line:#E3E9F4;--mist:#F2F6FD;--ok:#0F7A3D;--err:#B42318;--paper:#fff}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--mist);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.haut{display:flex;align-items:center;justify-content:space-between;padding:14px max(16px,env(safe-area-inset-left));max-width:560px;margin:0 auto}
+.logo{font-weight:900;font-size:22px;letter-spacing:-.04em;color:var(--vif);text-decoration:none}.logo em{font-style:italic}
+.langues{display:flex;background:#fff;border:1px solid var(--line);border-radius:100px;padding:3px}
+.langues button{border:0;background:none;font:800 13px 'DM Sans',sans-serif;color:var(--ink-2);min-width:44px;min-height:36px;border-radius:100px;cursor:pointer}
+.langues button[aria-pressed="true"]{background:var(--vif);color:#fff}
+main{max-width:560px;margin:0 auto;padding:8px 16px 48px}
+h1{font-size:clamp(28px,8vw,38px);font-weight:900;letter-spacing:-.035em;line-height:1.05;margin:18px 0 6px}
+.sous{color:var(--ink-2);font-size:16px;line-height:1.5;margin:0 0 22px}
+.carte{background:var(--paper);border-radius:22px;padding:22px;box-shadow:0 1px 2px rgba(11,30,68,.05),0 12px 32px -16px rgba(11,30,68,.22)}
+label{display:block;font-weight:800;font-size:15px;margin:0 0 6px}
+input{width:100%;font:500 18px 'DM Sans',sans-serif;padding:14px 16px;border:1.5px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);outline:none}
+input:focus{border-color:var(--vif);box-shadow:0 0 0 4px rgba(26,94,219,.15)}
+input.pin{letter-spacing:.5em;font-weight:800;font-size:24px;text-align:center}
+.champ{margin-bottom:16px}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:56px;border:0;border-radius:100px;background:var(--vif);color:#fff;font:800 17px 'DM Sans',sans-serif;cursor:pointer;margin-top:6px}
+.btn:disabled{opacity:.6;cursor:default}
+.btn.vert{background:var(--ok)}
+.msg{margin:14px 0 0;padding:12px 14px;border-radius:12px;font-size:15px;line-height:1.45}
+.msg.err{background:#FEE4E2;color:var(--err)}
+.msg.info{background:#FFF4E5;color:#8A4B00}
+.point{display:flex;gap:10px;align-items:center;background:#fff;border-radius:16px;padding:12px 14px;margin:0 0 18px;font-size:14.5px;color:var(--ink-2)}
+.point b{color:var(--ink)}
+.nom{font-size:clamp(30px,9vw,42px);font-weight:900;letter-spacing:-.035em;line-height:1.05;margin:4px 0 6px}
+.ligne{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line);font-size:15.5px}
+.ligne span{color:var(--ink-2)}
+.badge{display:inline-block;padding:6px 12px;border-radius:100px;font-weight:800;font-size:14px}
+.badge.ok{background:#E8F6EE;color:var(--ok)}
+.badge.att{background:#FFF4E5;color:#8A4B00}
+.tendre{margin:18px 0 0;text-align:center;font-weight:800;color:var(--vif-d)}
+.commercant{margin:0}
+.bloc-t{font-size:30px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px}
+.t-ret{color:var(--ok)}.t-rtr{color:var(--vif)}
+.commercant p{margin:0 0 14px;color:var(--ink-2);font-size:15px;line-height:1.45}
+.client-ret{margin:0}
+.client-ret p{margin:0 0 14px;color:var(--ink-2);font-size:15.5px;line-height:1.5}
+.c-resa{background:#E8F6EE;border-radius:16px;padding:14px 16px;margin:6px 0 18px;display:flex;flex-direction:column;gap:2px}
+.c-resa b{font-size:22px;font-weight:900;letter-spacing:-.02em;color:var(--ink)}
+.c-resa span{font-size:15.5px;font-weight:700;color:var(--ok)}
+.c-etapes{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:12px}
+.c-etapes li{display:flex;gap:12px;align-items:flex-start;font-size:16.5px;line-height:1.4;color:var(--ink)}
+.c-n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ok);color:#fff;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;margin-top:-1px}
+
+.signal{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.sig-lien{border:0;background:none;color:var(--ink-2);font:700 15px 'DM Sans',sans-serif;text-decoration:underline;cursor:pointer;padding:10px 0;min-height:44px;text-align:left}
+.sig-form{margin-top:8px}
+.sig-choix{display:grid;gap:8px;margin-bottom:10px}
+.sig-choix label{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15.5px;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;min-height:48px}
+.sig-choix input{width:20px;height:20px;accent-color:var(--vif)}
+.sig-choix label:has(input:checked){border-color:var(--vif);background:var(--mist)}
+.sig-l{display:block;font-weight:800;font-size:15px;margin:6px 0 6px}
+.sig-photos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.sig-photos figure{position:relative;margin:0;width:84px;height:84px}
+.sig-photos img{width:100%;height:100%;object-fit:cover;border-radius:12px;display:block}
+.sig-photos button{position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;border:0;background:var(--ink);color:#fff;font-size:16px;cursor:pointer}
+.sig-ajout{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:1.5px dashed var(--vif);border-radius:12px;color:var(--vif-d);font-weight:800;cursor:pointer;margin-bottom:12px}
+#sig-msg{width:100%;font:500 16px 'DM Sans',sans-serif;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;resize:vertical;margin-bottom:10px}
+.msg.ok{background:#E8F6EE;color:var(--ok)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.photo-retour{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px;border:2px dashed var(--vif);border-radius:16px;color:var(--vif-d);font-weight:800;font-size:16px;cursor:pointer;margin:6px 0 12px;padding:14px;text-align:center;overflow:hidden}
+.photo-retour img{max-width:100%;max-height:220px;border-radius:12px}
+.fini{text-align:center;padding:36px 22px}
+.fini .rond{width:84px;height:84px;border-radius:50%;background:var(--ok);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.fini svg{width:42px;height:42px;stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.fini h2{font-size:28px;font-weight:900;letter-spacing:-.03em;margin:0 0 8px}
+.fini p{color:var(--ink-2);margin:0;font-size:16px;line-height:1.5}
+.montrer{border:2px solid var(--ok);border-radius:18px;padding:18px 14px;margin:6px 0 0;background:#EAF6EF}
+.montrer + #f-texte,.montrer ~ .avis-retour{margin-top:18px}
+.fini .montrer p{color:var(--ink)}
+.fini .m-nom{font-size:30px;font-weight:900;letter-spacing:-.02em;line-height:1.15;margin:8px 0 4px}
+.fini .m-ref{font-size:18px;font-weight:700;letter-spacing:.06em}
+.fini .m-horloge{font-size:34px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ok);margin:10px 0 4px}
+.fini .m-qte{font-size:26px;font-weight:900;margin:2px 0 0}
+.fini .m-piece{font-size:14px;color:var(--ink-2)}
+/* échange : couleur orange et flèches, pour que le commerçant ne le confonde
+   jamais avec un retrait (vert) */
+.fini .montrer .m-horloge{color:var(--ok)}
+.fini.ech .rond{background:#C2410C}
+.fini.rtr .rond{background:var(--vif)}
+.fini.rtr .montrer{border-color:var(--vif);background:#E8F0FD}
+.fini.rtr .montrer .m-horloge{color:var(--vif)}
+.fini.ech .montrer{border-color:#C2410C;background:#FFF1E6}
+.fini.ech .montrer .m-horloge{color:#C2410C}
+.code-l{display:block;font-weight:800;margin:16px 0 6px}
+.code-com{text-transform:uppercase;width:100%;min-height:58px;border:1.5px solid var(--line);border-radius:14px;font:900 28px 'DM Sans',sans-serif;letter-spacing:.3em;text-align:center;color:var(--ink);background:#fff}
+.code-com:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(26,94,219,.18)}
+.code-com[aria-invalid="true"]{border-color:var(--err)}
+.avis-retour{margin-top:18px}
+.fini .av-etoiles{color:#F5B301;font-size:30px;letter-spacing:4px;margin:0 0 6px}
+.fini .av-q{color:var(--ink);font-size:20px;font-weight:900;letter-spacing:-.02em;margin:0 0 4px}
+.fini .av-s{font-size:15px;margin:0 0 14px}
+.av-btn{display:flex;align-items:center;justify-content:center;text-decoration:none}
+.echange{margin-top:20px;padding-top:18px;border-top:2px dashed var(--line)}
+.ech-t{margin:0 0 10px;font-weight:800;font-size:16px}
+.ech-btn{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.code-aide{font-size:13.5px;color:var(--ink-2);margin:6px 0 14px}
+[hidden]{display:none!important}
+html:not([data-l="en"]):not([data-l="es"]) [lang="en"],html:not([data-l="en"]):not([data-l="es"]) [lang="es"],html[data-l="en"] [lang="fr"],html[data-l="en"] [lang="es"],html[data-l="es"] [lang="fr"],html[data-l="es"] [lang="en"]{display:none}
+</style>
+</head>
+<body>
+<header class="haut">
+  <a class="logo" href="/click-and-collect">Loc<em>’Air</em></a>
+  <div class="langues" role="group" aria-label="Langue / Language / Idioma"><button type="button" data-l="fr" aria-pressed="true">FR</button><button type="button" data-l="en" aria-pressed="false">EN</button><button type="button" data-l="es" aria-pressed="false">ES</button></div>
+</header>
+<main>
+  <!-- 1. le client s'identifie -->
+  <section id="e-id">
+    <h1><span lang="fr">Retrait ou retour</span><span lang="en">Pick-up or return</span><span lang="es">Recogida o devolución</span></h1>
+    <p class="sous"><span lang="fr">4 chiffres, dans votre email et votre SMS.</span><span lang="en">4 digits, in your email and text.</span><span lang="es">4 cifras, en tu email y tu SMS.</span></p>
+    <form class="carte" id="f-id" novalidate>
+      <div class="champ"><label for="ref"><span lang="fr">Numéro de commande</span><span lang="en">Order number</span><span lang="es">Número de pedido</span></label>
+        <input id="ref" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="numeric" placeholder="1234" maxlength="40" class="pin"></div>
+      
+      <button class="btn" id="b-id" type="submit"><span lang="fr">Continuer</span><span lang="en">Continue</span><span lang="es">Continuar</span></button>
+      <p class="msg err" id="m-id" role="alert" hidden></p>
+    </form>
+  </section>
+
+  <!-- 2. la réservation, à montrer au commerçant -->
+  <section id="e-resa" hidden>
+    <div class="carte">
+      <p class="msg info" id="r-info" hidden></p>
+
+      <div class="client-ret" id="f-cli" hidden>
+        <h2 class="bloc-t t-ret">✓ <span lang="fr">Retrait</span><span lang="en">Pick-up</span><span lang="es">Recogida</span></h2>
+        <!-- à qui on remet, puis 2 gestes : valider, montrer (écran vert + pièce d'identité) -->
+        <div class="c-resa"><b id="c-nom"></b><span id="c-qte"></span></div>
+        <ol class="c-etapes">
+          <li><span class="c-n">1</span><span><span lang="fr">Appuyez sur <b>Valider mon retrait</b></span><span lang="en">Tap <b>Confirm my pick-up</b></span><span lang="es">Pulsa <b>Confirmar mi recogida</b></span></span></li>
+          <li><span class="c-n">2</span><span><span lang="fr">Montrez au commerçant <b>l’écran vert</b> et <b>votre pièce d’identité</b></span><span lang="en">Show the shopkeeper <b>the green screen</b> and <b>your ID</b></span><span lang="es">Enseña al comerciante <b>la pantalla verde</b> y <b>tu documento de identidad</b></span> 🪪</span></li>
+        </ol>
+        <button class="btn vert" id="b-cli" type="button"><span lang="fr">Valider mon retrait</span><span lang="en">Confirm my pick-up</span><span lang="es">Confirmar mi recogida</span></button>
+        <p class="msg err" id="m-cli" role="alert" hidden></p>
+      </div>
+      <form class="commercant" id="f-com" novalidate hidden>
+        <h2 class="bloc-t t-rtr">↩ <span lang="fr">Retour</span><span lang="en">Return</span><span lang="es">Devolución</span></h2>
+        <p id="r-consigne"></p>
+        <label class="photo-retour" id="ph-ret"><input type="file" id="ph-file" accept="image/*" capture="environment" hidden><span id="ph-txt">📷 <span lang="fr">Photo du climatiseur dans sa housse</span><span lang="en">Photo of the air conditioner in its cover</span><span lang="es">Foto del aire acondicionado en su funda</span></span><img id="ph-img" alt="" hidden></label>
+        <label class="code-l" for="code-com"><span lang="fr">Code commerçant</span><span lang="en">Shop code</span><span lang="es">Código de comercio</span></label>
+        <input class="code-com" id="code-com" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" autocomplete="off" maxlength="12" placeholder="••••" aria-describedby="code-aide">
+        <p class="code-aide" id="code-aide"><span lang="fr">Le commerçant vous le donne.</span><span lang="en">The shopkeeper gives it to you.</span><span lang="es">El comerciante te lo da.</span></p>
+        <button class="btn" id="b-com" type="submit"></button>
+        <p class="msg err" id="m-com" role="alert" hidden></p>
+      </form>
+      <div class="signal" id="sig" hidden>
+        <button type="button" class="sig-lien" id="sig-ouvrir" aria-expanded="false" aria-controls="sig-form">⚠️ <span lang="fr">Un problème&nbsp;? Panne, casse…</span><span lang="en">A problem? Breakdown, damage…</span><span lang="es">¿Un problema? Avería, rotura…</span></button>
+        <div class="sig-form" id="sig-form" hidden>
+          <div class="sig-choix" role="radiogroup">
+            <label><input type="radio" name="sig" value="casse" checked><span><span lang="fr">Casse (roulette, poignée…)</span><span lang="en">Broken (wheel, handle…)</span><span lang="es">Rotura (rueda, asa…)</span></span></label>
+            <label><input type="radio" name="sig" value="abime"><span><span lang="fr">Appareil abîmé</span><span lang="en">Damaged</span><span lang="es">Aparato dañado</span></span></label>
+            <label><input type="radio" name="sig" value="manque"><span><span lang="fr">Il manque quelque chose</span><span lang="en">Something missing</span><span lang="es">Falta algo</span></span></label>
+            <label><input type="radio" name="sig" value="panne"><span><span lang="fr">Il ne marche pas</span><span lang="en">Doesn’t work</span><span lang="es">No funciona</span></span></label>
+            <label><input type="radio" name="sig" value="autre"><span><span lang="fr">Autre</span><span lang="en">Other</span><span lang="es">Otro</span></span></label>
+          </div>
+          <label for="sig-msg" class="sig-l"><span lang="fr">Décrivez le problème</span><span lang="en">Describe the problem</span><span lang="es">Describe el problema</span></label>
+          <textarea id="sig-msg" maxlength="500" rows="3"></textarea>
+          <p class="sig-l"><span lang="fr">Photos (3 au plus)</span><span lang="en">Photos (up to 3)</span><span lang="es">Fotos (3 como máximo)</span></p>
+          <div class="sig-photos" id="sig-photos"></div>
+          <label class="sig-ajout" id="sig-ajout"><input type="file" id="sig-file" accept="image/*" capture="environment" hidden>📷 <span lang="fr">Ajouter une photo</span><span lang="en">Add a photo</span><span lang="es">Añadir una foto</span></label>
+          <button type="button" class="btn" id="sig-envoyer"><span lang="fr">Envoyer le signalement</span><span lang="en">Send report</span><span lang="es">Enviar aviso</span></button>
+          <p class="msg err" id="sig-err" role="alert" hidden></p>
+        </div>
+        <p class="msg ok" id="sig-ok" role="status" hidden></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. c'est fait -->
+  <section id="e-fini" hidden>
+    <div class="carte fini">
+      <div class="rond"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2 id="f-titre"></h2>
+      <div class="montrer" id="f-montrer" hidden>
+        <p class="m-nom" id="f-nom"></p>
+        <p class="m-qte" id="f-qte" hidden></p>
+        <p class="m-horloge" id="f-horloge" aria-live="off"></p>
+        <p class="m-piece"></p>
+      </div>
+      <p id="f-texte"></p>
+      <div class="avis-retour" id="f-avis" hidden>
+        <p class="av-etoiles" aria-hidden="true">★★★★★</p>
+        
+        <a class="btn av-btn" href="https://g.page/r/CeJQrt2gLNNrEAE/review" target="_blank" rel="noopener noreferrer"><span lang="fr">Laisser un avis</span><span lang="en">Leave a review</span><span lang="es">Dejar una opinión</span></a>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+/* page disponible sans réseau (retrait-sw.js, seulement /retrait) */
+if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/retrait-sw.js', {scope:'/retrait'}).catch(function(){}); }); }
+</script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var q = new URLSearchParams(location.search), POINT = (q.get('p') || '').slice(0, 60), etat = {ref:'', resa:null};
+  function langue(){ var l = document.documentElement.getAttribute('data-l'); return l === 'en' || l === 'es' ? l : 'fr'; }
+  function L(fr, en, es){ var l = langue(); return l === 'en' ? en : l === 'es' ? es : fr; }
+  function choisir(l){
+    if(l !== 'en' && l !== 'es') l = 'fr';
+    document.documentElement.setAttribute('data-l', l); document.documentElement.lang = l;
+    [].forEach.call(document.querySelectorAll('.langues button'), function(b){ b.setAttribute('aria-pressed', String(b.dataset.l === l)); });
+    try{ localStorage.setItem('locair_cc_langue', l); }catch(e){}
+    if(etat.resa) afficher(etat.resa);
+  }
+  [].forEach.call(document.querySelectorAll('.langues button'), function(b){ b.onclick = function(){ choisir(b.dataset.l); }; });
+  var lg = null; try{ lg = localStorage.getItem('locair_cc_langue'); }catch(e){}
+  choisir(lg || (/^en/i.test(navigator.language || '') ? 'en' : /^es/i.test(navigator.language || '') ? 'es' : 'fr'));
+
+  function date(iso){ var p = String(iso || '').split('-'); return p.length === 3 ? new Date(+p[0], p[1] - 1, +p[2]).toLocaleDateString(langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR', {weekday:'short', day:'numeric', month:'short'}) : ''; }
+  function erreur(el, t){ el.textContent = t; el.hidden = !t; }
+
+  /* réservation gardée sur ce téléphone après le paiement : pré-remplie */
+  try{ var mr = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); if(mr && (mr.numero || mr.ref)) $('ref').value = mr.numero || mr.ref; }catch(e){}
+
+  /* MODE DÉMO (présentation aux commerçants) : point test + numéro 0000.
+     Tout se passe dans le téléphone, rien n'est envoyé ni enregistré. */
+  function demo(corps){
+    var k = 'locair_demo_retire', retire = false;
+    try{ retire = sessionStorage.getItem(k) === '1'; }catch(e){}
+    var auj = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
+    var fin = new Date(Date.now() + 3 * 864e5).toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
+    var fiche = {ref:'DEMO', prenom:'Démo', nom:'Loc’Air', quantite:1, date_debut:auj, date_fin:fin, retour_disponible:true,
+                 peut_remettre:!retire, peut_rendre:retire, rendu:false, remis_at: retire ? new Date().toISOString() : null};
+    var r = {ok:true, j:{reservation:fiche}};
+    if(corps.action === 'valider'){ try{ sessionStorage.setItem(k, '1'); }catch(e){} r = {ok:true, j:{ok:true, reservation:Object.assign({}, fiche, {remis_at:new Date().toISOString()})}}; }
+    else if(corps.action === 'photo') r = {ok:true, j:{signedUrl:'demo', path:'demo'}};
+    else if(corps.action === 'rendre'){ try{ sessionStorage.removeItem(k); }catch(e){} r = {ok:true, j:{ok:true}}; }
+    else if(corps.action === 'signaler' || corps.action === 'echanger') r = {ok:true, j:{ok:true}};
+    return new Promise(function(ok){ setTimeout(function(){ ok(r); }, 300); });
+  }
+  function appel(corps){
+    if(POINT === 'test-locair' && etat.ref === '0000') return demo(corps);
+    corps.point = POINT; corps.ref = etat.ref; corps.lang = langue();
+    return fetch('/api/cc-comptoir', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(corps)})
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok, j:j}; }); });
+  }
+
+  $('f-id').addEventListener('submit', function(e){
+    e.preventDefault();
+    etat.ref = $('ref').value.trim().toUpperCase().replace(/\s+/g, '');
+    if(!/^\d{4}$/.test(etat.ref) && etat.ref.length < 6) return erreur($('m-id'), L('Indiquez votre numéro de commande.', 'Enter your order number.', 'Indica tu número de pedido.'));
+    if(!POINT) return erreur($('m-id'), L('Scannez le QR code affiché au comptoir.', 'Scan the QR code at the counter.', 'Escanea el código QR del mostrador.'));
+    var b = $('b-id'); b.disabled = true; erreur($('m-id'), '');
+    appel({action:'voir'}).then(function(r){
+      b.disabled = false;
+      if(!r.ok || !r.j.reservation) return erreur($('m-id'), r.j.error || L('Réservation introuvable.', 'Booking not found.', 'Reserva no encontrada.'));
+      etat.resa = r.j.reservation; afficher(etat.resa);
+      $('e-id').hidden = true; $('e-resa').hidden = false; window.scrollTo(0, 0);
+    }).catch(function(){
+      b.disabled = false;
+      /* pas de réseau (sous-sol, 4G faible) : on garde le numéro, et on réessaie tout seul dès que le réseau revient */
+      var m = null; try{ m = JSON.parse(localStorage.getItem('locair_cc_merci') || 'null'); }catch(e){}
+      var num = (m && (m.numero || m.ref)) || etat.ref;
+      erreur($('m-id'), L('Pas de réseau ici. Votre numéro : ' + num + '. On réessaie tout seul dès que le réseau revient.', 'No signal here. Your number: ' + num + '. We’ll retry as soon as the signal is back.', 'Sin cobertura aquí. Tu número: ' + num + '. Lo volvemos a intentar en cuanto vuelva la cobertura.'));
+      window.addEventListener('online', function(){ if(!$('e-id').hidden) $('b-id').click(); }, {once:true});
+    });
+  });
+
+  function afficher(r){
+    var nom = ((r.prenom || '') + ' ' + (r.nom || '')).trim();
+    var info = $('r-info'), f = $('f-com'), btn = $('b-com');
+    info.hidden = true; f.hidden = true; $('f-cli').hidden = true; etat.action = null;
+    /* panne pendant la location (ou client livré venu échanger) : « Il ne marche pas » = échange ici */
+    var auj = new Date().toLocaleDateString('sv-SE', {timeZone:'Europe/Paris'});
+    etat.peutEchanger = !!(r.peut_echanger || (r.peut_rendre && r.date_fin && r.date_fin > auj));
+    $('sig').hidden = !(r.peut_remettre || r.peut_rendre || r.peut_echanger); etat.moment = r.peut_remettre ? 'retrait' : 'retour';
+    var nq = Math.max(1, r.quantite || 1);
+    if(r.rendu){ info.textContent = L('Cet appareil a déjà été rendu. Merci !', 'This unit has already been returned. Thank you!', 'Este aparato ya se ha devuelto. ¡Gracias!'); info.hidden = false; return; }
+    /* RETRAIT : le client valide lui-même, puis montre l'écran vert et sa pièce d'identité (convention, art. 4 : le commerçant la regarde, sans copie).
+       RETOUR : le téléphone passe au commerçant, qui confirme avec son code. */
+    if(r.peut_remettre){
+      $('c-nom').textContent = nom;
+      $('c-qte').textContent = nq > 1 ? L(nq + ' climatiseurs à récupérer', nq + ' air conditioners to pick up', nq + ' aparatos para recoger') : L('1 climatiseur à récupérer', '1 air conditioner to pick up', '1 aparato para recoger');
+      $('f-cli').hidden = false;
+    } else if(r.peut_rendre){
+      etat.action = 'rendre';
+      $('r-consigne').textContent = nq > 1 ? L('Les ' + nq + ' climatiseurs, chacun dans sa housse, avec sa gaine. Une photo des ' + nq + ', puis le code du commerçant.', 'All ' + nq + ' air conditioners, each in its cover, with its hose. One photo of all ' + nq + ', then the shopkeeper’s code.', 'Los ' + nq + ' aparatos, cada uno en su funda, con su tubo. Una foto de los ' + nq + ' y luego el código del comerciante.') : L('Climatiseur dans sa housse, avec sa gaine. Une photo, puis le code du commerçant.', 'Air conditioner in its cover, with its hose. One photo, then the shopkeeper’s code.', 'Aire acondicionado en su funda, con su tubo. Una foto y luego el código del comerciante.');
+      btn.textContent = L('Valider mon retour', 'Confirm my return', 'Confirmar mi devolución'); f.hidden = false;
+    } else if(r.peut_echanger){
+      /* client livré à domicile : il vient seulement échanger un appareil en panne */
+      info.textContent = L('Appareil en panne ? Touchez « Un problème ? » ci-dessous.', 'Unit broken? Tap “A problem?” below.', '¿Aparato averiado? Pulsa «¿Un problema?» abajo.'); info.hidden = false;
+    } else {
+      info.textContent = r.remise_message || L('Rien à faire aujourd’hui pour cette réservation.', 'Nothing to do today for this booking.', 'Nada que hacer hoy con esta reserva.'); info.hidden = false;
+    }
+  }
+
+  /* photos du signalement : réduites sur le téléphone (envoi rapide en 4G), 3 au plus */
+  var photosSig = [];
+  function reduire(file){
+    return new Promise(function(ok){
+      var img = new Image(), u = URL.createObjectURL(file);
+      img.onload = function(){
+        var k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+        c.toBlob(function(b){ ok(b || file); }, 'image/jpeg', 0.82);
+      };
+      img.onerror = function(){ URL.revokeObjectURL(u); ok(file); };
+      img.src = u;
+    });
+  }
+  function dessinerPhotos(){
+    $('sig-photos').innerHTML = photosSig.map(function(p, i){ return '<figure><img src="' + p.apercu + '" alt=""><button type="button" data-suppr="' + i + '" aria-label="' + L('Retirer', 'Remove', 'Quitar') + '">×</button></figure>'; }).join('');
+    $('sig-ajout').hidden = photosSig.length >= 3;
+  }
+  $('sig-file').addEventListener('change', function(){
+    var f = this.files && this.files[0]; this.value = ''; if(!f || photosSig.length >= 3) return;
+    reduire(f).then(function(b){ photosSig.push({blob:b, apercu:URL.createObjectURL(b)}); dessinerPhotos(); });
+  });
+  $('sig-photos').addEventListener('click', function(e){ var x = e.target.closest('[data-suppr]'); if(!x) return; photosSig.splice(+x.dataset.suppr, 1); dessinerPhotos(); });
+  function envoyerPhotos(){
+    return photosSig.reduce(function(pr, p){
+      return pr.then(function(chemins){
+        return appel({action:'photo', type:p.blob.type || 'image/jpeg'}).then(function(r){
+          if(!r.ok || !r.j.signedUrl) throw new Error(r.j.error || '');
+          if(r.j.signedUrl === 'demo') return chemins.concat('demo');   /* mode démo (0000) : rien n'est envoyé */
+          return fetch(r.j.signedUrl, {method:'PUT', headers:{'Content-Type': p.blob.type || 'image/jpeg'}, body:p.blob}).then(function(x){ if(!x.ok) throw new Error(''); return chemins.concat(r.j.path); });
+        });
+      });
+    }, Promise.resolve([]));
+  }
+
+  /* signaler un problème : ne bloque pas la validation */
+  $('sig-ouvrir').addEventListener('click', function(){ var f = $('sig-form'), o = f.hidden; f.hidden = !o; this.setAttribute('aria-expanded', String(o)); $('sig-msg').placeholder = L('Exemple : rayure sur le côté, gaine percée…', 'E.g. scratch on the side, torn hose…', 'Ej.: arañazo en el lateral, tubo roto…'); });
+  $('sig-envoyer').addEventListener('click', function(){
+    var b = this, c = document.querySelector('input[name="sig"]:checked'); var lib = b.innerHTML; b.disabled = true; b.textContent = L('Envoi…', 'Sending…', 'Enviando…'); erreur($('sig-err'), '');
+    /* une photo qui ne part pas ne bloque jamais le signalement : il part sans elle */
+    var sansPhoto = false;
+    envoyerPhotos().catch(function(){ sansPhoto = photosSig.length > 0; return []; }).then(function(chemins){
+      var corps = {categorie:c ? c.value : 'autre', moment:etat.moment, message:$('sig-msg').value, photos:chemins || []};
+      if(corps.categorie === 'panne' && etat.peutEchanger){ corps.action = 'echanger'; return faireEchange(b, lib, corps).then(function(){ return null; }); }
+      corps.action = 'signaler'; return appel(corps);
+    }).then(function(r){
+      if(r === null) return;
+      b.disabled = false; b.innerHTML = lib;
+      if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
+      var issue = r.j.issue;
+      var ok = $('sig-ok'); ok.textContent = issue === 'echange_comptoir'
+        ? L('C’est noté. Le commerçant vous donne un autre climatiseur. Validez ensuite normalement.', 'Noted. The shopkeeper gives you another air conditioner. Then confirm as usual.', 'Anotado. El comerciante te da otro aire acondicionado. Después confirma con normalidad.')
+        : issue === 'reapprovisionnement'
+        ? L('C’est noté. Plus d’appareil ici aujourd’hui : ne validez pas le retrait. On apporte un climatiseur le jour même ou le lendemain, et vous recevez un SMS.', 'Noted. No unit left here today: don’t confirm the pick-up. We’re bringing one the same day or the next, and you’ll get a text.', 'Anotado. Hoy no queda aparato aquí: no confirmes la recogida. Llevamos uno el mismo día o al siguiente y recibirás un SMS.')
+        : L('Merci, c’est noté. Vous pouvez valider normalement.', 'Thanks, noted. You can confirm as usual.', 'Gracias, anotado. Puedes confirmar con normalidad.');
+      if(sansPhoto) ok.textContent += ' ' + L('(La photo n’est pas passée : envoyez-la à Julie si besoin.)', '(The photo didn’t go through: send it to Julie if needed.)', '(La foto no se envió: mándasela a Julie si hace falta.)');
+      ok.hidden = false;
+    }).catch(function(x){ b.disabled = false; b.innerHTML = lib; erreur($('sig-err'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
+  /* écran de confirmation à montrer au commerçant : nom, numéro, et une
+     horloge qui tourne à la seconde (une capture d'écran ne bouge pas) */
+  var minuterie = null;
+  var COCHE = '<path d="M5 12.5l4.5 4.5L19 7.5"/>', FLECHES = '<path d="M4 9h13l-4-4M20 15H7l4 4"/>', RETOUR = '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/>';
+  function montrerAuCommercant(sorte){
+    var ech = sorte === 'echange', rtr = sorte === 'retour', carte = document.querySelector('#e-fini .carte');
+    carte.classList.toggle('ech', ech); carte.classList.toggle('rtr', rtr);
+    document.querySelector('#e-fini .rond svg').innerHTML = ech ? FLECHES : rtr ? RETOUR : COCHE;
+    document.querySelector('#e-fini .m-piece').textContent = ech
+      ? L('Reprenez son appareil et donnez-en un autre.', 'Take back the unit and hand over another one.', 'Recoge su aparato y entrégale otro.')
+      : rtr ? ((etat.resa.quantite || 1) > 1 ? L('Vous pouvez remettre les appareils.', 'You can hand over the units.', 'Ya puedes entregar los aparatos.') : L('Vous pouvez remettre l’appareil.', 'You can hand over the unit.', 'Ya puedes entregar el aparato.'))
+      : L('🪪 Même nom que la pièce d’identité.', '🪪 Same name as the ID.', '🪪 Mismo nombre que el documento de identidad.');
+    $('f-nom').textContent = ((etat.resa.prenom || '') + ' ' + (etat.resa.nom || '')).trim();
+    var nq = Math.max(1, etat.resa.quantite || 1);
+    /* toujours le nombre d'appareils : le commerçant sait combien donner ou reprendre */
+    $('f-qte').textContent = nq + ' ' + (nq > 1 ? L('climatiseurs', 'air conditioners', 'aparatos') : L('climatiseur', 'air conditioner', 'aparato')); $('f-qte').hidden = ech;   /* échange : un seul appareil change de main */
+    $('f-montrer').hidden = false;
+    var loc = langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR';
+    function tic(){ var d = new Date(); $('f-horloge').textContent = d.toLocaleTimeString(loc, {hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Europe/Paris'}); }
+    tic(); clearInterval(minuterie); minuterie = setInterval(tic, 1000);
+  }
+  function faireEchange(b, lib, corps){
+    return appel(corps).then(function(r){
+      b.disabled = false; b.innerHTML = lib;
+      if(!r.ok) return erreur($('sig-err'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      if(r.j.issue === 'echange_comptoir'){
+        $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
+        $('f-titre').textContent = L('Échange validé', 'Swap confirmed', 'Cambio confirmado');
+        montrerAuCommercant('echange');
+        $('f-texte').hidden = false; $('f-texte').textContent = L('Votre location continue jusqu’au ', 'Your rental continues until ', 'Tu alquiler sigue hasta el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.' + (r.j.dossier ? ' (' + r.j.dossier + ')' : '');
+      } else {
+        $('sig-form').hidden = true; $('sig-ouvrir').hidden = true;
+        var i = $('sig-ok'); i.textContent = r.j.issue === 'reapprovisionnement'
+          ? L('Plus d’appareil ici aujourd’hui. Gardez le vôtre : on en apporte un, vous recevez un SMS.', 'No spare unit here today. Keep yours: we’ll bring one and text you.', 'Hoy no queda aparato aquí. Quédate el tuyo: llevamos uno y te avisamos por SMS.')
+          : L('C’est noté, on vous recontacte rapidement.', 'Noted, we’ll get back to you quickly.', 'Anotado, te contactamos rápidamente.');
+        i.hidden = false;
+      }
+    });
+  }
+  $('b-cli').addEventListener('click', function(){
+    var b = $('b-cli'); b.disabled = true; erreur($('m-cli'), '');
+    appel({action:'valider'}).then(function(r){
+      b.disabled = false;
+      if(!r.ok) return erreur($('m-cli'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.'));
+      /* retrait déjà validé il y a plus de 10 min : jamais un nouvel écran vert (sinon il servirait à repartir avec un 2e appareil) */
+      var remis = r.j.reservation && r.j.reservation.remis_at ? new Date(r.j.reservation.remis_at) : null;
+      if(r.j.deja && remis && Date.now() - remis.getTime() > 10 * 60000){
+        return erreur($('m-cli'), L('Retrait déjà validé le ', 'Pick-up already confirmed on ', 'Recogida ya confirmada el ') + remis.toLocaleString(langue() === 'en' ? 'en-GB' : langue() === 'es' ? 'es-ES' : 'fr-FR', {day:'numeric', month:'long', hour:'2-digit', minute:'2-digit', timeZone:'Europe/Paris'}) + '.');
+      }
+      $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
+      $('f-titre').textContent = L('Retrait validé', 'Pick-up confirmed', 'Recogida confirmada');
+      montrerAuCommercant('retrait');
+      $('f-texte').hidden = true;   /* la date de retour est dans l'email et le SMS : rien de plus à l'écran */
+    }).catch(function(){ b.disabled = false; erreur($('m-cli'), L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
+  var photoRetour = null, photoChemin = null;
+  $('ph-file').addEventListener('change', function(){
+    var f = this.files && this.files[0]; this.value = ''; if(!f) return;
+    reduire(f).then(function(b){ photoRetour = b; photoChemin = null; var im = $('ph-img'); im.src = URL.createObjectURL(b); im.hidden = false; $('ph-txt').innerHTML = '🔄 ' + L('Reprendre la photo', 'Retake the photo', 'Repetir la foto'); erreur($('m-com'), ''); });
+  });
+  $('code-com').addEventListener('input', function(){ this.removeAttribute('aria-invalid'); erreur($('m-com'), ''); });
+  $('f-com').addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!photoRetour) return erreur($('m-com'), L('Prenez d’abord une photo du climatiseur dans sa housse.', 'First take a photo of the air conditioner in its cover.', 'Primero haz una foto del aire acondicionado en su funda.'));
+    var code = $('code-com').value.replace(/\s/g, '').toUpperCase();
+    if(!code){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').focus(); return erreur($('m-com'), L('Demandez le code commerçant au commerçant et tapez-le.', 'Ask the shopkeeper for the shop code and enter it.', 'Pide el código de comercio al comerciante e introdúcelo.')); }
+    var b = $('b-com'), libelle = b.textContent; b.disabled = true; erreur($('m-com'), '');
+    var action = etat.action;
+    /* retour : quelques secondes de vérification à l'écran (6 s au total), puis l'écran bleu */
+    var t0 = Date.now(), ATTENTE = 6000;
+    b.setAttribute('aria-busy', 'true'); b.textContent = L('Vérification du retour…', 'Checking the return…', 'Comprobando la devolución…');
+    function remettre(){ b.disabled = false; b.removeAttribute('aria-busy'); b.textContent = libelle; }
+    function apres(fn){ setTimeout(fn, Math.max(0, ATTENTE - (Date.now() - t0))); }
+    /* la photo ne part qu'une fois, même si le code est faux et qu'on réessaie */
+    var envoiPhoto = photoChemin ? Promise.resolve(photoChemin) : appel({action:'photo', type:photoRetour.type || 'image/jpeg'}).then(function(u){
+      if(!u.ok || !u.j.signedUrl) throw new Error(u.j.error || '');
+      return (u.j.signedUrl === 'demo' ? Promise.resolve({ok:true}) : fetch(u.j.signedUrl, {method:'PUT', headers:{'Content-Type': photoRetour.type || 'image/jpeg'}, body:photoRetour}).then(function(x){ if(!x.ok) throw new Error(L('La photo n’a pas pu partir. Réessayez.', 'The photo couldn’t be sent. Try again.', 'No se pudo enviar la foto. Inténtalo de nuevo.')); photoChemin = u.j.path; return photoChemin; }));
+    });
+    envoiPhoto.then(function(chemin){ return appel({action:'rendre', photo:chemin, code_commercant:code}); }).then(function(r){
+      if(!r.ok){ remettre(); if(r.j.code === 'code_commercant'){ $('code-com').setAttribute('aria-invalid', 'true'); $('code-com').select(); } return erreur($('m-com'), r.j.error || L('Échec. Réessayez.', 'Failed. Please try again.', 'Error. Inténtalo de nuevo.')); }
+      apres(function(){
+      remettre();
+      $('e-resa').hidden = true; $('e-fini').hidden = false; window.scrollTo(0, 0);
+      if(action === 'valider'){ $('f-titre').textContent = L('C’est parti, bonne fraîcheur !', 'All set, stay cool!', '¡Listo, disfruta del fresco!'); $('f-texte').textContent = L('Remise confirmée. Rapportez l’appareil ici le ', 'Handover confirmed. Bring the unit back here on ', 'Entrega confirmada. Devuelve el aparato aquí el ') + date(etat.resa.date_fin).replace(/\.$/, '') + '.'; }
+      else { $('f-avis').hidden = false; $('f-titre').textContent = L('Retour validé', 'Return confirmed', 'Devolución confirmada'); montrerAuCommercant('retour'); $('f-texte').hidden = false; $('f-texte').textContent = L('Merci pour votre confiance !', 'Thank you for your trust!', '¡Gracias por tu confianza!'); }
+      });
+    }).catch(function(x){ remettre(); erreur($('m-com'), (x && x.message) || L('Pas de connexion. Réessayez.', 'No connection. Please try again.', 'Sin conexión. Inténtalo de nuevo.')); });
+  });
+})();
+</script>
+</body>
+</html>

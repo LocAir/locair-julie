@@ -4,14 +4,14 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Espace admin — Loc'Air</title>
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="icon" href="/favicon-32x32.png?v=2" sizes="32x32" type="image/png">
 <meta name="robots" content="noindex,nofollow"/>
 <link rel="manifest" href="/admin/manifest.json"/>
-<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Loc'Air Admin"/>
-<meta name="theme-color" content="#0E1F35"/>
+<meta name="theme-color" content="#0E1726"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="preload" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'"/>
@@ -20,8 +20,6 @@
 <!-- Leaflet (carte en direct) chargé en non-bloquant : la carte ne sert
      qu'à l'ouverture d'un suivi transporteur, jamais à l'écran de connexion
      affiché en premier — inutile de retarder le premier affichage pour ça. -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'"/>
-<noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/></noscript>
 <style>
 :root{
   /* Palette de la marque Loc'Air (voir MARQUE.md) — style « Marine premium »,
@@ -32,15 +30,15 @@
      maintenant, plus le bleu roi d'origine. --gold-d est la version de l'or
      lisible sur fond clair (= --gold-txt de MARQUE.md) ; --gold lui-même ne
      se pose que sur fond sombre (voir .stat-tile.gold et .gt plus bas). */
-  --blue:#086E60; --blue-d:#065A4E; --blue-lt:#E7F3F0;
-  --black:#0E1F35; --bg:#F5F7FA; --white:#ffffff;
+  --blue:#1A5EDB; --blue-d:#0D3FA0; --blue-lt:#EFF4FD; /* style commun Loc'Air (21/11/2026) : bleu, plus de sarcelle */
+  --black:#0E1726; --bg:#F4F7FC; --white:#ffffff;
   /* Gris de texte : tous ≥ 4,5:1 sur blanc (MARQUE.md §4). */
-  --grey:#57687C; --grey-soft:#5F6E80; --rule:#E6EBF1; --gold:#C9A227; --gold-lt:#F6EFD6; --gold-d:#7A6313;
+  --grey:#57687C; --grey-soft:#5F6E80; --rule:#DDE6F5; --gold:#9CC4FF; --gold-lt:#EFF4FD; --gold-d:#0D3FA0;
   --green:#0F7A3D; --green-bg:#e6f0ea;
   --red:#9b2c1a; --red-bg:#f8e9e6;
   --amber:#B45309; --amber-bg:#f6eed9;
-  --navy:#0E1F35;
-  --disp:'Bricolage','DM Sans',system-ui,sans-serif;
+  --navy:#0E1726;
+  --disp:'DM Sans',system-ui,sans-serif;
   --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
   --r-sm:8px; --r:12px; --r-lg:20px;
   /* Ombres teintées marine, jamais de noir pur (MARQUE.md §8). */
@@ -552,12 +550,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    +60€, livraison aujourd'hui sous 2h. Toggle simple : au clic, force la
    date de livraison à aujourd'hui (nrToggleExpress), comme selectExpress()
    côté site. */
-.nr-express-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--green);border-radius:var(--r-sm);padding:12px 16px;background:var(--green-bg);cursor:pointer;font-family:var(--body);margin:10px 0 2px;transition:box-shadow .15s var(--ease)}
-.nr-express-card.on{box-shadow:0 0 0 2.5px rgba(15,122,61,.22)}
+.nr-express-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--green);border-radius:var(--r-sm);padding:12px 16px;background:var(--green-bg);cursor:pointer;font-family:var(--body);margin:10px 0 2px;transition:background-color .15s var(--ease),box-shadow .15s var(--ease)}
+/* Avant : seule différence entre coché/décoché était un fin liseré
+   (box-shadow 2.5px), quasi impossible à voir d'un coup d'œil pendant un
+   appel — risque de facturer ou d'oublier les +60€ sans s'en rendre compte.
+   Même logique "sélectionné = rempli" que les pastilles durée/installation
+   juste en dessous (.nr-dur-btn.on/.nr-install-btn.on), pour que ce
+   formulaire reste cohérent avec lui-même. */
+.nr-express-card.on{background:var(--green);box-shadow:var(--sh-xs)}
 .nr-express-left{display:flex;flex-direction:column;gap:3px;text-align:left}
 .nr-express-badge{display:inline-flex;align-items:center;gap:4px;background:var(--green);color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:100px}
+.nr-express-card.on .nr-express-badge{background:#fff;color:var(--green)}
 .nr-express-title{font-size:12.5px;font-weight:700;color:var(--green)}
 .nr-express-price{font-size:14px;font-weight:800;color:var(--green);white-space:nowrap;flex-shrink:0}
+.nr-express-card.on .nr-express-title,.nr-express-card.on .nr-express-price{color:#fff}
 /* Récap façon "Sous-total / Livraison / Remise / Total" d'un panier d'achat
    — remplace la ligne de détail texte unique par des lignes structurées,
    plus proche de la lecture d'un ticket que d'une phrase à parser. */
@@ -847,7 +853,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px}
 .map-modal-head h2{margin:0;font-family:var(--disp);font-weight:600;font-size:19px}
 .map-modal-head button{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--grey);line-height:1}
-.media-modal-body{background:#0E1F35;display:flex;align-items:center;justify-content:center;max-height:70vh}
+.media-modal-body{background:#0E1726;display:flex;align-items:center;justify-content:center;max-height:70vh}
 .media-modal-body img,.media-modal-body video{width:100%;max-height:70vh;object-fit:contain;display:block}
 .media-modal-foot{display:flex;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--rule)}
 .media-modal-foot a{color:var(--grey);font-size:12.5px;font-weight:600}
@@ -938,11 +944,190 @@ tr.bulk-selected td{background:var(--blue-lt)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
 }
+/* logo Loc’Air commun (21/11/2026) */
+.la-air{font-style:italic;font-weight:inherit}
+.logo{font-family:'DM Sans',system-ui,sans-serif;font-weight:900;letter-spacing:-.04em;color:#1A5EDB}
+.logo .la-air{color:#0D3FA0}
+
+/* ── Points de retrait (onglet dédié) ── repères : vert ✓ retrait, bleu ↩ retour, rouge = retard */
+.pr-tete{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.pr-tete h2{font:900 26px var(--disp);letter-spacing:-.03em;margin:0;color:var(--black)}
+.pr-tete p{margin:4px 0 0;color:var(--grey);font-size:13.5px}
+.pr-tuiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.pr-tuile{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--sh-xs)}
+.pr-tuile b{display:block;font:900 30px var(--disp);letter-spacing:-.03em;color:var(--black);line-height:1}
+.pr-tuile span{display:block;margin-top:6px;font-size:12.5px;color:var(--grey);font-weight:600}
+.pr-tuile.alerte{background:var(--red-bg);border-color:#efc7bf}.pr-tuile.alerte b{color:var(--red)}
+.pr-tuile.a-faire{background:var(--amber-bg);border-color:#ecd9a6}.pr-tuile.a-faire b{color:var(--amber)}
+.pr-jour{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
+.pr-col{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-xs)}
+.pr-col h3{margin:0;padding:12px 16px;font:800 14px var(--body);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--rule)}
+.pr-col h3 i{font-style:normal;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:14px}
+.pr-col h3 em{font-style:normal;margin-left:auto;font-size:13px;color:var(--grey)}
+.pr-col.vert h3 i{background:var(--green)}.pr-col.bleu h3 i{background:var(--blue)}.pr-col.rouge h3 i{background:var(--red)}
+.pr-col ul{list-style:none;margin:0;padding:4px 0}
+.pr-col li{padding:9px 16px;display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:13.5px}
+.pr-col li+li{border-top:1px solid var(--bg)}
+.pr-col li b{display:block;font-weight:700;color:var(--black)}
+.pr-col li small{color:var(--grey);font-size:12px}
+.pr-col li a{color:var(--blue);font-weight:700;text-decoration:none;white-space:nowrap;font-size:12.5px}
+.pr-cels{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:18px}
+.pr-cel{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:10px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--sh-xs);font-family:var(--body)}
+.pr-cel:hover,.pr-cel.on{border-color:var(--blue)}.pr-cel.on{box-shadow:0 0 0 3px rgba(26,94,219,.15)}
+.pr-cel-h{display:flex;justify-content:space-between;align-items:center;gap:8px}.pr-cel-h b{font:800 15px var(--body);color:var(--black)}
+.pr-cel-n b{display:block;font:900 30px var(--disp);letter-spacing:-.03em;color:var(--black);line-height:1}.pr-cel-n small,.pr-cel-g small,.pr-cel-tous small{display:block;font-size:12px;color:var(--grey);font-weight:600;margin-top:3px}
+.pr-cel .stock-gauge{display:block}
+.pr-cel-g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pr-cel-g b{font:800 16px var(--body);color:var(--black)}
+.pr-cel-g .rouge b{color:var(--red)}.pr-cel-g .ambre b{color:var(--amber)}.pr-cel-g .vert b{color:var(--green)}
+.pr-cel-p{font-size:12px;color:var(--grey);border-top:1px solid var(--rule);padding-top:8px}
+.pr-cel-tous{justify-content:center;align-items:flex-start}.pr-cel-tous b{font:800 16px var(--body);color:var(--black)}
+.pr-onglets{display:flex;gap:6px;overflow-x:auto;margin:0 0 18px;padding-bottom:2px;border-bottom:1px solid var(--rule)}
+.pr-onglets button{flex:none;border:0;background:none;padding:10px 14px;font:700 14px var(--body);color:var(--grey);border-bottom:3px solid transparent;cursor:pointer;margin-bottom:-1px}
+.pr-onglets button.on{color:var(--black);border-bottom-color:var(--blue)}
+.pr-onglets button.alerte:not(.on){color:var(--red)}
+.pr-phase{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--white);border:1px solid var(--rule);border-radius:100px;padding:8px 16px;margin:-4px 0 16px;font-size:13px;color:var(--grey);box-shadow:var(--sh-xs)}
+.pr-phase b{color:var(--black)}
+.pr-faire{margin-bottom:22px}
+.pr-faire li{align-items:center}
+.pr-faire li>i{flex:none;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-weight:900;color:#fff;font-size:13px;margin-right:2px}
+.pr-faire li>span{flex:1}
+.pr-faire .n-urgent>i{background:var(--red)}.pr-faire .n-jour>i{background:var(--amber)}.pr-faire .n-info>i{background:var(--blue)}
+.pr-faire li button{border:1.5px solid var(--rule);background:var(--white);border-radius:100px;padding:7px 14px;font:700 12.5px var(--body);color:var(--black);cursor:pointer;white-space:nowrap}
+.pr-faire li button:hover{border-color:var(--blue);color:var(--blue)}
+.pr-faire .pr-rien{padding:14px 16px;margin:0;color:var(--green);font-weight:700}
+.pr-col .pr-rien{padding:14px 16px;color:var(--grey-soft);font-size:13px}
+.pr-filtres{display:flex;gap:8px;flex-wrap:wrap}
+.pr-filtres button{border:1.5px solid var(--rule);background:var(--white);border-radius:100px;padding:8px 14px;font:700 13px var(--body);color:var(--grey);cursor:pointer;min-height:38px}
+.pr-filtres button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.pr-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pr-carte{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px;box-shadow:var(--sh-sm);display:flex;flex-direction:column;gap:12px}
+.pr-carte.exemple{background:#FAFBFD;border-style:dashed}
+.pr-c-haut{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.pr-c-haut b{display:block;font:900 18px var(--disp);letter-spacing:-.02em;color:var(--black)}
+.pr-c-haut small{color:var(--grey);font-size:12.5px}
+.pr-etat{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:5px 10px;border-radius:100px;white-space:nowrap}
+.pr-etat.ouvert{background:var(--green-bg);color:var(--green)}.pr-etat.ferme{background:var(--bg);color:var(--grey)}
+.pr-etat.exemple{background:var(--amber-bg);color:var(--amber)}.pr-etat.test{background:var(--blue-lt);color:var(--blue-d)}
+.pr-stock{display:flex;align-items:center;gap:10px}
+.pr-stock .pr-pts{display:flex;gap:5px}
+.pr-stock .pr-pts i{width:14px;height:14px;border-radius:50%;background:var(--blue)}
+.pr-stock .pr-pts i.pris{background:var(--rule)}
+.pr-stock span{font-size:13.5px;color:var(--black);font-weight:700}
+.pr-stock small{color:var(--grey);font-weight:500}
+.pr-infos{display:grid;gap:7px;font-size:13px;color:var(--grey);margin:0}
+.pr-infos div{display:flex;justify-content:space-between;gap:10px}
+.pr-infos dt{margin:0}.pr-infos dd{margin:0;color:var(--black);font-weight:700;text-align:right}
+.pr-infos dd.manque{color:var(--amber)}
+.pr-code{font-family:var(--body);letter-spacing:.12em;border:0;background:var(--bg);border-radius:8px;padding:4px 10px;font-weight:900;color:var(--black);cursor:pointer;font-size:13px}
+/* Mode simple (« McDo », maquette Canva DAHb9tRSldg validée le 25/11/2026) :
+   4 grosses cartes, un chiffre géant, un clic = une liste, un bouton = une action. */
+.mc{margin:0 0 22px}
+.mc h2{font:900 34px var(--body);letter-spacing:-.045em;margin:0 0 18px;color:#0E1726}
+.mc-grille{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mc-tuile{position:relative;overflow:hidden;text-align:left;background:#fff;border:0;border-bottom:7px solid var(--mc);border-radius:22px;padding:22px 20px 18px;min-height:168px;cursor:pointer;box-shadow:0 1px 2px rgba(11,30,68,.05),0 14px 34px -20px rgba(11,30,68,.3);font-family:var(--body);display:flex;flex-direction:column;transition:transform .12s}
+.mc-tuile:active{transform:scale(.97)}
+.mc-tuile::before{content:"";position:absolute;top:0;left:0;border-style:solid;border-width:26px 26px 0 0;border-color:var(--mc) transparent transparent transparent}
+.mc-tuile b{font:900 64px/1 var(--body);letter-spacing:-.05em;color:var(--mc)}
+.mc-tuile span{font:900 18px/1.2 var(--body);letter-spacing:-.02em;color:var(--mc);margin-top:auto;padding-right:44px}
+.mc-tuile small{display:block;font:900 12px var(--body);letter-spacing:.1em;color:var(--mc);margin-top:4px}
+.mc-tuile svg{position:absolute;right:16px;bottom:16px;width:40px;height:40px;color:var(--mc);opacity:.9}
+.mc-bleu{--mc:#1A5EDB}.mc-encre{--mc:#0E1726}.mc-rouge{--mc:#D92D20}.mc-vert{--mc:#12B76A}
+.mc-tuile.mc-zero{--mc:#9AA6BC}
+.mc-nouv{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:16px 0 0;border:0;border-radius:100px;background:#1A5EDB;color:#fff;font:900 20px var(--body);letter-spacing:-.02em;padding:20px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(26,94,219,.7)}
+.mc-nouv:active{transform:scale(.98)}
+.mc-nouv.mc-qr{background:#0E1726;margin-top:10px;font-size:18px;padding:17px;box-shadow:none}
+.mc-mode{display:block;margin:14px auto 0;background:none;border:0;color:#4B5873;font:700 14px var(--body);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.mc-feuille{position:fixed;inset:0;z-index:900;background:#F4F7FC;overflow-y:auto;padding:18px 16px 40px;animation:mcIn .18s ease-out}
+@keyframes mcIn{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.mc-feuille-in{max-width:560px;margin:0 auto}
+.mc-retour{background:#fff;border:0;border-radius:100px;padding:10px 18px;font:800 15px var(--body);color:#0E1726;cursor:pointer;box-shadow:0 1px 2px rgba(11,30,68,.08)}
+.mc-feuille h3{display:flex;align-items:center;gap:12px;font:900 38px var(--body);letter-spacing:-.045em;margin:20px 0 16px;color:#0E1726}
+.mc-feuille h3 i{width:16px;height:16px;border-radius:50%;background:var(--mc);flex:none}
+.mc-carte{background:#fff;border-radius:20px;padding:16px 18px;margin-bottom:12px;box-shadow:0 1px 2px rgba(11,30,68,.05),0 12px 30px -20px rgba(11,30,68,.3)}
+.mc-carte .h{font:900 15px var(--body);color:#1A5EDB;margin:0 0 4px}
+.mc-carte .t{font:900 25px/1.15 var(--body);letter-spacing:-.03em;color:#0E1726;margin:0}
+.mc-carte .s{font-size:14px;color:#4B5873;margin:6px 0 0}
+.mc-carte.ok{opacity:.55}
+.mc-btns{display:flex;gap:10px;margin-top:14px}
+.mc-btns a,.mc-btns button{flex:1;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:100px;padding:13px 10px;font:900 16px var(--body);text-decoration:none;cursor:pointer;background:#0E1726;color:#fff}
+.mc-btns .bl{background:#1A5EDB}
+.mc-btns .cl{background:#EFF4FD;color:#0D3FA0}
+.pf label{display:block;font:800 14px var(--body);color:#0E1726;margin:0 0 14px;text-transform:none;letter-spacing:0}
+.pf label small{font-weight:600;color:#4B5873;text-transform:none;letter-spacing:0;font-size:13px}
+.pf input:not([type=checkbox]),.pf select{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1.5px solid #DDE6F5;border-radius:14px;padding:14px;font:600 17px var(--body);background:#fff;color:#0E1726}
+.pf-t{font:800 14px var(--body);margin:0 0 8px}
+.pf-choix{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
+.pf-jours{flex-wrap:nowrap}.pf-choix button{flex:1 1 0;min-width:0;border:2px solid #DDE6F5;background:#fff;border-radius:14px;padding:14px 0;font:900 20px var(--body);color:#0E1726;cursor:pointer}
+.pf-choix button.on{border-color:#1A5EDB;background:#1A5EDB;color:#fff}
+.pf-jours button.on{border-color:#D92D20;background:#D92D20}
+.pf-choix input{flex:1.4;min-width:80px;margin:0!important}
+.pf-h{display:flex;align-items:center;gap:10px;margin:0 0 16px}.pf-h select{margin:0!important}
+.pf-sugg button{display:block;width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid #EEF1F6;padding:12px 14px;font:600 15px var(--body);cursor:pointer}
+.pf-sugg{border-radius:14px;overflow:hidden;margin:-8px 0 10px;box-shadow:0 10px 30px -14px rgba(11,30,68,.35)}
+.pf-ok{display:block;color:#12B76A;font-weight:800;margin:-6px 0 12px}
+.pf-liens{display:flex;justify-content:space-between;margin:-6px 0 16px}.pf-lien{background:none;border:0;color:#1A5EDB;font:800 14px var(--body);padding:0;cursor:pointer}
+#modal-overlay-el{z-index:950}
+.pf-case{display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 10px}.pf-case input{width:22px;height:22px}.pf-case small{flex-basis:100%;padding-left:32px}
+.mc-vide{text-align:center;font:900 22px var(--body);color:#12B76A;padding:40px 0}
+@media(max-width:600px){.mc{padding-bottom:56px}.mc h2{font-size:30px}.mc-grille{gap:10px}.mc-tuile{min-height:150px;padding:18px 14px 14px}.mc-tuile b{font-size:54px}.mc-tuile span{font-size:16px;padding-right:34px}.mc-tuile svg{width:32px;height:32px;right:12px;bottom:12px}}
+.ck{margin:0 0 20px}
+.ck-tete{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.ck-tete h2{font:900 30px var(--body);letter-spacing:-.04em;margin:0}
+.ck-tete p{margin:4px 0 0;color:var(--grey);font-size:14.5px}
+.ck-puce{background:#fff;border:1px solid var(--rule);border-radius:100px;padding:8px 14px;font-size:13px;font-weight:700}
+.ck-titre{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--grey);margin:0 0 10px}
+.ck-afaire{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:8px}
+.ck-act{background:#fff;border-radius:18px;padding:16px 16px 14px;border-left:6px solid #1A5EDB;box-shadow:0 1px 2px rgba(11,30,68,.05),0 12px 32px -18px rgba(11,30,68,.25);display:flex;flex-direction:column;gap:8px}
+.ck-act.ck-rouge{border-left-color:#B42318}.ck-act.ck-orange{border-left-color:#C2410C}
+.ck-act b{font-size:16.5px;font-weight:900;letter-spacing:-.02em;line-height:1.25}
+.ck-act small{font-size:13px;color:var(--grey);line-height:1.4;flex:1}
+.ck-btn{align-self:flex-start;border:0;border-radius:100px;background:#1A5EDB;color:#fff;font:800 13.5px var(--body);padding:9px 16px;cursor:pointer}
+.ck-btn.cl{background:#EFF4FD;color:#0D3FA0}
+.ck-plus{background:none;border:0;color:#1A5EDB;font:700 14px var(--body);cursor:pointer;padding:4px 0 12px}
+.ck-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:8px 0 12px}
+.ck-kpi{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(11,30,68,.05)}
+.ck-kpi b{display:block;font:900 30px var(--body);letter-spacing:-.04em;line-height:1}
+.ck-kpi span{display:block;font-size:13px;color:var(--grey);margin-top:6px}
+.ck-reseau{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(11,30,68,.05);cursor:pointer}
+.ck-envoi{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 1px 2px rgba(11,30,68,.05);margin:0 0 12px}
+.ck-envoi-l{display:grid;grid-template-columns:1.3fr 1fr 1fr 1.6fr auto;gap:8px;align-items:center;margin-top:10px}
+.ck-envoi input{width:100%;min-width:0;box-sizing:border-box;border:1.5px solid #DDE6F5;border-radius:12px;padding:11px 12px;font:500 15px var(--body);background:#F4F7FC}
+.ck-envoi button{border:0;border-radius:100px;background:#1A5EDB;color:#fff;font:800 15px var(--body);padding:12px 20px;cursor:pointer;white-space:nowrap}
+.ck-envoi button:disabled{opacity:.5}
+.ck-envoi small{display:block;color:var(--grey);font-size:12.5px;margin-top:8px}
+.ck-envoi .ck-env-qr{display:block;width:100%;margin-top:10px;background:#EFF4FD;color:#0D3FA0;font:800 14px var(--body);padding:11px 14px}
+@media (max-width:600px){.ck-envoi-l{grid-template-columns:1fr 1fr}.ck-envoi-l input:first-child,.ck-envoi-l input[type=email]{grid-column:1/-1}.ck-envoi-l button{grid-column:1/-1}}
+.ck-r1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ck-r1 b{font:900 26px var(--body);letter-spacing:-.03em}
+.ck-jauge{height:10px;background:#EEF1F6;border-radius:100px;overflow:hidden;margin:10px 0 8px}
+.ck-jauge div{height:100%;background:#1A5EDB;border-radius:100px}
+.ck-reseau small{font-size:13px;color:var(--grey)}
+@media(max-width:600px){
+  .ck-tete h2{font-size:26px}
+  .ck-afaire{grid-template-columns:1fr;gap:8px}
+  .ck-act{flex-direction:row;align-items:center;gap:12px;padding:12px 12px 12px 14px}
+  .ck-act b{flex:1;font-size:15px}
+  .ck-act small{display:none}
+  .ck-act .ck-btn,.ck-act button{flex:none}
+  .ck-kpis{grid-template-columns:1fr 1fr}
+}
+.pr-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto}
+.pr-actions a,.pr-actions button{flex:1;cursor:pointer;background:none;text-align:center;text-decoration:none;border:1.5px solid var(--rule);border-radius:100px;padding:9px 10px;font:700 12.5px var(--body);color:var(--black);white-space:nowrap}
+.pr-actions a:hover,.pr-actions button:hover{border-color:var(--blue);color:var(--blue)}
+.pr-outils{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pr-outil{display:block;text-decoration:none;background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-xs);color:var(--black)}
+.pr-outil b{display:block;font-size:14.5px}.pr-outil span{color:var(--grey);font-size:12.5px}
+.pr-outil:hover{border-color:var(--blue)}
+.pr-ouvrir{margin-top:14px;background:var(--blue-lt);border-radius:var(--r-lg);padding:4px 18px}
+.pr-ouvrir summary{cursor:pointer;font-weight:800;padding:12px 0;color:var(--blue-d)}
+.pr-ouvrir ol{margin:0 0 14px;padding-left:20px;display:grid;gap:8px;font-size:13.5px;color:var(--black)}
+.pr-ouvrir code{background:#fff;border-radius:6px;padding:1px 6px;font-size:12.5px}
+@media(max-width:900px){.pr-tuiles,.pr-outils{grid-template-columns:repeat(2,1fr)}.pr-jour{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="logo"><span>Loc<i class="gt">'</i>Air<span class="logo-tag">Admin</span></span><span class="a-topbar-actions">
+  <div class="logo"><span>Loc<em class="la-air">’Air</em><span class="logo-tag">Admin</span></span><span class="a-topbar-actions">
     <details class="more-actions city-quick hidden" id="a-city-quick">
       <summary title="Changer de ville / zone">🌍 <span id="a-city-quick-label">Ville</span></summary>
       <div class="more-actions-menu" id="a-city-quick-menu"></div>
@@ -1011,47 +1196,65 @@ tr.bulk-selected td{background:var(--blue-lt)}
       <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" onclick="toggleMobileMenu(false)"></div>
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg> Accueil</button>
-        <!-- Groupé par intention (fréquence réelle d'usage), pas par table de
-             base de données : Piloter = ce qu'on regarde tous les jours,
-             Gérer = ce qu'on touche occasionnellement, Suivre = consultation,
-             rarement une action. Chaque groupe est un accordéon replié par
-             défaut (gain de place) — loadAlerts() le déplie tout seul et
-             pose un point rouge sur son titre dès qu'une alerte s'y trouve,
-             pour qu'une notification ne soit jamais cachée derrière un clic. -->
-        <details class="tabs-group" data-group="piloter">
-          <summary>Piloter<span class="tabs-group-dot hidden" id="group-dot-piloter"></span></summary>
+        <!-- Rangé par sujet (25/11/2026, « mettre de l'ordre ») : en haut ce
+             qu'on regarde tous les jours (ouvert par défaut), puis un groupe
+             par sujet. loadAlerts() ouvre le groupe et pose un point rouge
+             sur son titre dès qu'une alerte s'y trouve. -->
+        <details class="tabs-group" data-group="jour" open>
+          <summary>Aujourd’hui<span class="tabs-group-dot hidden" id="group-dot-jour"></span></summary>
           <div class="tabs-group-body">
             <button data-tab="livraisons" onclick="switchAdminTab('livraisons')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg> Missions<span class="tab-badge hidden" id="badge-livraisons"></span></button>
             <button data-tab="reservations" onclick="switchAdminTab('reservations')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg> Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
+            <button data-tab="incidents" onclick="switchAdminTab('incidents')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Incidents<span class="tab-badge hidden" id="badge-incidents"></span></button>
             <button data-tab="communications" onclick="switchAdminTab('communications')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Communications<span class="tab-badge hidden" id="badge-communications"></span></button>
-            <button data-tab="julie" onclick="switchAdminTab('julie')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg> Julie</button>
-            <button data-tab="devis" onclick="switchAdminTab('devis')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><polyline points="14 2 14 8 20 8"/></svg> Devis</button>
           </div>
         </details>
-        <details class="tabs-group" data-group="gerer">
-          <summary>Gérer<span class="tabs-group-dot hidden" id="group-dot-gerer"></span></summary>
+        <details class="tabs-group" data-group="cc" open>
+          <summary>Click &amp; Collect<span class="tabs-group-dot hidden" id="group-dot-cc"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="pointsretrait" onclick="switchAdminTab('pointsretrait')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg> Points de retrait<span class="tab-badge hidden" id="badge-pointsretrait"></span></button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="clients">
+          <summary>Clients &amp; ventes<span class="tabs-group-dot hidden" id="group-dot-clients"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="clients" onclick="switchAdminTab('clients')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Clients</button>
+            <button data-tab="devis" onclick="switchAdminTab('devis')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><polyline points="14 2 14 8 20 8"/></svg> Devis</button>
+            <button data-tab="promotions" onclick="switchAdminTab('promotions')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8"/><path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg> Offres</button>
+            <button data-tab="vente" onclick="switchAdminTab('vente')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"/><circle cx="8" cy="8.5" r="1.5" fill="currentColor" stroke="none"/></svg> Vente</button>
+            <button data-tab="julie" onclick="switchAdminTab('julie')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg> Julie</button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="argent">
+          <summary>Argent<span class="tabs-group-dot hidden" id="group-dot-argent"></span></summary>
           <div class="tabs-group-body">
             <button data-tab="virements" onclick="switchAdminTab('virements')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M19 5a8.5 8.5 0 1 0 0 14"/><line x1="4" y1="10" x2="15" y2="10"/><line x1="4" y1="14" x2="13" y2="14"/></svg> Virements<span class="tab-badge hidden" id="badge-virements_total"></span></button>
-            <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg> Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
-            <button data-tab="partenaires" onclick="switchAdminTab('partenaires')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Ambassadeurs<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
-            <button data-tab="villes" onclick="switchAdminTab('villes')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20Z"/></svg> Villes</button>
             <button data-tab="tarifs" onclick="switchAdminTab('tarifs')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M19 5a8.5 8.5 0 1 0 0 14"/><line x1="4" y1="10" x2="15" y2="10"/><line x1="4" y1="14" x2="13" y2="14"/></svg> Tarifs</button>
-            <button data-tab="vente" onclick="switchAdminTab('vente')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.82Z"/><circle cx="8" cy="8.5" r="1.5" fill="currentColor" stroke="none"/></svg> Vente</button>
-            <button data-tab="promotions" onclick="switchAdminTab('promotions')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8"/><path d="M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/></svg> Offres</button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="equipe">
+          <summary>Équipe &amp; partenaires<span class="tabs-group-dot hidden" id="group-dot-equipe"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg> Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
+            <button data-tab="partenaires" onclick="switchAdminTab('partenaires')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
             <button data-tab="equipe" onclick="switchAdminTab('equipe')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.85"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="22" x2="9" y2="18"/><line x1="15" y1="22" x2="15" y2="18"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="14" x2="20" y2="14"/></svg> Équipe</button>
-            <button data-tab="clients" onclick="switchAdminTab('clients')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Clients</button>
             <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.4a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.72a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg> Tutoriels</button>
-            <button data-tab="emails" onclick="switchAdminTab('emails')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg> Emails</button>
-            <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg> Espace client</button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="materiel">
+          <summary>Matériel<span class="tabs-group-dot hidden" id="group-dot-materiel"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="stock" onclick="switchAdminTab('stock')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg> Stock</button>
+            <button data-tab="checklist" onclick="switchAdminTab('checklist')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Checklist du box</button>
             <button data-tab="checklistitems" onclick="switchAdminTab('checklistitems')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.9"><circle cx="12" cy="12" r="9.5"/><polyline points="8 12.5 10.8 15.3 16 9.5"/></svg> Checklists mission</button>
           </div>
         </details>
-        <details class="tabs-group" data-group="suivre">
-          <summary>Suivre<span class="tabs-group-dot hidden" id="group-dot-suivre"></span></summary>
+        <details class="tabs-group" data-group="reglages">
+          <summary>Réglages<span class="tabs-group-dot hidden" id="group-dot-reglages"></span></summary>
           <div class="tabs-group-body">
-            <button data-tab="stock" onclick="switchAdminTab('stock')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg> Stock</button>
-            <button data-tab="checklist" onclick="switchAdminTab('checklist')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Checklist box</button>
-            <button data-tab="incidents" onclick="switchAdminTab('incidents')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Incidents<span class="tab-badge hidden" id="badge-incidents"></span></button>
+            <button data-tab="villes" onclick="switchAdminTab('villes')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20Z"/></svg> Villes</button>
+            <button data-tab="emails" onclick="switchAdminTab('emails')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg> Emails</button>
+            <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg> Espace client</button>
           </div>
         </details>
       </div>
@@ -1070,6 +1273,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
+        <div id="tab-pointsretrait" class="hidden"></div>
         <div id="tab-tarifs" class="hidden"></div>
         <div id="tab-vente" class="hidden"></div>
         <div id="tab-promotions" class="hidden"></div>
@@ -1086,21 +1290,36 @@ tr.bulk-selected td{background:var(--blue-lt)}
 
 <!-- Navigation mobile en bas d'écran (invisible sur desktop, où .tabs reste
      la barre latérale) — les 4 destinations les plus utilisées au quotidien
-     (mêmes libellés que le groupe "Piloter" + Accueil), "Plus" ouvre le
+     (Accueil, Missions, Réservations, Points de retrait), "Plus" ouvre le
      tiroir complet existant (toggleMobileMenu), tous les autres onglets y
      restent accessibles sans être dupliqués ici. -->
 <nav class="bottom-nav" id="bottom-nav">
   <button class="bn-item on" data-tab="accueil" onclick="switchAdminTab('accueil')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg></span>Accueil</button>
   <button class="bn-item" data-tab="livraisons" onclick="switchAdminTab('livraisons')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg></span>Missions</button>
   <button class="bn-item" data-tab="reservations" onclick="switchAdminTab('reservations')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg></span>Résa.</button>
-  <button class="bn-item" data-tab="stock" onclick="switchAdminTab('stock')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg></span>Stock</button>
+  <button class="bn-item" data-tab="pointsretrait" onclick="switchAdminTab('pointsretrait')"><span class="bn-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/></svg></span>Points</button>
   <button class="bn-item" onclick="toggleMobileMenu()"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span>Plus<span class="bn-dot hidden" id="bn-plus-dot"></span></button>
 </nav>
 
 <!-- input caché pour l'upload des fichiers vidéo tutoriel (onglet Tutoriels) -->
 <input type="file" id="tuto-media-input" accept="video/*" class="hidden"/>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script>
+// Carte (Leaflet, ≈ 150 Ko) : chargée seulement à l'ouverture de la carte en
+// direct d'un livreur, plus à chaque ouverture de l'admin (25/11/2026).
+var _leafletP = null;
+function chargerLeaflet(){
+  if (window.L && window.L.map) return Promise.resolve();
+  if (_leafletP) return _leafletP;
+  _leafletP = new Promise(function(ok, ko){
+    var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(c);
+    var sc = document.createElement('script'); sc.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    sc.onload = function(){ ok(); }; sc.onerror = function(){ _leafletP = null; ko(new Error('Carte indisponible')); };
+    document.head.appendChild(sc);
+  });
+  return _leafletP;
+}
+</script>
 <script>
 const API = (p) => '/api/' + p;
 // localStorage plutôt que sessionStorage : le mot de passe admin ne périme
@@ -1476,6 +1695,8 @@ async function adminTeamLogin(){
     const r = await fetch(API('admin-user-login'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Code incorrect');
+    // Compte « prospecteur » : il n'ouvre que l'appli terrain, pas l'admin.
+    if(d.role === 'prospecteur'){ try{ localStorage.setItem('prosp_token', d.token); }catch(e){} location.href = '/prospection'; return; }
     onAdminLoginSuccess(d.token, d.role, d.nom);
   }catch(e){
     errEl.textContent = e.message;
@@ -2137,7 +2358,7 @@ function missionMoreActionsHtml(m, d, compact){
             ${!d.reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
-            ${(!d.isAutre && m.type==='recuperation' && d.res.tel)?`<button onclick="envoyerRappelRecuperation(${d.res.id},'${escAttr(m.creneau||'')}','${escAttr(m.date_prevue||'')}',this)">📱 Envoyer le rappel de récupération</button>`:''}
+            ${(!d.isAutre && m.type==='recuperation' && d.res.tel)?`<button onclick="envoyerRappelRecuperation(${d.res.id},${escAttr(JSON.stringify(m.creneau||''))},${escAttr(JSON.stringify(m.date_prevue||''))},this)">📱 Envoyer le rappel de récupération</button>`:''}
             ${(!d.isAutre && !d.reassignLocked && m.type==='recuperation')?`<button onclick="openProlongFromMissionModal(${m.id})">📅 Prolonger la location</button>`:''}
             ${(!d.isAutre && m.type==='livraison' && !m.signature_client_ok)?`<button onclick="openSignatureModal(${m.id})">✍️ Faire signer le contrat</button>`:''}
             ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
@@ -2233,6 +2454,7 @@ const _TAB_LOADERS = {
   incidents:      silent => loadIncidents(silent),
   clients:        silent => loadClients(silent),
   villes:         silent => loadVilles(silent),
+  pointsretrait:  silent => loadPointsRetrait(silent),
   tarifs:         silent => loadTarifs(silent),
   vente:          silent => loadVente(silent),
   promotions:     silent => loadPromotions(silent),
@@ -2253,7 +2475,7 @@ function switchAdminTab(tab){
   document.querySelectorAll('.bottom-nav .bn-item').forEach(b => {
     b.classList.toggle('on', b.dataset.tab ? b.dataset.tab===tab : !bnDirect.includes(tab));
   });
-  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','vente','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','pointsretrait','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','vente','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   const zone = document.getElementById('tab-'+tab);
@@ -2327,9 +2549,7 @@ async function loadAlerts(){
     // fermé passerait inaperçue. On déplie automatiquement le groupe
     // concerné et on pose un point rouge sur son titre, même logique que
     // le point sur le bouton ☰ juste en dessous.
-    updateGroupAlert('piloter', _groupTotal('piloter', d));
-    updateGroupAlert('gerer',   _groupTotal('gerer', d));
-    updateGroupAlert('suivre',  _groupTotal('suivre', d));
+    ['jour', 'argent', 'equipe'].forEach(g => updateGroupAlert(g, _groupTotal(g, d)));
     renderAlertsBanner(d);
     renderVirementMondayBanner();
     // Point rouge sur le bouton ☰ (mobile) : sur la barre horizontale
@@ -2469,21 +2689,24 @@ const _TAB_BADGE_MAP = {
   incidents: ['incidents'],
   communications: ['communications'],
 };
-// Onglet → groupe (accordéon Piloter/Gérer/Suivre) auquel il appartient —
+// Onglet → groupe (accordéon par sujet) auquel il appartient —
 // ouvrir un onglet doit aussi faire disparaître le point rouge du groupe
 // parent (ex. ouvrir "Virements" efface le point sur "Gérer"), qui jusqu'ici
 // restait affiché même après avoir consulté tout ce qu'il y avait à voir
 // à l'intérieur.
 const _TAB_GROUP_MAP = {
-  livraisons: 'piloter', reservations: 'piloter', communications: 'piloter',
-  virements: 'gerer', transporteurs: 'gerer', partenaires: 'gerer', villes: 'gerer', tarifs: 'gerer', promotions: 'gerer', equipe: 'gerer',
-  clients: 'gerer', tutoriels: 'gerer', emails: 'gerer', espaceclient: 'gerer', checklistitems: 'gerer',
-  stock: 'suivre', checklist: 'suivre', incidents: 'suivre',
+  livraisons: 'jour', reservations: 'jour', incidents: 'jour', communications: 'jour',
+  pointsretrait: 'cc',
+  clients: 'clients', devis: 'clients', promotions: 'clients', vente: 'clients', julie: 'clients',
+  virements: 'argent', tarifs: 'argent',
+  transporteurs: 'equipe', partenaires: 'equipe', equipe: 'equipe', tutoriels: 'equipe',
+  stock: 'materiel', checklist: 'materiel', checklistitems: 'materiel',
+  villes: 'reglages', emails: 'reglages', espaceclient: 'reglages',
 };
 function _groupTotal(group, d){
-  if(group==='piloter') return (d.reservations||0) + (d.livraisons||0) + (d.communications||0);
-  if(group==='gerer')   return (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0);
-  if(group==='suivre')  return (d.incidents||0);
+  if(group==='jour')   return (d.reservations||0) + (d.livraisons||0) + (d.communications||0) + (d.incidents||0);
+  if(group==='argent') return (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0);
+  if(group==='equipe') return (d.virements||0) + (d.partenaire_virements||0);
   return 0;
 }
 function _dismissTabBadges(tab){
@@ -2685,16 +2908,276 @@ async function autoRefreshTick(){
 
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
 let CURRENT_DASHBOARD_PERIODE = '7j';
+// ── Cockpit du jour (accueil) — maquette Figma « Loc'Air — Admin, maquettes »
+// validée par le propriétaire le 25/11/2026 : bonjour + « À faire
+// aujourd'hui » (4 cartes, la plus urgente d'abord, une action chacune),
+// 4 gros chiffres, le réseau Click & Collect. Le programme du jour (board)
+// et le détail restent en dessous.
+function cockpitHtml(d, al, pr){
+  al = al || {};
+  const items = [];
+  const ajoute = (n, t, s, bouton, action) => items.push({n, t, s, b: `<button type="button" class="ck-btn${n==='urgent'?'':' cl'}" onclick="${action}">${bouton}</button>`});
+  if(al.incidents) ajoute('urgent', `${al.incidents} incident${al.incidents>1?'s':''} ouvert${al.incidents>1?'s':''}`, 'Pannes, casse ou réclamations à traiter', 'Traiter', "switchAdminTab('incidents')");
+  if(al.reservations) ajoute('urgent', `${al.reservations} réservation${al.reservations>1?'s':''} à traiter`, 'À confirmer ou à compléter', 'Voir', "switchAdminTab('reservations')");
+  if(al.livraisons) ajoute('jour', `${al.livraisons} mission${al.livraisons>1?'s':''} à organiser`, 'Transporteur ou créneau à fixer', 'Organiser', "switchAdminTab('livraisons')");
+  if(al.communications) ajoute('jour', `${al.communications} message${al.communications>1?'s':''} de clients`, 'Réponses en attente', 'Lire', "switchAdminTab('communications')");
+  const vir = (al.virements||0) + (al.partenaire_virements||0);
+  if(vir) ajoute('jour', `${vir} virement${vir>1?'s':''} à faire`, 'Transporteurs et partenaires', 'Virer', "switchAdminTab('virements')");
+  if(pr && pr.points && typeof prAFaireListe === 'function'){
+    // Les urgences du Click & Collect (stock dépassé, passage agent, 20 % à virer…)
+    prAFaireListe(pr).forEach(x => items.push({n: x.n, t: x.t, s: x.s, b: x.b ? x.b.split('<button type="button"').join('<button type="button" class="ck-btn cl"') : ''}));
+  }
+  const ordre = {urgent:0, jour:1, info:2};
+  // À urgence égale, une panne ou un signalement passe avant le reste.
+  const critique = (x) => /^(Panne|Signalement|Stock dépassé)/.test(x.t) || /incident/.test(x.t);
+  const poids = (x) => critique(x) ? 0 : ordre[x.n] * 10 + 1;
+  items.sort((a, b) => poids(a) - poids(b));
+  const top = items.slice(0, 4);
+  top.forEach(x => { if(critique(x)){ x.n = 'urgent'; x.b = (x.b||'').split('class="ck-btn cl"').join('class="ck-btn"'); } });
+  const couleur = {urgent:'ck-rouge', jour:'ck-orange', info:'ck-bleu'};
+  const jour = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', timeZone:'Europe/Paris'});
+  const prenom = (NOM_COMPTE || '').split(/\s+/)[0];
+  const r = pr && pr.resume ? pr.resume : null;
+  const cel = pr && pr.cellules && pr.cellules[0] ? pr.cellules[0] : null;
+  const rem = pr && (pr.remplissage||[]).length ? Math.round(pr.remplissage.reduce((s, v) => s + v.pct * v.points, 0) / pr.remplissage.reduce((s, v) => s + v.points, 0)) : null;
+  const phase = pr && typeof prPhase === 'function' ? prPhase(pr.date, pr.cellule || cel) : '';
+  return `
+  <div class="ck">
+    <div class="ck-tete"><div><h2>Bonjour${prenom ? ' ' + escHtml(prenom) : ''} 👋</h2>
+      <p>${escHtml(jour.charAt(0).toUpperCase() + jour.slice(1))} · ${items.length ? items.length + ' chose' + (items.length>1?'s':'') + ' à faire, la plus urgente en premier' : 'rien d’urgent ✓'}</p></div>
+      ${phase ? `<span class="ck-puce">${phase}</span>` : ''}</div>
+    ${top.length ? `<p class="ck-titre">À faire aujourd’hui</p>
+    <div class="ck-afaire">${top.map(x => `<div class="ck-act ${couleur[x.n]||''}"><b>${x.t}</b><small>${x.s}</small>${x.b||''}</div>`).join('')}</div>
+    ${items.length > 4 ? `<button type="button" class="ck-plus" onclick="PR_ONGLET='afaire';switchAdminTab('pointsretrait')">Voir les ${items.length} choses à faire →</button>` : ''}` : ''}
+    <div class="ck-envoi">
+      <p class="ck-titre" style="margin:0">✉️ Envoi rapide</p>
+      <div class="ck-envoi-l">
+        <input id="ck-env-commerce" placeholder="Commerce" autocomplete="off" aria-label="Commerce">
+        <input id="ck-env-prenom" placeholder="Prénom" autocomplete="off" aria-label="Prénom">
+        <input id="ck-env-nom" placeholder="Nom" autocomplete="off" aria-label="Nom">
+        <input id="ck-env-email" type="email" inputmode="email" placeholder="E-mail" autocomplete="off" aria-label="E-mail">
+        <button type="button" id="ck-env-ok" onclick="ckEnvoiRapide(this)">Envoyer</button>
+      </div>
+      <button type="button" class="ck-env-qr" onclick="location.href='/prospection?visite=1'">📱 Faire scanner le QR code — il tape son e-mail lui-même</button>
+      <small id="ck-env-info">« Merci pour votre intérêt pour Loc’Air » + présentation + convention + bouton « Signer en ligne ».</small>
+      <small id="ck-outlook"></small>
+    </div>
+    <div class="ck-kpis">
+      <div class="ck-kpi"><b>${eurosMilliers(d.ca_euros)}</b><span>Chiffre · ${({jour:'aujourd’hui','7j':'7 jours','30j':'30 jours',mois:'ce mois'})[CURRENT_DASHBOARD_PERIODE]||'période'}</span></div>
+      <div class="ck-kpi"><b>${(d.unites_occupees||0) + (r ? r.dehors||0 : 0)}</b><span>Climatiseurs chez des clients</span></div>
+      <div class="ck-kpi"><b>${rem == null ? Math.round((d.taux_occupation||0)*100) : rem} %</b><span>${rem == null ? 'Occupation de la flotte' : 'Remplissage Click & Collect · 7 jours'}</span></div>
+      <div class="ck-kpi"><b>${r ? r.ouverts : '—'}${cel ? ' / 10' : ''}</b><span>Points de retrait ouverts</span></div>
+    </div>
+    ${cel ? `<div class="ck-reseau" onclick="switchAdminTab('pointsretrait')">
+      <div class="ck-r1"><p class="ck-titre" style="margin:0">Le réseau · ${escHtml(cel.nom.replace(/^Cellule 1 · /, ''))}</p><b>${cel.en_points} / ${cel.flotte}</b></div>
+      <div class="ck-jauge"><div style="width:${Math.min(100, Math.round(cel.en_points / Math.max(1, cel.flotte) * 100))}%"></div></div>
+      <small>${cel.points_ouverts} point${cel.points_ouverts>1?'s':''} ouvert${cel.points_ouverts>1?'s':''} · ${cel.micro_box} en micro-box${cel.pub ? ' · pub ' + ({normale:'normale', baisser:'à baisser', pause:'en pause'})[cel.pub] : ''}</small>
+    </div>` : ''}
+  </div>`;
+}
+// Boîte Outlook partenaires (25/11/2026) : les e-mails aux commerçants
+// partent de partenaires.locair@outlook.com quand elle est reliée
+// (api/outlook.js). Sinon, ils partent quand même, par Brevo.
+async function ckOutlookEtat(){
+  const el = document.getElementById('ck-outlook'); if(!el) return;
+  try{
+    const r = await fetch(API('outlook'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'etat'})});
+    const e = await r.json();
+    if(!r.ok) return;
+    if(!e.envoi_outlook){ el.innerHTML = '✓ Envoyé depuis <b>partenaires@locair.fr</b> · réponses dans ta boîte Outlook'; return; }
+    // Bloqué = la dernière erreur est plus récente que le dernier envoi réussi.
+    const tErr = e.derniere_erreur ? Date.parse(String(e.derniere_erreur).slice(0, 16) + ':00Z') : 0;
+    // Safari ne lit pas « 2026-11-25 15:47:49+00 » : on le remet au format ISO.
+    const tEnv = e.dernier_envoi_at ? Date.parse(String(e.dernier_envoi_at).replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00')) : 0;
+    const bloque = e.relie && tErr && (!tEnv || tErr > tEnv);
+    if(bloque){
+      el.innerHTML = '<span style="color:#B42318;font-weight:700">⚠️ Outlook bloqué' + (/abuse|suspend/i.test(e.derniere_erreur) ? ' par Microsoft (compte à vérifier sur account.microsoft.com)' : '') + '.</span> Les e-mails partent de contact@locair.fr. <a href="#" onclick="ckOutlookRelier();return false"><b>Relier Outlook</b></a> · <a href="#" onclick="ckOutlookTest();return false">Essai</a>';
+    } else if(e.relie){
+      el.innerHTML = '✓ Envoyé depuis <b>' + escHtml(e.boite) + '</b> · <a href="#" onclick="ckOutlookTest();return false">Essai</a> · <a href="#" onclick="ckOutlookRelier();return false">Relier à nouveau</a>';
+    } else if(e.table_manquante){
+      el.textContent = 'Outlook : il manque la table outlook_connexion (SQL à coller dans Supabase).';
+    } else if(!e.configure){
+      el.textContent = 'Envoyé par le site (contact@locair.fr). Outlook pas encore réglé dans Vercel.';
+    } else {
+      el.innerHTML = 'Envoyé par le site (contact@locair.fr). <a href="#" onclick="ckOutlookRelier();return false"><b>Relier Outlook</b></a>';
+    }
+  }catch(_){}
+}
+async function ckOutlookRelier(){
+  try{
+    const r = await fetch(API('outlook'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'lien'})});
+    const e = await r.json();
+    if(!r.ok) throw new Error(e.error || 'Erreur');
+    location.href = e.url;
+  }catch(err){ showToast(err.message, 'error'); }
+}
+async function ckOutlookTest(){
+  try{
+    const r = await fetch(API('outlook'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'test'})});
+    const e = await r.json();
+    if(!r.ok) throw new Error(e.error || 'Erreur');
+    showToast('E-mail d’essai envoyé depuis Outlook ✓', 'success');
+  }catch(err){ showToast(err.message, 'error'); }
+  ckOutlookEtat();
+}
+(function(){
+  const q = new URLSearchParams(location.search), o = q.get('outlook');
+  if(!o) return;
+  setTimeout(() => showToast(o === 'ok' ? 'Outlook relié ✓ Les e-mails partenaires partent de ta boîte.' : 'Outlook : ' + (q.get('msg') || 'échec'), o === 'ok' ? 'success' : 'error'), 800);
+  history.replaceState(null, '', location.pathname);
+})();
+// Envoi rapide (accueil) : quelqu'un rencontré par hasard reçoit tous les
+// supports d'un coup. La fiche apparaît dans Points de retrait → Terrain.
+async function ckEnvoiRapide(btn){
+  const email = document.getElementById('ck-env-email').value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Tape un e-mail valide.', 'error'); document.getElementById('ck-env-email').focus(); return; }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    await ptApi({action:'envoi_rapide', email, prenom:document.getElementById('ck-env-prenom').value, nom:document.getElementById('ck-env-nom').value, enseigne:document.getElementById('ck-env-commerce').value});
+    showToast('Envoyé à ' + email + ' ✓', 'success');
+    ['ck-env-email','ck-env-prenom','ck-env-nom','ck-env-commerce'].forEach(i => { document.getElementById(i).value = ''; });
+    document.getElementById('ck-env-info').textContent = 'Dernier envoi : ' + email + ' ✓ · suivi dans Points de retrait → Terrain.';
+  }catch(e){ showToast(e.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Envoyer';
+}
+// ── Mode simple (« McDo ») — maquette Canva validée le 25/11/2026 ──────────
+// N'importe qui dans l'équipe sait quoi faire : 4 cartes, un chiffre géant,
+// un clic = la liste, un bouton = l'action. Le mode complet reste à un clic.
+let MC = {livrer:[], recup:[], pb:[]};
+const MC_TITRES = {};
+function modeSimple(){ try{ return localStorage.getItem('a_mode') !== 'complet'; }catch(_){ return true; } }
+function changerMode(simple){
+  try{ localStorage.setItem('a_mode', simple ? 'simple' : 'complet'); }catch(_){}
+  document.querySelectorAll('[data-mode="simple"]').forEach(e => e.classList.toggle('hidden', !simple));
+  document.querySelectorAll('[data-mode="complet"]').forEach(e => e.classList.toggle('hidden', simple));
+  window.scrollTo(0, 0);
+}
+const MC_IC = {
+  livrer:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>',
+  recup:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h2l3 13h10"/><rect x="10" y="6" width="9" height="7" rx="1"/><circle cx="10" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>',
+  pb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>',
+  points:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+};
+function dateFrCourte(iso){ const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}); }
+// Missions en mode simple : 4 cartes, un clic = la liste.
+function missionsSimpleHtml(liste){
+  const auj = todayParisStr();
+  const dem = new Date(Date.parse(auj + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10);
+  const actives = (liste||[]).filter(m => !m.masquee && ['a_faire','acceptee','en_route','arrivee','probleme'].includes(m.statut));
+  MC.m_auj = actives.filter(m => m.date_prevue === auj);
+  MC.m_retard = actives.filter(m => m.date_prevue < auj);
+  MC.m_sans = actives.filter(m => m.date_prevue >= auj && !m.transporteur);
+  MC.m_demain = actives.filter(m => m.date_prevue === dem);
+  Object.assign(MC_TITRES, {m_auj:['Aujourd’hui', '#1A5EDB'], m_retard:['En retard', '#D92D20'], m_sans:['Sans livreur', '#0E1726'], m_demain:['Demain', '#12B76A']});
+  const tuile = (cls, k, label, ic, urgent) => { const n = MC[k].length; return `<button type="button" class="mc-tuile ${n ? cls : cls + ' mc-zero'}" onclick="mcOuvrir('${k}')"><b>${n}</b><span>${label}${urgent && n ? '<small>URGENT</small>' : ''}</span>${MC_IC[ic]}</button>`; };
+  return `<div class="mc">
+    <h2>Missions</h2>
+    <div class="mc-grille">
+      ${tuile('mc-bleu', 'm_auj', 'Aujourd’hui', 'livrer')}
+      ${tuile('mc-rouge', 'm_retard', 'En retard', 'pb', true)}
+      ${tuile('mc-encre', 'm_sans', 'Sans livreur', 'recup')}
+      ${tuile('mc-vert', 'm_demain', 'Demain', 'points')}
+    </div>
+    <button type="button" class="mc-nouv" onclick="openCreateMissionModal()"><span style="font-size:26px;line-height:0">+</span> Créer une mission</button>
+    <button type="button" class="mc-mode" onclick="changerMode(false)">Tout voir (mode complet)</button>
+  </div>`;
+}
+function mcHeure(c){ const m = String(c||'').match(/(\d{1,2})\s*h\s*(\d{0,2})/); return m ? Number(m[1]) * 60 + Number(m[2]||0) : 9999; }
+function mcVille(adr){ const m = String(adr||'').match(/\b\d{5}\s+(.+)$/); return m ? m[1].trim() : ''; }
+function simpleHtml(al, pr, livraisons){
+  al = al || {};
+  const auj = todayParisStr();
+  const jour = (livraisons||[]).filter(m => m.date_prevue === auj && !['annule','refusee'].includes(m.statut));
+  MC.livrer = jour.filter(m => m.type !== 'recuperation');
+  MC.recup = jour.filter(m => m.type === 'recuperation');
+  const pbs = [];
+  if(al.incidents) pbs.push({t:`${al.incidents} incident${al.incidents>1?'s':''} ouvert${al.incidents>1?'s':''}`, s:'Panne, casse ou réclamation', go:"switchAdminTab('incidents')", l:'Traiter'});
+  jour.filter(m => m.statut === 'probleme').forEach(m => { const r = m.reservation||{}; pbs.push({t:`Mission bloquée · ${escHtml(r.prenom||m.titre||'')}`, s:escHtml(m.probleme_description||m.probleme_type||'Le livreur a signalé un problème'), go:"switchAdminTab('livraisons')", l:'Voir'}); });
+  if(pr && pr.points && typeof prAFaireListe === 'function'){
+    prAFaireListe(pr).filter(x => x.n === 'urgent' || /^(Panne|Signalement|Retard|Stock dépassé)/.test(x.t)).forEach(x => pbs.push({t:x.t, s:x.s, html:x.b}));
+  }
+  const poidsPb = (x) => /^(Panne|Signalement|Mission bloquée|\d+ incident)/.test(x.t) ? 0 : /^Retard/.test(x.t) ? 1 : 2;
+  pbs.sort((a, b) => poidsPb(a) - poidsPb(b));
+  MC.pb = pbs;
+  const reste = (l) => l.filter(m => m.statut !== 'fait').length;
+  const nL = reste(MC.livrer), nR = reste(MC.recup), nP = pbs.length;
+  const nPts = pr && pr.resume ? pr.resume.ouverts : 0;
+  const prenom = (NOM_COMPTE || '').split(/\s+/)[0];
+  const tuile = (cls, n, label, ic, go, urgent) => `<button type="button" class="mc-tuile ${n ? cls : cls + ' mc-zero'}" onclick="${go}"><b>${n}</b><span>${label}${urgent && n ? '<small>URGENT</small>' : ''}</span>${MC_IC[ic]}</button>`;
+  return `
+  <div class="mc">
+    <h2>Bonjour${prenom ? ' ' + escHtml(prenom) : ''}</h2>
+    <div class="mc-grille">
+      ${tuile('mc-bleu', nL, 'À livrer aujourd’hui', 'livrer', "mcOuvrir('livrer')")}
+      ${tuile('mc-encre', nR, 'À récupérer', 'recup', "mcOuvrir('recup')")}
+      ${tuile('mc-rouge', nP, nP > 1 ? 'Problèmes à régler' : 'Problème à régler', 'pb', "mcOuvrir('pb')", true)}
+      ${tuile('mc-vert', nPts, 'Points de retrait', 'points', "switchAdminTab('pointsretrait')")}
+    </div>
+    <button type="button" class="mc-nouv" onclick="goToNouvelleReservation()"><span style="font-size:26px;line-height:0">+</span> Nouvelle réservation</button>
+    <button type="button" class="mc-nouv mc-qr" onclick="location.href='/prospection?visite=1'"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h3M21 18v3"/></svg> QR code · envoyer la présentation</button>
+    <button type="button" class="mc-mode" onclick="changerMode(false)">Tout voir (mode complet)</button>
+  </div>`;
+}
+function mcFermer(){ const f = document.getElementById('mc-feuille'); if(f) f.remove(); document.body.style.overflow = ''; }
+function mcOuvrir(quoi){
+  mcFermer();
+  const titres = Object.assign({livrer:['À livrer', '#1A5EDB'], recup:['À récupérer', '#0E1726'], pb:['À régler', '#D92D20']}, MC_TITRES);
+  const [titre, coul] = titres[quoi];
+  const liste = MC[quoi] || [];
+  let corps;
+  if(quoi === 'pb'){
+    corps = liste.map(x => `<div class="mc-carte"><p class="t" style="font-size:20px">${x.t}</p><p class="s">${x.s}</p>
+      <div class="mc-btns">${x.go ? `<button type="button" class="bl" onclick="mcFermer();${x.go}">${x.l}</button>` : (x.html||'').split('<button type="button"').join('<button type="button" class="bl"')}</div></div>`).join('');
+  }else{
+    const tri = liste.slice().sort((a, b) => (a.statut === 'fait') - (b.statut === 'fait') || String(a.date_prevue||'').localeCompare(String(b.date_prevue||'')) || mcHeure(a.creneau) - mcHeure(b.creneau));
+    corps = tri.map(m => {
+      const r = m.reservation || {}, autre = m.type === 'autre';
+      const nom = autre ? (m.titre || 'Mission') : (r.prenom || r.nom || 'Client');
+      const adr = autre ? m.adresse_libre : r.adresse;
+      const ville = mcVille(adr);
+      const tel = String(r.tel||'').replace(/[^\d+]/g, '');
+      const fait = m.statut === 'fait';
+      const qui = m.transporteur ? m.transporteur.nom : 'Personne n’y va encore';
+      return `<div class="mc-carte${fait ? ' ok' : ''}">
+        <p class="h">🕘 ${m.date_prevue && m.date_prevue !== todayParisStr() ? escHtml(dateFrCourte(m.date_prevue)) + ' · ' : ''}${escHtml(m.creneau || 'Aujourd’hui')}${fait ? ' · ✓ Fait' : ''}</p>
+        <p class="t">${escHtml(nom)}${ville ? ' <span style="color:#1A5EDB">·</span> ' + escHtml(ville) : ''}</p>
+        <p class="s">${({livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement', autre:'Mission libre'})[m.type] || ''} · ${escHtml(qui)}</p>
+        ${fait ? '' : `<div class="mc-btns">
+          ${tel ? `<a href="tel:${escHtml(tel)}">📞 Appeler</a>` : ''}
+          ${adr ? `<a class="bl" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}">➤ Y aller</a>` : ''}
+          ${m.transporteur ? '' : `<button type="button" class="cl" onclick="mcFermer();switchAdminTab('livraisons')">Choisir</button>`}
+        </div>`}
+      </div>`;
+    }).join('');
+  }
+  const reste = quoi === 'pb' ? liste.length : liste.filter(m => m.statut !== 'fait').length;
+  const f = document.createElement('div');
+  f.id = 'mc-feuille'; f.className = 'mc-feuille';
+  f.innerHTML = `<div class="mc-feuille-in" style="--mc:${coul}">
+    <button type="button" class="mc-retour" onclick="mcFermer()">← Retour</button>
+    <h3><i></i>${titre} · ${reste}</h3>
+    ${corps || `<p class="mc-vide">✓ Rien à faire</p>`}
+  </div>`;
+  document.body.appendChild(f);
+  document.body.style.overflow = 'hidden';
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape') mcFermer(); });
 async function loadDashboard(periode, silent){
   CURRENT_DASHBOARD_PERIODE = periode;
   const zone = document.getElementById('tab-accueil');
   if(!silent) zone.innerHTML = loading();
   try{
-    const [dr, lr, tr] = await Promise.all([
+    const [dr, lr, tr, ar, pr] = await Promise.all([
       fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      // Cockpit du jour (maquette Figma validée le 25/11/2026) : alertes + points de retrait.
+      fetch(API('admin-alerts'), {method:'POST', headers:authHeaders(), body:'{}'}).catch(() => null),
+      fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:'{}'}).catch(() => null),
     ]);
+    const alertes = ar && ar.ok ? await ar.json().catch(() => ({})) : {};
+    const prData = pr && pr.ok ? await pr.json().catch(() => null) : null;
+    if(prData && prData.points) PR_DATA = prData;
     const d = await dr.json();
     if(!dr.ok) throw new Error(d.error||'Erreur serveur');
     const ld = await lr.json().catch(()=>({livraisons:[]}));
@@ -2710,7 +3193,12 @@ async function loadDashboard(periode, silent){
     // Ce qui se passe AUJOURD'HUI (board opérationnel, actionnable) passe
     // avant le rétroviseur d'hier — un centre de pilotage montre d'abord ce
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
+    const simple = modeSimple();
     zone.innerHTML = `
+      <div id="acc-simple" data-mode="simple" class="${simple ? '' : 'hidden'}">${simpleHtml(alertes, prData, ld.livraisons||[])}</div>
+      <div id="acc-complet" data-mode="complet" class="${simple ? 'hidden' : ''}">
+      <button type="button" class="mc-mode" style="margin:0 0 12px auto;text-align:right" onclick="changerMode(true)">← Mode simple</button>
+      ${cockpitHtml(d, alertes, prData)}
       <div style="display:flex;gap:10px;margin-bottom:16px;align-items:stretch">
         <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()" style="flex:1">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 13h6M12 10v6"/></svg>
@@ -2755,7 +3243,9 @@ async function loadDashboard(periode, silent){
       ${dashboardLogistiqueHtml(d.logistique)}
       ${dashboardPartenairesHtml(d.partenaires)}
       ${d.agregat ? parVilleTableHtml(d.par_ville||[]) : ''}
+      </div>
     `;
+    ckOutlookEtat();
     // Chargée à part (pas dans le Promise.all principal) : c'est un
     // complément, pas une donnée critique — inutile de retarder l'affichage
     // du reste du tableau de bord si elle est lente.
@@ -4469,6 +4959,11 @@ function reservationRowHtml(res, readOnly){
       </div>
       ${entrepriseTag}
       <div class="resa-addr">${BOARD_IC_PIN} <span class="resa-addr-txt">${escHtml(res.adresse||'—')}</span></div>
+      ${res.source_channel==='click_collect'?`
+      <button onclick="openIdentite(${res.id})" title="Click & Collect : pièce d'identité envoyée par le client (supprimée 30 jours après la fin de la location)"
+        style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
+        ${IC_CAMERA} Pièce d'identité (Click & Collect)
+      </button>`:''}
       ${res.fenetre_photo_path?`
       <button onclick="openFenetrePhoto(${res.id})" title="Le client ne connaissait pas son type de fenêtre — il a envoyé une photo à la place"
         style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
@@ -4533,7 +5028,7 @@ function openEditReservationModal(id){
       <label for="er-adresse" style="margin-top:14px">Adresse</label>
       <input type="text" id="er-adresse" value="${escHtml(r.adresse||'')}"/>
       <div class="inline-form" style="margin-top:8px">
-        <div><label for="er-qte">Quantité</label><input type="number" id="er-qte" min="1" max="5" value="${r.quantite||1}"/></div>
+        <div><label for="er-qte">Quantité</label><input type="number" id="er-qte" min="1" max="20" value="${r.quantite||1}"/></div>
         <div><label for="er-prix">Prix total (€)</label><input type="number" id="er-prix" min="0" step="0.5" value="${((r.prix_total_cents||0)/100)}"/></div>
       </div>
       ${logisticsFieldsHtml('er', r)}
@@ -5040,7 +5535,7 @@ function nrClampQte(){
   if(!el) return;
   const v = parseInt(el.value);
   if(Number.isFinite(v)){
-    const clamped = Math.min(5, Math.max(1, v));
+    const clamped = Math.min(20, Math.max(1, v));
     if(clamped !== v) el.value = clamped;
   }
   const disp = document.getElementById('nr-qte-val');
@@ -5050,11 +5545,11 @@ function nrClampQte(){
 // #nr-qte que toujours (nrClampQte/nrCalcTotal/createReservation
 // inchangés), juste un habillage visuel différent du <input type=number>
 // natif — un seul appareil "de moins" que le max n'a jamais de sens
-// négatif, donc bornes 1/5 déjà appliquées par nrClampQte.
+// négatif, donc bornes 1/20 déjà appliquées par nrClampQte.
 function nrQtyStep(delta){
   const el = document.getElementById('nr-qte');
   if(!el) return;
-  el.value = Math.max(1, Math.min(5, (parseInt(el.value)||1) + delta));
+  el.value = Math.max(1, Math.min(20, (parseInt(el.value)||1) + delta));
   nrClampQte();
   nrRecalcPrice();
 }
@@ -5067,12 +5562,31 @@ function nrCalcTotal(){
   const qte = Math.max(1, parseInt(document.getElementById('nr-qte')?.value) || 1);
   const isTech = (document.getElementById('nr-installation')?.value || '').startsWith('Technicien');
   const baseCents = Math.round(prCalcBase(days) * qte * 100);
+  // Remise pro selon la quantité (offre B2B, même barème que le site :
+  // _lib/pricing.js remiseQuantitePct) : entreprise + SIRET valide, sur la
+  // location seule. 10 appareils et plus (commande par téléphone) : −20 %.
+  const estPro = document.getElementById('nr-type')?.value === 'entreprise' && nrSiretValide(document.getElementById('nr-siret')?.value);
+  const remisePct = estPro ? (qte >= 10 ? 20 : qte >= 5 ? 15 : qte >= 3 ? 10 : 0) : 0;
+  const remiseProCents = Math.round(baseCents * remisePct / 100);
   const installCents = isTech ? 8000 : 0;
   const { cents: livraisonCents, label: livraisonLabel, horsZone } = nrLivraisonCents();
   // +60€, même montant que EXPRESS_FEE côté site (index.html) et api/checkout.js.
   const expressCents = _nrExpress ? 6000 : 0;
-  return { days, qte, isTech, baseCents, installCents, livraisonCents, livraisonLabel, horsZone, expressCents, totalCents: baseCents + installCents + livraisonCents + expressCents };
+  return { days, qte, isTech, baseCents, remisePct, remiseProCents, installCents, livraisonCents, livraisonLabel, horsZone, expressCents, totalCents: baseCents - remiseProCents + installCents + livraisonCents + expressCents };
 }
+// SIRET valide (14 chiffres, clé de Luhn ; exception La Poste) — même règle
+// que isSiretValide dans api/_lib/pricing.js.
+function nrSiretValide(v){
+  const s = String(v||'').replace(/\s/g,'');
+  if(!/^\d{14}$/.test(s)) return false;
+  if(s.startsWith('356000000')) return s.split('').reduce((a,c)=>a+Number(c),0) % 5 === 0;
+  let sum = 0;
+  for(let i=0;i<14;i++){ let d = Number(s[13-i]); if(i%2===1){ d*=2; if(d>9) d-=9; } sum += d; }
+  return sum % 10 === 0;
+}
+// La remise pro dépend du type de client et du SIRET : recalcul quand ils changent.
+document.addEventListener('input', e => { if(e.target && (e.target.id==='nr-siret' || e.target.id==='nr-type')) nrRecalcPrice(); });
+document.addEventListener('change', e => { if(e.target && e.target.id==='nr-type') nrRecalcPrice(); });
 function nrRecalcPrice(){
   const r = nrCalcTotal();
   const summary = document.getElementById('nr-cart-summary');
@@ -5096,7 +5610,7 @@ function nrRecalcPrice(){
   if(summary){
     summary.style.display = 'flex';
     const locEl = document.getElementById('nr-sum-location');
-    if(locEl) locEl.textContent = `${(r.baseCents/100).toFixed(2).replace('.', ',')} € (${r.days} j${r.qte>1?' × '+r.qte:''})`;
+    if(locEl) locEl.textContent = `${(r.baseCents/100).toFixed(2).replace('.', ',')} € (${r.days} j${r.qte>1?' × '+r.qte:''})` + (r.remisePct ? ` − ${r.remisePct} % pro = ${((r.baseCents - r.remiseProCents)/100).toFixed(2).replace('.', ',')} €` : '');
     const installEl = document.getElementById('nr-sum-install');
     if(installEl) installEl.textContent = r.isTech ? `${(r.installCents/100).toFixed(2).replace('.', ',')} €` : 'Incluse';
     const livrEl = document.getElementById('nr-sum-livraison');
@@ -5225,7 +5739,7 @@ function reservationCreerHtml(){
           <span class="qty-val" id="nr-qte-val">1</span>
           <button type="button" class="qty-btn qty-btn-plus" onclick="nrQtyStep(1)" aria-label="Ajouter un climatiseur">+</button>
         </div>
-        <input type="number" id="nr-qte" min="1" max="5" value="1" class="hidden" oninput="nrClampQte();nrRecalcPrice()"/>
+        <input type="number" id="nr-qte" min="1" max="20" value="1" class="hidden" oninput="nrClampQte();nrRecalcPrice()"/>
         <label style="margin-top:8px">Installation<span style="text-transform:none;font-weight:400;color:var(--grey-soft)"> — impacte le prix</span></label>
         <div class="periods" style="margin:0 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[0]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[0])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[0]}')" style="flex:none;padding:7px 16px">Autonome</button>
@@ -6537,7 +7051,11 @@ function renderLivraisonsToolbar(){
       ${avgLiv!=null?`<div class="liv-stat-pill"><div class="n">${avgLiv}<small> min</small></div><div class="l">Tps moy. liv.</div></div>`:''}
       ${avgRec!=null?`<div class="liv-stat-pill"><div class="n">${avgRec}<small> min</small></div><div class="l">Tps moy. récup.</div></div>`:''}
     </div>` : '';
+  const simple = modeSimple();
   zone.innerHTML = `
+    <div data-mode="simple" class="${simple ? '' : 'hidden'}">${missionsSimpleHtml(LIVRAISONS_CACHE)}</div>
+    <div data-mode="complet" class="${simple ? 'hidden' : ''}">
+    <button type="button" class="mc-mode" style="margin:0 0 12px auto" onclick="changerMode(true)">← Mode simple</button>
     ${statsHtml}
     <div class="liv-toolbar-top">
       <button class="btn btn-blue" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="openCreateMissionModal()">${IC_PLUS} Créer une mission</button>
@@ -6569,6 +7087,7 @@ function renderLivraisonsToolbar(){
     </div>
     <div id="liv-recup-cal-view" class="${LIVRAISONS_VIEW!=='recup_calendrier'?'hidden':''}">
       <div id="liv-recup-cal-content"></div>
+    </div>
     </div>`;
   if(LIVRAISONS_VIEW==='liste') renderLivraisons();
   else if(LIVRAISONS_VIEW==='affectation') renderAffectBoard();
@@ -7544,7 +8063,7 @@ function initAdmSigCanvas(){
   canvas.height = Math.round(rect.height * dpr);
   _admSigCtx = canvas.getContext('2d');
   _admSigCtx.scale(dpr, dpr);
-  _admSigCtx.strokeStyle = '#0E1F35';
+  _admSigCtx.strokeStyle = '#0E1726';
   _admSigCtx.lineWidth   = 2.5;
   _admSigCtx.lineCap     = 'round';
   _admSigCtx.lineJoin    = 'round';
@@ -7959,6 +8478,29 @@ function openMediaViewer(url, kind){
     </div>`;
   overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
   document.body.appendChild(overlay);
+}
+// Pièce d'identité Click & Collect : recto + verso (ou passeport) dans la
+// même fenêtre — liens signés valables 1 heure (admin-reservations.js).
+async function openIdentite(resaId){
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'identite_urls', id:resaId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    closeMediaViewer();
+    const LIB = {recto:'Recto', verso:'Verso', passeport:'Passeport'};
+    const overlay = document.createElement('div');
+    overlay.className = 'map-overlay'; overlay.id = 'media-overlay-el';
+    overlay.innerHTML = `<div class="map-modal"><div class="map-modal-head"><h2>Pièce d'identité</h2><button onclick="closeMediaViewer()">✕</button></div>
+      <div class="media-modal-body" style="display:grid;gap:12px">${d.urls.map(u => {
+        const href = safeHref(u.url);
+        return /\.pdf(\?|$)/i.test(u.url)
+          ? `<a href="${href}" target="_blank" rel="noopener">${escHtml(LIB[u.face]||u.face)} (PDF) ↗</a>`
+          : `<figure style="margin:0"><figcaption style="font-weight:700;margin-bottom:4px">${escHtml(LIB[u.face]||u.face)}</figcaption><img src="${href}" alt="${escHtml(LIB[u.face]||u.face)}"/></figure>`;
+      }).join('')}</div>
+      <div class="media-modal-foot">Liens valables 1 heure · pièce supprimée 30 jours après la fin de la location</div></div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
+    document.body.appendChild(overlay);
+  }catch(e){ showToast(e.message, 'error'); }
 }
 function closeMediaViewer(){
   const o = document.getElementById('media-overlay-el');
@@ -8742,10 +9284,16 @@ async function addPartenaire(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadPartenairesEquipe();
     const emailNote = email ? `Un email avec ces infos vient de lui être envoyé automatiquement à ${email}.\n\n` : "Pas d'email enregistré — transmets-lui ces infos toi-même :\n\n";
-    showInfo('Ambassadeur ajouté', `${emailNote}Lien à mettre sur son site :\n${partenaireLinkFor(d.code)}\n\nCode personnel pour se connecter sur /partenaire :\n${d.pin}`);
+    showInfo('Ambassadeur ajouté', `${emailNote}Lien à mettre sur son site :\n${partenaireLinkFor(d.code)}\n\nCode personnel pour se connecter sur /partenaire :\n${d.pin}`, () => popupParrainage(d.parrainage, nom));
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
   }
+}
+/* Fiche créée ou activée : le serveur a reconnu un parrainage en attente
+   (même téléphone ou même commerce) et l'a passé à « signé ». */
+function popupParrainage(p, nom){
+  if(!p) return;
+  showInfo('🎁 Parrainage détecté', `${nom || p.commerce} a été parrainé par ${p.parrain_nom || '—'}.\n\nParrainage activé. Le parrain est prévenu.\n\nÀ sa 1re location, tu recevras une notification « À verser » :\n50 € au parrain\n+ 50 € à ${nom || p.commerce}.`);
 }
 function deletePartenaire(id, nom){
   confirmAction(`Supprimer définitivement ${nom} ? S'il a des réservations ou virements liés, il sera désactivé à la place (pour garder l'historique).`, async () => {
@@ -8765,6 +9313,7 @@ async function togglePartenaire(id, actif, btnEl){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadPartenairesEquipe();
+    popupParrainage(d.parrainage, (PARTENAIRES_CACHE.find(x => x.id === id) || {}).nom);
   }catch(e){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');
@@ -8840,6 +9389,7 @@ function editPartenaireFiche(id){
       closeModal();
       loadPartenairesEquipe();
       showToast('Fiche mise à jour', 'success');
+      popupParrainage(d.parrainage, nom);
     }catch(e){
       okBtn.disabled = false;
       showToast(`Non enregistré : ${e.message}`, 'error');
@@ -8895,7 +9445,7 @@ function partenaireRevenusCardHtml(p){
         <div class="stat-tile" style="grid-column:1/-1"><div class="n">${euros(totalGenere)}</div><div class="l">Commission générée au total (${p.reservations.length} réservation${p.reservations.length>1?'s':''})</div></div>
       </div>
       <div class="resa-bottom" style="margin-bottom:14px">
-        <span class="resa-price" style="${p.non_verse_cents>0?'color:var(--red)':''}">${euros(p.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
+        <span class="resa-price" style="${p.non_verse_cents>0?'color:var(--red)':''}">${euros(p.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span>${p.mois_en_cours_cents>0?`<span style="font-family:var(--body);font-size:10.5px;color:var(--grey-soft);display:block;margin-top:2px">+ ${euros(p.mois_en_cours_cents)} ce mois-ci · versés entre le 1er et le 5 du mois prochain</span>`:''}</span>
         <span class="resa-sub">${euros(p.verse_cents)} déjà versés</span>
       </div>
       ${p.demande_en_cours?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">${IC_BELL} Virement demandé par l'ambassadeur</div>`:''}
@@ -9345,6 +9895,7 @@ function renderIncidents(){
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
         <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${incidentAgeHtml(i)} · ${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${(i.photos_urls||[]).length?`<div style="display:flex;gap:8px;margin:8px 0">${i.photos_urls.map(u=>`<a href="${escHtml(u)}" target="_blank" rel="noopener"><img src="${escHtml(u)}" alt="Photo jointe" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--line,#e3e9f4)"></a>`).join('')}</div>`:''}
         ${assuranceMetaHtml(i)}
         ${incidentActionsHtml(i)}
       </div>`;
@@ -11335,6 +11886,520 @@ const FR_VILLES = [
   {nom:'Melun',dep:'77',cps:['77000']},
   {nom:'Chelles',dep:'77',cps:['77500']},
 ];
+/* ── POINTS DE RETRAIT : un écran pour piloter les points Click & Collect ── */
+let PR_DATA = null, PR_FILTRE = 'tous', PR_CELLULE = 'toutes';
+async function loadPointsRetrait(silent){
+  const zone = document.getElementById('tab-pointsretrait');
+  if(!silent) zone.innerHTML = loading();
+  try{
+    const [r, rp] = await Promise.all([
+      fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:'{}'}),
+      fetch(API('admin-parrainages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'liste'})}).catch(() => null),
+    ]);
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    try{ const jp = rp && rp.ok ? await rp.json() : null; d.parrainages = jp ? jp.parrainages : null; d.parrainages_table = !(jp && jp.manque_table); }catch(e){ d.parrainages = null; }
+    PR_DATA = d; renderPointsRetrait();
+  }catch(e){ zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>'; }
+}
+function prListe(titre, icone, cls, lignes, vide){
+  const li = lignes.map(l => `<li><span><b>${escHtml(l.client)}${l.quantite>1?' × '+l.quantite:''}</b><small>${escHtml(l.point)} · n° ${escHtml(l.numero)}${l.jours_retard!=null&&cls==='rouge'?' · '+l.jours_retard+' j de retard'+(l.rembourse?' · remboursé':''):''}</small></span>${l.tel?`<a href="tel:${escHtml(String(l.tel).replace(/\s/g,''))}">Appeler</a>`:''}${cls==='rouge'?`<button type="button" onclick="prRenduManuel(${Number(l.id)}, ${escAttr(JSON.stringify(l.client))}, this)">Débloquer</button>`:''}</li>`).join('');
+  return `<div class="pr-col ${cls}"><h3><i aria-hidden="true">${icone}</i>${titre}<em>${lignes.length}</em></h3>${lignes.length?`<ul>${li}</ul>`:`<p class="pr-rien">${vide}</p>`}</div>`;
+}
+function prCarte(p){
+  const etat = p.test ? ['test','Test'] : p.exemple ? ['exemple','Exemple'] : p.ferme_aujourdhui ? ['ferme','Fermé aujourd’hui'] : ['ouvert','Ouvert'];
+  const pris = Math.max(0, p.stock - p.libres);
+  const pts = Array.from({length:p.stock}, (_, k) => `<i class="${k < p.libres ? '' : 'pris'}"></i>`).join('');
+  const c = p.commercant;
+  return `<div class="pr-carte${p.exemple?' exemple':''}">
+    <div class="pr-c-haut"><div><b>${escHtml(p.nom)}</b><small>${escHtml(p.adresse)}<br>${escHtml(p.horaires||'')}</small></div><span class="pr-etat ${etat[0]}">${etat[1]}</span></div>
+    <div class="pr-stock"><span class="pr-pts" aria-hidden="true">${pts}</span><span>${p.libres} libre${p.libres>1?'s':''} <small>sur ${p.stock}${p.stock_modifie?' (changé, au départ '+p.stock_code+')':''}${p.dehors?' · '+p.dehors+' chez des clients':''}${p.abimes?' · '+p.abimes+' abîmé'+(p.abimes>1?'s':'')+' en attente de reprise':''}${p.a_venir?' · '+p.a_venir+' réservé'+(p.a_venir>1?'s':''):''}${p.surbooke?' · <b style="color:var(--red,#B42318)">'+p.pic_60j+' loués en même temps à venir</b>':''}</small></span></div>
+    <dl class="pr-infos">
+      <div><dt>Commerçant</dt><dd class="${c?'':'manque'}">${c ? escHtml(c.nom) + (c.rib_ok?'':' · RIB manquant') : 'Aucun relié'}</dd></div>
+      ${p.mois.locations?`<div><dt>Ce mois</dt><dd>${p.mois.locations} location${p.mois.locations>1?'s':''}${p.mois.commission_cents==null?'':' · '+euros(p.mois.commission_cents)+' pour lui ('+p.commission_pct+' %)'}</dd></div>`:''}
+      <div><dt>Code retour</dt><dd>${p.code_retour ? `<button class="pr-code" type="button" onclick="this.textContent=this.textContent==='••••'?this.dataset.c:'••••'" data-c="${escHtml(p.code_retour)}">••••</button>` : '<span class="manque">—</span>'}</dd></div>
+      ${!p.test && !p.exemple && PR_DATA.passages_table ? `<div><dt>Passage agent</dt><dd class="${p.jours_sans_passage==null||p.jours_sans_passage>PR_DATA.entretien_jours?'manque':''}">${p.jours_sans_passage==null?'Jamais':p.jours_sans_passage===0?'Aujourd’hui':'Il y a '+p.jours_sans_passage+' j'}</dd></div>` : ''}
+      ${p.a_reconditionner?`<div><dt>À reconditionner</dt><dd class="manque">${p.a_reconditionner}</dd></div>`:''}
+    </dl>
+    <div class="pr-actions">
+      <a href="/affiche-retrait?p=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Affiche</a>
+      <a href="/admin/flyers-commercants?p=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Flyer</a>
+      <a href="/retrait?p=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Comptoir</a>
+      ${!p.exemple && PR_DATA.passages_table ? `<button type="button" onclick="prPassage('${escHtml(p.id)}', this)">Passage fait</button>` : ''}
+      ${!p.exemple && PR_DATA.stock_table ? `<button type="button" onclick="prStock(${escAttr(JSON.stringify(p.id))}, ${p.stock}, ${escAttr(JSON.stringify(p.nom))})">Stock</button>` : ''}
+      ${!p.test && ROLE === 'administrateur' ? `<button type="button" onclick="prFiche(${escAttr(JSON.stringify(p.id))})">Modifier</button>` : ''}
+    </div>
+  </div>`;
+}
+/* Retour pas validé au comptoir : l'appareil en retard bloque sa place au
+   point. Le gérant le note rendu à la main (raison obligatoire). */
+async function prRenduManuel(id, client, bt){
+  const raison = prompt(`Débloquer la place : l’appareil de ${client} est-il bien revenu au point ?\nÉcris la raison (ex. rapporté, retour oublié au comptoir) :`, '');
+  if(raison === null) return;
+  bt.disabled = true;
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'rendu_manuel', reservation_id:id, raison})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || 'Échec');
+    showToast('Retour noté · place débloquée ✓', 'success');
+    loadPointsRetrait(true);
+  }catch(e){ bt.disabled = false; showToast(e.message || 'Échec. Réessaie.', 'error'); }
+}
+async function prPassage(id, bt){
+  bt.disabled = true;
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'passage', point_id:id})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || 'Échec');
+    loadPointsRetrait(true);
+  }catch(e){ bt.disabled = false; alert(e.message || 'Échec. Réessaie.'); }
+}
+/* Phase de la saison (playbook Cellule 1) : dépose 10–15 mai, pub 20 €/jour
+   dès la dépose, saison fin mai → 30 septembre, puis reprise des climatiseurs. */
+function prPhaseCle(dateIso, c){
+  const [y, m, j] = dateIso.split('-').map(Number), md = m*100 + j;
+  const n = (mmjj) => Number(mmjj.replace('-', ''));
+  const dep = (c && c.depose) || ['05-10','05-15'], fin = (c && c.fin_saison) || '09-30';
+  if(md < n(dep[0])) return 'avant';
+  if(md <= n(dep[1])) return 'depose';
+  if(md <= n(fin)) return 'saison';
+  if(md <= n(fin) + 15) return 'reprise';
+  return 'hors';
+}
+function prPhase(dateIso, c){
+  const y = dateIso.slice(0, 4), jours = (iso) => Math.round((Date.parse(iso) - Date.parse(dateIso)) / 864e5);
+  const dep = (c && c.depose) || ['05-10','05-15'], fin = (c && c.fin_saison) || '09-30', pub = (c && c.pub_jour) || 20;
+  const jm = (mmjj) => new Date(y + '-' + mmjj + 'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  const k = prPhaseCle(dateIso, c);
+  if(k === 'avant') return `<b>Avant la saison</b> · dépose des climatiseurs du ${jm(dep[0])} au ${jm(dep[1])} (J-${jours(y+'-'+dep[0])}) · pub à lancer dès la dépose (${pub} €/jour)`;
+  if(k === 'depose') return `<b>Dépose des climatiseurs</b> · le nombre convenu par point, sous housse bleue · pub lancée (${pub} €/jour)`;
+  if(k === 'saison') return `<b>Saison en cours</b> · fin le ${jm(fin)} (J-${jours(y+'-'+fin)}) · agent tous les 10 jours`;
+  if(k === 'reprise') return `<b>Reprise des climatiseurs</b> · passer chez chaque commerçant · couper la pub`;
+  return `<b>Hors saison</b> · signer les points pour mai (dépose du ${jm(dep[0])} au ${jm(dep[1])})`;
+}
+/* Vue d'une cellule : mêmes données, filtrées sur ses points. */
+function prVue(d, id){
+  const cel = (d.cellules||[]).find(c => c.id === id);
+  if(!cel) return d;
+  const f = x => x.cellule === id, points = d.points.filter(f);
+  const aj = {retraits:d.aujourdhui.retraits.filter(f), retours:d.aujourdhui.retours.filter(f), retards:d.aujourdhui.retards.filter(f)};
+  return Object.assign({}, d, {points, aujourdhui:aj, cellule:cel,
+    signalements:(d.signalements||[]).filter(f), remplissage:(d.remplissage||[]).filter(f),
+    resume:Object.assign({}, d.resume, {ouverts:points.filter(p => !p.test && !p.exemple).length, exemples:points.filter(p => !p.test && p.exemple).length,
+      dehors:points.filter(p => !p.test).reduce((s, p) => s + (p.dehors||0), 0), retards:aj.retards.length,
+      a_reconditionner:points.filter(p => !p.test).reduce((s, p) => s + (p.a_reconditionner||0), 0)}),
+    saison:{jours_machine:cel.jours_machine, point_mort:cel.point_mort}, micro_box:{flotte:cel.flotte, en_points:cel.en_points}});
+}
+function setPrCellule(id){ PR_CELLULE = id; renderPointsRetrait(); window.scrollTo({top:0, behavior:'smooth'}); }
+/* Tableau global : une carte par cellule (playbook : blueprint reproductible). */
+function prCellules(d){
+  const L = d.cellules || [];
+  if(!L.length) return '';
+  const pc = (v) => String(v).replace('.', ',');
+  const carte = (c) => {
+    const v = prVue(d, c.id), nb = prAFaireListe(v).length, cap = c.capacite || 1;
+    const pmMin = c.point_mort.min / cap * 100, pmMax = c.point_mort.max / cap * 100;
+    const ok = c.jours_machine >= c.point_mort.max, presque = c.jours_machine >= c.point_mort.min;
+    const larg = Math.min(100, c.jours_machine / Math.max(1, c.point_mort.max) * 100);
+    const urg = prAFaireListe(v).some(x => x.n === 'urgent');
+    return `<button type="button" class="pr-cel${PR_CELLULE===c.id?' on':''}" onclick="setPrCellule('${escHtml(c.id)}')">
+      <span class="pr-cel-h"><b>${escHtml(c.nom)}</b><span class="pr-etat ${prPhaseCle(d.date, c)==='saison'?'ouvert':'exemple'}">${{avant:'Avant saison',depose:'Dépose',saison:'En saison',reprise:'Reprise',hors:'Hors saison'}[prPhaseCle(d.date, c)]}</span></span>
+      <span class="pr-cel-n"><b>${pc(c.occupation_pct)} %</b><small>occupation · point mort ${pc(pmMin.toFixed(1))}–${pc(pmMax.toFixed(1))} %</small></span>
+      <span class="stock-gauge"><span class="stock-gauge-fill" style="display:block;width:${larg}%;${ok?'background:var(--green)':presque?'background:var(--amber)':''}"></span></span>
+      <span class="pr-cel-g">
+        <span><b>${c.remplissage_pct == null ? '—' : c.remplissage_pct + ' %'}</b><small>${c.pub==null?'7 jours':c.pub==='normale'?'7 j · pub normale':c.pub==='baisser'?'7 j · baisser la pub':'7 j · pub en pause'}</small></span>
+        <span class="${nb ? (urg ? 'rouge' : 'ambre') : 'vert'}"><b>${nb || '✓'}</b><small>${nb ? 'à faire' : 'à jour'}</small></span>
+        ${c.ca_saison_cents==null ? '' : `<span><b>${eurosMilliers(c.ca_saison_cents/100)}</b><small>saison · ${eurosMilliers(c.commissions_saison_cents/100)} aux commerçants</small></span>`}
+      </span>
+      <span class="pr-cel-p">${c.points_ouverts} point${c.points_ouverts>1?'s':''} · ${c.en_points}/${c.flotte} déposés · micro-box ${c.micro_box} · ${c.charges_mois.toLocaleString('fr-FR')} €/mois</span>
+    </button>`;
+  };
+  const tous = L.length > 1 ? `<button type="button" class="pr-cel pr-cel-tous${PR_CELLULE==='toutes'?' on':''}" onclick="setPrCellule('toutes')"><b>Tout le réseau</b><small>${L.length} cellules · ${L.reduce((s, c) => s + c.flotte, 0)} climatiseurs</small></button>` : '';
+  return `<p class="section-title">Cellules</p><div class="pr-cels">${L.map(carte).join('')}${tous}</div>`;
+}
+/* « À faire aujourd'hui » : une ligne = une action, la plus urgente en haut. */
+function prAFaire(d){
+  const L = prAFaireListe(d);
+  return `<p class="section-title">À faire aujourd’hui${L.length?' · '+L.length:''}${d.cellule?' · '+escHtml(d.cellule.nom):''}</p>
+    <div class="pr-col pr-faire">${L.length ? `<ul>${L.map(x => `<li class="n-${x.n}"><i aria-hidden="true">${x.i}</i><span><b>${x.t}</b><small>${x.s}</small></span>${x.b}</li>`).join('')}</ul>` : '<p class="pr-rien">✓ Tout est à jour.</p>'}</div>`;
+}
+function prAFaireListe(d){
+  const L = [], reels = d.points.filter(p => !p.test && !p.exemple), r = d.resume;
+  const mbReseau = d.micro_box ? Math.max(0, d.micro_box.flotte - d.micro_box.en_points) : 0;
+  const jour = Number(d.date.slice(8, 10));
+  (d.signalements||[]).forEach(x => {
+    const panne = x.type === 'probleme_technique';
+    const cx = (d.cellules||[]).find(c => c.id === x.cellule), mb = cx ? cx.micro_box : mbReseau;
+    L.push({n: x.jours >= 1 ? 'urgent' : 'jour', i:'!', t:`${panne?'Panne':'Signalement'} · ${escHtml(x.point)}`,
+      s:`${escHtml(x.client)} · ${escHtml(x.description||'')}${panne?' · remplacer avec la micro-box ('+mb+' dispo)':''}${x.jours?' · depuis '+x.jours+' j':''}`,
+      b:`<button type="button" onclick="switchAdminTab('incidents')">Traiter</button>`});
+  });
+  (d.aujourdhui.retards||[]).forEach(l => L.push({n:'urgent', i:'!', t:`Retard · ${escHtml(l.client)}`, s:`${escHtml(l.point)} · ${l.jours_retard} j de retard${l.rembourse?' · remboursé':''} · bloque sa place`,
+    b: (l.tel ? `<button type="button" onclick="location.href='tel:${escHtml(String(l.tel).replace(/\s/g,''))}'">Appeler</button> ` : '') + `<button type="button" onclick="prRenduManuel(${Number(l.id)}, ${escAttr(JSON.stringify(l.client))}, this)">Débloquer</button>`}));
+  (d.aujourdhui.non_retires||[]).forEach(l => L.push({n:'jour', i:'?', t:`Jamais venu · ${escHtml(l.client)}`, s:`${escHtml(l.point)} · location finie le ${escHtml(String(l.date_fin||'').split('-').reverse().join('/'))}, appareil jamais retiré`,
+    b: l.tel ? `<button type="button" onclick="location.href='tel:${escHtml(String(l.tel).replace(/\s/g,''))}'">Appeler</button>` : ''}));
+  reels.filter(p => p.a_virer_cents > 0).forEach(p => L.push({n: jour > 5 ? 'urgent' : 'jour', i:'€',
+    t:`Virer ${euros(p.a_virer_cents)} · ${escHtml(p.commercant ? p.commercant.nom : p.nom)}`,
+    s:`20 % du mois dernier · ${jour > 5 ? 'en retard (à virer entre le 1er et le 5)' : 'avant le 5'}${p.commercant && !p.commercant.rib_ok ? ' · RIB manquant' : ''}`,
+    b:`<button type="button" onclick="switchAdminTab('partenaires')">Virer</button>`}));
+  if(d.passages_table) reels.filter(p => p.jours_sans_passage == null || p.jours_sans_passage > d.entretien_jours).forEach(p => L.push({n:'jour', i:'🔧',
+    t:`Passage agent · ${escHtml(p.nom)}`, s: p.jours_sans_passage == null ? 'Jamais passé' : `Dernier passage il y a ${p.jours_sans_passage} j`,
+    b:`<button type="button" onclick="prPassage('${escHtml(p.id)}', this)">Passage fait</button>`}));
+  (d.remplissage||[]).filter(v => v.pub !== 'normale').forEach(v => L.push({n:'jour', i:'📣', t:`Pub · ${escHtml(v.ville)} à ${v.pct} %`,
+    s: v.pub === 'pause' ? 'Mettre la pub de la zone en pause' : 'Baisser la pub de la zone', b:''}));
+  if(r.a_reconditionner) L.push({n:'jour', i:'↩', t:`${r.a_reconditionner} appareil${r.a_reconditionner>1?'s':''} à reconditionner`, s:'Au prochain passage de l’agent · restent disponibles à la location',
+    b:`<button type="button" onclick="window.open('/admin/cc-retours','_blank')">Voir</button>`});
+  reels.filter(p => p.surbooke).forEach(p => L.push({n:'urgent', i:'!', t:`Stock dépassé · ${escHtml(p.nom)}`,
+    s:`${p.pic_60j} climatiseurs loués en même temps à venir pour ${p.stock} au point : ajouter un appareil (accord du gérant) ou déplacer des clients`,
+    b:`<button type="button" onclick="prStock(${escAttr(JSON.stringify(p.id))}, ${p.stock}, ${escAttr(JSON.stringify(p.nom))})">Stock</button>`}));
+  (d.cellules||[]).filter(c => c.flotte_depassee).forEach(c => L.push({n:'urgent', i:'!', t:`Flotte dépassée · ${escHtml(c.nom)}`,
+    s:`${c.en_points} climatiseurs annoncés dans les points pour ${c.flotte} dans la flotte : baisser un stock ou ajouter des appareils à la flotte`, b:''}));
+  reels.filter(p => !p.commercant).forEach(p => L.push({n:'info', i:'i', t:`Relier le commerçant · ${escHtml(p.nom)}`, s:'Sans fiche reliée, pas de commission ni d’espace partenaire',
+    b:`<button type="button" onclick="switchAdminTab('partenaires')">Ouvrir</button>`}));
+  reels.filter(p => p.commercant && !p.commercant.rib_ok && !(p.a_virer_cents > 0)).forEach(p => L.push({n:'info', i:'i', t:`RIB manquant · ${escHtml(p.commercant.nom)}`, s:'À demander avant le 1er virement', b:''}));
+  const ordre = {urgent:0, jour:1, info:2};
+  L.sort((a, b) => ordre[a.n] - ordre[b.n]);
+  return L;
+}
+async function prTransfert(etape){
+  const z = document.getElementById('tr-apercu');
+  const body = {action:'transfert', etape, denomination:document.getElementById('tr-nom').value, siret:document.getElementById('tr-siret').value, date_effet:document.getElementById('tr-date').value};
+  if(etape === 'envoyer' && !confirm('Envoyer le message de transfert à tous les commerçants ? (email + SMS)')) return;
+  z.innerHTML = '<p class="sub">…</p>';
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Erreur');
+    if(j.apercu){
+      z.innerHTML = `<div class="pr-col" style="margin-top:12px;padding:14px 16px"><p style="margin:0 0 6px;font-weight:700">${j.destinataires.length} commerçant${j.destinataires.length>1?'s':''} : ${escHtml(j.destinataires.join(', ') || 'aucun point ouvert')}</p>
+        <p style="margin:0 0 10px;font-size:13px;color:var(--grey)">SMS : ${escHtml(j.sms)}</p>
+        ${j.destinataires.length ? `<button class="btn" type="button" onclick="prTransfert('envoyer')">Envoyer à ${j.destinataires.length} commerçant${j.destinataires.length>1?'s':''}</button>` : ''}</div>`;
+    } else z.innerHTML = `<p class="pr-rien" style="padding:12px 0">✓ Envoyé à ${j.envoyes} commerçant${j.envoyes>1?'s':''} sur ${j.total}.</p>`;
+  }catch(e){ z.innerHTML = `<p class="empty" style="padding:12px 0">${escHtml(e.message)}</p>`; }
+}
+function setPrFiltre(f){ PR_FILTRE = f; renderPointsRetrait(); }
+/* Parrainages : demandes de rappel venues d'un lien de parrainage. « Signé » active
+   le parrainage (50 € au parrain et 50 € au nouveau, versés à la main avec le 1er virement). */
+function prParrainages(d){
+  if(d.parrainages_table === false) return '<p class="section-title">Parrainages</p><p class="empty" style="padding:16px">Table à créer dans Supabase (supabase/migration_2026-11-22_parrainages.sql).</p>';
+  const l = d.parrainages || [];
+  if(!l.length) return '';
+  const etat = {en_attente:['En attente','pr-etat exemple'], signe:['Signé · activé','pr-etat ouvert'], refuse:['Refusé','pr-etat ferme']};
+  return '<p class="section-title">Parrainages</p><div class="pr-col" style="margin-bottom:8px"><ul>' + l.map(x => {
+    const e = x.premiere_resa_id ? ['1re location · à verser','pr-etat exemple'] : (etat[x.statut] || etat.en_attente);
+    return `<li><span><b>${escHtml(x.commerce)}</b><small>${escHtml(x.contact_nom||'')} · parrain : ${escHtml(x.parrain_nom||'—')}</small></span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">${x.tel?`<a href="tel:${escHtml(String(x.tel).replace(/\s/g,''))}">Appeler</a>`:''}<span class="${e[1]}">${e[0]}</span>${x.statut==='en_attente'?`<button class="btn btn-grey" style="padding:6px 12px;font-size:12px" onclick="setParrainage(${x.id},'signe')">Signé</button><button class="btn btn-grey" style="padding:6px 12px;font-size:12px" onclick="setParrainage(${x.id},'refuse')">Refusé</button>`:''}</span></li>`;
+  }).join('') + '</ul></div>';
+}
+async function setParrainage(id, statut){
+  if(statut === 'signe' && !confirm('Parrainage signé ? Pensez à verser 50 € au parrain ET 50 € au nouveau commerçant.')) return;
+  try{
+    const r = await fetch(API('admin-parrainages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'statut', id, statut})});
+    if(!r.ok) throw new Error();
+    loadPointsRetrait(true);
+  }catch(e){ alert('Échec. Réessaie.'); }
+}
+/* Écran « Points de retrait » : 1 écran = 1 pensée. Il s'ouvre sur « À faire » ;
+   le reste est rangé dans 4 onglets (Aujourd'hui, Points, Pilotage, Outils). */
+let PR_ONGLET = (() => { try{ return localStorage.getItem('pr_onglet') || 'afaire'; }catch(e){ return 'afaire'; } })();
+function setPrOnglet(o){ PR_ONGLET = o; try{ localStorage.setItem('pr_onglet', o); }catch(e){} renderPointsRetrait(); }
+function renderPointsRetrait(){
+  const D = PR_DATA, zone = document.getElementById('tab-pointsretrait'); if(!D) return;
+  if(PR_CELLULE !== 'toutes' && !(D.cellules||[]).some(c => c.id === PR_CELLULE)) PR_CELLULE = 'toutes';
+  // une seule cellule : sa vue est celle du réseau ; sinon, la cellule choisie
+  const d = (D.cellules||[]).length === 1 ? prVue(D, D.cellules[0].id) : PR_CELLULE === 'toutes' ? D : prVue(D, PR_CELLULE);
+  const r = d.resume, j = d.aujourdhui;
+  const badge = document.getElementById('badge-pointsretrait');
+  const urg = (D.resume.retards||0) + (D.signalements||[]).length; if(badge){ badge.textContent = urg || ''; badge.classList.toggle('hidden', !urg); }
+  const filtres = {tous:p => !p.test, ouverts:p => !p.test && !p.exemple, exemples:p => !p.test && p.exemple, test:p => p.test};
+  const liste = d.points.filter(filtres[PR_FILTRE] || filtres.tous);
+  const jour = new Date(d.date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const nbAFaire = prAFaireListe(d).length;
+  const ONGLETS = [['afaire', 'À faire' + (nbAFaire ? ' · ' + nbAFaire : '')], ['jour', 'Aujourd’hui'], ['points', 'Points'], ['terrain', 'Terrain'], ['pilotage', 'Pilotage'], ['outils', 'Outils']];
+  if(!ONGLETS.some(o => o[0] === PR_ONGLET)) PR_ONGLET = 'afaire';
+  const cels = D.cellules || [];
+  const choixCellule = cels.length > 1 ? `<div class="pr-filtres" style="margin-bottom:12px">${[['toutes','Tout le réseau']].concat(cels.map(c => [c.id, c.nom])).map(([k,t]) => `<button type="button" class="${PR_CELLULE===k?'on':''}" onclick="setPrCellule('${escHtml(k)}')">${escHtml(t)}</button>`).join('')}</div>` : '';
+  let corps = '';
+  if(PR_ONGLET === 'afaire') corps = prAFaire(d);
+  else if(PR_ONGLET === 'jour') corps = `
+    <div class="pr-tuiles">
+      <div class="pr-tuile"><b>${r.ouverts}</b><span>point${r.ouverts>1?'s':''} ouvert${r.ouverts>1?'s':''}${r.exemples?' · '+r.exemples+' en exemple':''}</span></div>
+      <div class="pr-tuile"><b>${r.dehors}</b><span>appareil${r.dehors>1?'s':''} chez des clients</span></div>
+      <div class="pr-tuile${r.retards?' alerte':''}"><b>${r.retards}</b><span>retard${r.retards>1?'s':''}</span></div>
+      <div class="pr-tuile${r.a_reconditionner?' a-faire':''}"><b>${r.a_reconditionner}</b><span>à reconditionner</span></div>
+    </div>
+    <p class="section-title">Aujourd’hui</p>
+    <div class="pr-jour">
+      ${prListe('Retraits','✓','vert',j.retraits,'Aucun retrait prévu.')}
+      ${prListe('Retours','↩','bleu',j.retours,'Aucun retour prévu.')}
+      ${prListe('Retards','!','rouge',j.retards,'Aucun retard.')}
+    </div>
+`;
+  else if(PR_ONGLET === 'points') corps = `
+    <div class="pr-tete" style="margin:0 0 12px"><p class="section-title" style="margin:0">Les points</p>
+      <div class="pr-filtres">${[['tous','Tous'],['ouverts','Ouverts'],['exemples','Exemples'],['test','Test']].map(([k,t]) => `<button type="button" class="${PR_FILTRE===k?'on':''}" onclick="setPrFiltre('${k}')">${t}</button>`).join('')}</div>
+    </div>
+    ${ROLE === 'administrateur' ? `<button type="button" class="mc-nouv" style="margin:0 0 16px" onclick="prFiche()"><span style="font-size:26px;line-height:0">+</span> Nouveau point de retrait</button>` : ''}
+    ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
+    ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
+    ${(PR_DATA.stock_historique||[]).length ? `<p class="section-title">Changements de stock</p><div class="pr-col" style="margin-bottom:8px"><ul>${PR_DATA.stock_historique.map(h => `<li><span><b>${escHtml(h.point)} · ${h.ancien ?? '—'} → ${h.nouveau}</b><small>${escHtml(h.raison||'')} · ${h.accord_gerant?'gérant d’accord':''} · ${escHtml(h.par||'')} · ${new Date(h.created_at).toLocaleDateString('fr-FR')}</small></span></li>`).join('')}</ul></div>` : ''}
+    ${PR_DATA.stock_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Stock modifiable : table à créer dans Supabase (SQL du 25/11).</p>':''}
+`;
+  else if(PR_ONGLET === 'terrain') corps = '<div id="pr-terrain"><p class="empty">Chargement…</p></div>';
+  else if(PR_ONGLET === 'pilotage') corps = `
+    ${prCellules(D)}
+    ${r.ouverts && d.saison ? (() => { const s = d.saison, pm = s.point_mort, pct = Math.min(100, Math.round(s.jours_machine / pm.max * 100)), ok = s.jours_machine >= pm.max, presque = s.jours_machine >= pm.min;
+      return `<p class="section-title">Pilotage · point mort de la saison</p><div class="pr-col" style="margin-bottom:8px;padding:16px 18px"><b style="font:900 26px var(--disp)">${s.jours_machine} <small style="font-size:14px;font-weight:600;color:var(--grey)">jours-machine loués · ${(s.jours_machine / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')} % d’occupation (sur ${(d.micro_box?d.micro_box.flotte:40) * 120} possibles ; point mort ≈ ${(pm.min / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')}–${(pm.max / ((d.micro_box?d.micro_box.flotte:40) * 120) * 100).toFixed(1).replace('.', ',')} %)</small></b>
+      <div class="stock-gauge" style="margin:10px 0 8px"><div class="stock-gauge-fill" style="width:${pct}%;${ok?'background:var(--green)':''}"></div></div>
+      <small style="color:var(--grey);font-weight:600">${ok?'Charges de la saison couvertes ✓':presque?'Presque : charges couvertes si le prix moyen reste haut':'Charges couvertes entre '+pm.min+' et '+pm.max+' jours-machine'} · charges ${d.cellule ? d.cellule.charges_mois.toLocaleString('fr-FR') : '1 465'} €/mois (box, agent, pub)</small></div>`; })() : ''}
+    ${(d.remplissage||[]).length ? `<p class="section-title">Remplissage · 7 prochains jours</p>
+    <div class="pr-col" style="margin-bottom:8px"><ul>${d.remplissage.map(v => `<li><span><b>${escHtml(v.ville)} · ${v.pct} %</b><small>${v.points} point${v.points>1?'s':''}</small></span><span class="pr-etat ${v.pub==='normale'?'ouvert':v.pub==='baisser'?'exemple':'ferme'}">${v.pub==='normale'?'Pub normale':v.pub==='baisser'?'Baisser la pub':'Pub en pause'}</span></li>`).join('')}</ul></div>` : ''}
+    ${!r.ouverts ? '<p class="empty">Les chiffres de la saison apparaissent dès qu’un vrai point est ouvert.</p>' : ''}`;
+  else corps = `
+    ${prParrainages(d)}
+    <p class="section-title">Outils</p>
+    <div class="pr-outils">
+      <a class="pr-outil" href="/admin/cc-retours" target="_blank" rel="noopener"><b>À reconditionner${r.a_reconditionner?' · '+r.a_reconditionner:''}</b><span>Appareils rendus, avec leur photo</span></a>
+      <a class="pr-outil" href="/admin/cc-stats" target="_blank" rel="noopener"><b>Parcours des visiteurs</b><span>Où ils s’arrêtent avant de payer</span></a>
+      <a class="pr-outil" href="/admin/flyers-commercants" target="_blank" rel="noopener"><b>Tous les flyers</b><span>Code retour + espace partenaire</span></a>
+      <a class="pr-outil" href="/affiche-retrait" target="_blank" rel="noopener"><b>Toutes les affiches</b><span>QR code du comptoir</span></a>
+    </div>
+    <details class="pr-ouvrir"><summary>Transfert à la société d’exploitation</summary>
+      <p style="margin:10px 0;font-size:13.5px;color:var(--grey)">Convention, article 7 : prévenir chaque commerçant par écrit (email + SMS) du nom, du SIRET et de la date d’effet. Rien ne part avant « Envoyer ».</p>
+      <div style="display:grid;gap:8px;max-width:420px">
+        <input id="tr-nom" placeholder="Dénomination (ex. Loc’Air SAS)" maxlength="120">
+        <input id="tr-siret" placeholder="SIRET ou SIREN" inputmode="numeric" maxlength="17">
+        <label style="font-size:12.5px;color:var(--grey)">Date d’effet<input id="tr-date" type="date" style="display:block;width:100%"></label>
+        <button class="btn btn-grey" type="button" onclick="prTransfert('apercu')">Voir le message</button>
+      </div>
+      <div id="tr-apercu"></div>
+    </details>
+    <details class="pr-ouvrir"><summary>Ouvrir un nouveau point</summary><ol>
+      <li>Démo (QR code, numéro 0000), puis la signature : sur l’écran avec l’appli terrain (onglet Terrain), ou sur papier en 2 exemplaires. Prévoir SIRET, RIB, horaires. Axe Nice–Cannes, un seul point par quartier.</li>
+      <li>Ajouter le point dans <code>api/_lib/pointsRetrait.js</code> : adresse, horaires, téléphone, code partenaire, <code>exemple: false</code>.</li>
+      <li>Créer le commerçant dans l’onglet Ambassadeurs, avec le même code partenaire.</li>
+      <li>Imprimer l’affiche du comptoir (bouton « Affiche » de sa carte).</li>
+      <li>Imprimer le flyer et le remettre en main propre (bouton « Flyer »).</li>
+      <li>Déposer 3 à 5 climatiseurs, le nombre signé (du 10 au 15 mai), sous housse bleue, gaine au-dessus.</li>
+      <li>Faire un essai complet : un retrait, puis un retour. Puis « Passage fait ».</li>
+    </ol></details>`;
+  zone.innerHTML = `
+    <div class="pr-tete"><div><h2>Points de retrait</h2><p>Click &amp; Collect · ${escHtml(jour)}</p></div></div>
+    ${choixCellule}
+    <div class="pr-phase">${d.cellule && cels.length > 1 ? '<b>'+escHtml(d.cellule.nom)+'</b> · ' : ''}${prPhase(d.date, d.cellule)}${d.micro_box && r.ouverts ? ` · <b>Micro-box : ${Math.max(0, d.micro_box.flotte - d.micro_box.en_points)}</b>` : ''}</div>
+    <div class="pr-onglets" role="tablist">${ONGLETS.map(([k,t]) => `<button type="button" role="tab" aria-selected="${PR_ONGLET===k}" class="${PR_ONGLET===k?'on':''}${k==='afaire'&&nbAFaire?' alerte':''}" onclick="setPrOnglet('${k}')">${t}</button>`).join('')}</div>
+    ${corps}`;
+  if(PR_ONGLET === 'terrain') prTerrain();
+}
+
+// ── Terrain : prospection des points de retrait (appli /prospection,
+// page commerçant /partenaires, api/prospection.js). Objectif Cellule 1 :
+// 8 à 10 points signés, 40 climatiseurs, sur Nice / Antibes-JLP / Cannes.
+const PT_LIB = {signe:'Signé', en_attente_signature:'À signer', a_repasser:'À repasser', refuse:'Pas cette fois'};
+const PT_CLASSE = {signe:'ouvert', en_attente_signature:'exemple', a_repasser:'exemple', refuse:'ferme'};
+async function ptApi(body){
+  const r = await fetch(API('prospection'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+  const j = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(j.error || 'Erreur');
+  return j;
+}
+async function prTerrain(){
+  const el = document.getElementById('pr-terrain'); if(!el) return;
+  let j, m;
+  try{ [j, m] = await Promise.all([ptApi({action:'liste'}), ptApi({action:'modeles'})]); }
+  catch(e){ el.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`; return; }
+  const o = j.objectif, pz = j.par_zone;
+  const fiche = f => `<li><span><b>${escHtml(f.enseigne || 'Boutique sans nom')}</b><small>${escHtml([f.zone, f.capacite ? f.capacite + ' clims' : '', f.gerant || f.signataire, f.tel ? 'gérant ' + f.tel : '', f.tel_commerce ? 'boutique ' + f.tel_commerce : '', f.email].filter(Boolean).join(' · '))}<br>${escHtml(f.prospecteur || '')} · ${new Date(f.updated_at).toLocaleDateString('fr-FR')}${f.docs_envoyes_at ? ' · documents envoyés' : ''}${f.relance_at ? ' · relancé' : ''}${f.notes ? ' · ' + escHtml(f.notes) : ''}</small>
+      <span class="pr-actions" style="margin-top:8px">
+        ${f.photo_url ? `<a href="${escAttr(f.photo_url)}" target="_blank" rel="noopener">Photo</a>` : ''}
+        ${f.lat != null ? `<a href="https://www.google.com/maps?q=${f.lat},${f.lng}" target="_blank" rel="noopener">GPS</a>` : ''}
+        ${f.statut !== 'refuse' ? `<button type="button" onclick="ptEnvoyer(${f.id}, ${escAttr(JSON.stringify(f.email || ''))})">${f.statut === 'signe' ? 'Renvoyer la convention' : 'Envoyer présentation + convention'}</button>` : ''}
+        ${f.statut !== 'signe' ? `<button type="button" onclick="ptCopier(${escAttr(JSON.stringify(f.lien))})">Lien pour signer</button><button type="button" onclick="ptStatut(${f.id}, 'signe', ${f.capacite || 0})">Signé sur papier</button>` : ''}
+        ${f.statut !== 'refuse' && f.statut !== 'signe' ? `<button type="button" onclick="ptStatut(${f.id}, 'refuse')">Pas cette fois</button>` : ''}
+        ${f.statut === 'refuse' ? `<button type="button" onclick="ptStatut(${f.id}, 'a_repasser')">À repasser</button>` : ''}
+      </span></span><span class="pr-etat ${PT_CLASSE[f.statut] || ''}">${PT_LIB[f.statut] || escHtml(f.statut)}</span></li>`;
+  const groupes = ['en_attente_signature', 'a_repasser', 'signe', 'refuse'].map(st => ({st, l: j.fiches.filter(f => f.statut === st)})).filter(g => g.l.length);
+  el.innerHTML = `
+    <div class="pr-tuiles">
+      <div class="pr-tuile${j.total.signes >= o.points_min ? ' ' : ' a-faire'}"><b>${j.total.signes} / ${o.points_min}–${o.points_max}</b><span>points signés</span></div>
+      <div class="pr-tuile"><b>${j.total.climatiseurs} / ${o.climatiseurs}</b><span>climatiseurs placés (${Math.round(j.total.climatiseurs / o.climatiseurs * 100)} % du parc)</span></div>
+      ${j.zones.map(z => `<div class="pr-tuile"><b>${pz[z].signes}</b><span>${escHtml(z)} · ${pz[z].climatiseurs} clims · ${pz[z].en_attente} à signer · ${pz[z].a_repasser} à repasser</span></div>`).join('')}
+    </div>
+    <div class="pr-outils" style="margin:12px 0">
+      <a class="pr-outil" href="/prospection" target="_blank" rel="noopener"><b>Appli terrain</b><span>QR de visite, photo + GPS, signature</span></a>
+      <a class="pr-outil" href="/guide-prospecteur" target="_blank" rel="noopener"><b>Guide du prospecteur</b><span>Le tutoriel des recrues</span></a>
+      <a class="pr-outil" href="/documents/locair-devenez-point-de-retrait.pdf" target="_blank" rel="noopener"><b>Présentation (PDF)</b><span>Pièce jointe des e-mails</span></a>
+      <a class="pr-outil" href="/partenaires" target="_blank" rel="noopener"><b>Page /partenaires</b><span>QR de la fiche mémo</span></a>
+    </div>
+    ${groupes.length ? groupes.map(g => `<p class="section-title">${PT_LIB[g.st]} · ${g.l.length}</p><div class="pr-col" style="margin-bottom:8px"><ul>${g.l.map(fiche).join('')}</ul></div>`).join('') : '<p class="empty">Aucune visite pour l’instant. Les fiches de l’appli terrain arrivent ici.</p>'}
+    <details class="pr-ouvrir"><summary>Messages types</summary>
+      <p style="margin:10px 0 4px;font-weight:800">1 · Avant passage (premier contact)</p>
+      <p style="margin:0 0 6px;font-size:13px;color:var(--grey)">À envoyer à la main depuis partenaires.locair@outlook.com — jamais depuis le site (règle prospection).</p>
+      <b style="font-size:13.5px">Objet : ${escHtml(m.avant_passage.objet)}</b>
+      <pre style="white-space:pre-wrap;font:500 13.5px/1.5 var(--body,inherit);background:var(--bg-soft,#F4F7FC);border-radius:12px;padding:12px">${escHtml(m.avant_passage.texte)}</pre>
+      <button type="button" onclick="ptCopier(${escAttr(JSON.stringify('Objet : ' + m.avant_passage.objet + '\n\n' + m.avant_passage.texte))})">Copier</button>
+      <p style="margin:14px 0 4px;font-weight:800">2 · Après la visite ou l’appel (automatique)</p>
+      <p style="margin:0;font-size:13.5px;color:var(--grey)">Bouton « Envoyer présentation + convention » : e-mail avec les 2 pièces jointes (présentation + convention pré-remplie) et le bouton « Signer en ligne ». Réponses vers partenaires.locair@outlook.com.</p>
+      <p style="margin:14px 0 4px;font-weight:800">3 · Relance du lendemain (automatique, une seule fois)</p>
+      <p style="margin:0;font-size:13.5px;color:var(--grey)">Fiche « À repasser » ou « À signer » de la veille, avec e-mail ou téléphone, sans documents envoyés : le lendemain vers 8 h 30, l’e-mail (2 pièces jointes) et/ou un SMS avec le lien pour signer.</p>
+      <p style="margin:14px 0 4px;font-weight:800">4 · Après la signature (automatique)</p>
+      <p style="margin:0;font-size:13.5px;color:var(--grey)">« Merci ! » + la convention signée en pièce jointe + la prochaine étape (dépose du 10 au 15 mai). Copie à contact@locair.fr.</p>
+    </details>`;
+}
+// Stock d'un point : modifiable avec l'accord du gérant (trace + e-mail au commerçant).
+// ── Créer / modifier un point de retrait (26/11/2026) ─────────────────────
+// Sans toucher au code : table points_retrait. L'adresse est choisie dans la
+// Base Adresse Nationale (position et ville remplies d'office).
+let PR_FICHE = null;
+async function prFiche(id){
+  // La fiche partenaire du commerçant se choisit dans la liste (onglet Partenaires).
+  if(!PARTENAIRES_CACHE.length){
+    try{ const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}); const d = await r.json(); if(r.ok) PARTENAIRES_CACHE = d.partenaires || []; }catch(e){}
+  }
+  const p = id ? (PR_DATA.points||[]).find(x => x.id === id) : null;
+  const f = p ? (p.fiche||{}) : {};
+  PR_FICHE = {id: p ? p.id : '', lat: f.lat ?? null, lng: f.lng ?? null, ville: p ? p.ville : '', stock: 4,
+    fermes: p ? (f.fermes||[]) : [0], ouverture: p ? (f.ouverture||[9,19]) : [9,19]};
+  mcFermer();
+  const heures = (sel) => Array.from({length:25}, (_, h) => `<option value="${h}"${h===sel?' selected':''}>${h}h</option>`).join('');
+  const J = [[1,'L'],[2,'M'],[3,'M'],[4,'J'],[5,'V'],[6,'S'],[0,'D']];
+  const el = document.createElement('div');
+  el.id = 'mc-feuille'; el.className = 'mc-feuille';
+  el.innerHTML = `<div class="mc-feuille-in pf">
+    <button type="button" class="mc-retour" onclick="mcFermer()">← Retour</button>
+    <h3>${p ? 'Modifier le point' : 'Nouveau point'}</h3>
+    <label>Nom du point<input id="pf-nom" value="${escAttr(p ? p.nom : '')}" placeholder="Ex. Tabac du Port" autocomplete="off"></label>
+    <label>Adresse<input id="pf-adr" value="${escAttr(p && !/^Adresse à venir/.test(p.adresse) ? p.adresse : '')}" placeholder="Numéro, rue, ville" autocomplete="off" oninput="pfAdresse(this.value)"></label>
+    <div id="pf-sugg" class="pf-sugg"></div>
+    <small id="pf-pos" class="pf-ok">${p && f.lat ? '📍 ' + escHtml(p.ville) : ''}</small>
+    <label>Téléphone de la boutique<input id="pf-tel" type="tel" inputmode="tel" value="${escAttr(f.tel||'')}" placeholder="04 93 00 00 00"></label>
+    ${p ? '' : `<p class="pf-t">Climatiseurs</p><div class="pf-choix" id="pf-stock">${[3,4,5].map(n => `<button type="button" class="${n===4?'on':''}" onclick="pfStock(${n},this)">${n}</button>`).join('')}<input type="number" min="1" max="20" placeholder="Autre" oninput="pfStock(Number(this.value))"></div>`}
+    <p class="pf-t">Ouvert de</p>
+    <div class="pf-h"><select id="pf-o1">${heures(PR_FICHE.ouverture[0])}</select><span>à</span><select id="pf-o2">${heures(PR_FICHE.ouverture[1])}</select></div>
+    <p class="pf-t">Fermé le</p>
+    <div class="pf-choix pf-jours">${J.map(([j,t]) => `<button type="button" class="${PR_FICHE.fermes.includes(j)?'on':''}" onclick="pfJour(${j},this)">${t}</button>`).join('')}</div>
+    <label>Fiche partenaire du commerçant<select id="pf-code">${pfPartenaires(p)}</select></label>
+    <div class="pf-liens"><button type="button" class="pf-lien" onclick="pfModifierFiche()">Modifier sa fiche</button><button type="button" class="pf-lien" onclick="mcFermer();switchAdminTab('partenaires')">+ Créer une fiche</button></div>
+    <label class="pf-case"><input type="checkbox" id="pf-ouvert" ${!p || !p.exemple ? 'checked' : ''}> Ouvert aux réservations <small>(décoché : visible, paiement refusé)</small></label>
+    <button type="button" class="mc-nouv" id="pf-ok" onclick="pfEnregistrer()">${p ? 'Enregistrer' : 'Créer le point'}</button>
+    ${p && f.cree_admin && !f.du_code ? `<button type="button" class="mc-mode" style="color:#D92D20" onclick="pfRetirer()">Retirer ce point</button>` : ''}
+  </div>`;
+  document.body.appendChild(el); document.body.style.overflow = 'hidden';
+  setTimeout(() => { const n = document.getElementById('pf-nom'); if(n && !p) n.focus(); }, 50);
+}
+function pfPartenaires(p){
+  const actuel = p && p.partenaire_code ? String(p.partenaire_code).toLowerCase() : '';
+  const pris = {}; (PR_DATA.points||[]).forEach(x => { if(x.partenaire_code && (!p || x.id !== p.id)) pris[String(x.partenaire_code).toLowerCase()] = x.nom; });
+  const liste = [...PARTENAIRES_CACHE].filter(x => x.actif !== false || String(x.code).toLowerCase() === actuel).sort((a, b) => String(a.nom||'').localeCompare(String(b.nom||''), 'fr'));
+  const opts = liste.map(x => { const c = String(x.code||'').toLowerCase(), autre = pris[c];
+    return `<option value="${escAttr(c)}"${c === actuel ? ' selected' : ''}${autre ? ' disabled' : ''}>${escHtml(x.nom || c)}${x.telephone ? ' · ' + escHtml(x.telephone) : ''}${autre ? ' — déjà à ' + escHtml(autre) : ''}</option>`; }).join('');
+  const inconnu = actuel && !liste.some(x => String(x.code||'').toLowerCase() === actuel) ? `<option value="${escAttr(actuel)}" selected>${escHtml(actuel)} (fiche introuvable)</option>` : '';
+  return `<option value="">— Pas encore de fiche —</option>${inconnu}${opts}`;
+}
+// Ouvre la fiche partenaire choisie par-dessus le formulaire du point.
+function pfModifierFiche(){
+  const c = document.getElementById('pf-code').value;
+  const part = PARTENAIRES_CACHE.find(x => String(x.code||'').toLowerCase() === c);
+  if(!part){ showToast('Choisis d’abord une fiche dans la liste.', 'error'); return; }
+  editPartenaireFiche(part.id);
+  // Fiche fermée : on relit les fiches et la liste du point se met à jour.
+  const iv = setInterval(async () => {
+    if(document.getElementById('modal-overlay-el')) return;
+    clearInterval(iv);
+    try{ const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}); const d = await r.json(); if(r.ok) PARTENAIRES_CACHE = d.partenaires || []; }catch(e){ return; }
+    const sel = document.getElementById('pf-code'); if(!sel) return;
+    const maj = PARTENAIRES_CACHE.find(x => x.id === part.id);
+    const pt = PR_FICHE.id ? (PR_DATA.points||[]).find(x => x.id === PR_FICHE.id) : null;
+    sel.innerHTML = pfPartenaires(pt);
+    if(maj) sel.value = String(maj.code||'').toLowerCase();
+  }, 400);
+}
+function pfStock(n, b){ PR_FICHE.stock = n; document.querySelectorAll('#pf-stock button').forEach(x => x.classList.toggle('on', x === b)); }
+function pfJour(j, b){ const f = PR_FICHE.fermes, i = f.indexOf(j); if(i < 0) f.push(j); else f.splice(i, 1); b.classList.toggle('on', i < 0); }
+let _pfT = null;
+function pfAdresse(q){
+  PR_FICHE.lat = PR_FICHE.lng = null; document.getElementById('pf-pos').textContent = '';
+  clearTimeout(_pfT);
+  const box = document.getElementById('pf-sugg');
+  if(q.trim().length < 4){ box.innerHTML = ''; return; }
+  _pfT = setTimeout(() => {
+    fetch('https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&lat=43.65&lon=7.15&q=' + encodeURIComponent(q))
+      .then(r => r.json()).then(j => {
+        box.innerHTML = (j.features||[]).map((x, i) => `<button type="button" data-i="${i}">${escHtml(x.properties.label)}</button>`).join('');
+        box.querySelectorAll('button').forEach(b => b.onclick = () => {
+          const x = j.features[Number(b.dataset.i)];
+          document.getElementById('pf-adr').value = x.properties.label;
+          PR_FICHE.lat = x.geometry.coordinates[1]; PR_FICHE.lng = x.geometry.coordinates[0]; PR_FICHE.ville = x.properties.city;
+          document.getElementById('pf-pos').textContent = '📍 ' + x.properties.city;
+          box.innerHTML = '';
+        });
+      }).catch(() => {});
+  }, 250);
+}
+async function pfEnregistrer(){
+  const v = (id) => document.getElementById(id).value.trim();
+  if(PR_FICHE.lat == null){ showToast('Choisis l’adresse dans la liste.', 'error'); document.getElementById('pf-adr').focus(); return; }
+  const bt = document.getElementById('pf-ok'); bt.disabled = true;
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'point_enregistrer',
+      id: PR_FICHE.id, nom: v('pf-nom'), adresse: v('pf-adr'), ville: PR_FICHE.ville, lat: PR_FICHE.lat, lng: PR_FICHE.lng, tel: v('pf-tel'),
+      stock: PR_FICHE.stock, ouverture: [Number(v('pf-o1')), Number(v('pf-o2'))], fermes: PR_FICHE.fermes,
+      partenaire_code: v('pf-code'), exemple: !document.getElementById('pf-ouvert').checked})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || 'Erreur');
+    mcFermer();
+    showToast(j.nouveau ? 'Point créé ✓ Pense à imprimer l’affiche et le flyer.' : 'Point enregistré ✓', 'success');
+    PR_ONGLET = 'points'; PR_FILTRE = 'tous';
+    loadPointsRetrait(true);
+  }catch(e){ showToast(e.message, 'error'); bt.disabled = false; }
+}
+async function pfRetirer(){
+  if(!confirm('Retirer ce point ? Il disparaît du site.')) return;
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'point_retirer', id: PR_FICHE.id})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || 'Erreur');
+    mcFermer(); showToast('Point retiré', 'success'); loadPointsRetrait(true);
+  }catch(e){ showToast(e.message, 'error'); }
+}
+async function prStock(id, actuel, nom){
+  const v = prompt(`Stock de ${nom} : combien de climatiseurs ? (actuellement ${actuel})`, String(actuel));
+  if(v === null) return;
+  const stock = Number(String(v).trim());
+  if(!Number.isInteger(stock) || stock < 0 || stock > 30){ showToast('Un nombre entre 0 et 30.', 'error'); return; }
+  const raison = prompt('Pourquoi ? (ex. place en plus dans la réserve)', '');
+  if(raison === null) return;
+  if(!confirm(`Le gérant de ${nom} est d’accord pour passer de ${actuel} à ${stock} climatiseurs ?`)) return;
+  const envoyer = async (forcer) => {
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'stock', point_id:id, stock, raison, accord:true, forcer})});
+    const j = await r.json().catch(() => ({}));
+    if(r.status === 409 && j.confirmer && !forcer){
+      if(confirm(j.error + '\n\nChanger quand même ? (il faudra déplacer ces clients)')) return envoyer(true);
+      return;
+    }
+    if(!r.ok) throw new Error(j.error || 'Erreur');
+    showToast(`Stock : ${j.ancien} → ${j.nouveau} ✓${j.commercant_prevenu ? ' · commerçant prévenu par e-mail' : ''}`, 'success');
+    loadPointsRetrait(true);
+  };
+  try{ await envoyer(false); }catch(e){ showToast(e.message, 'error'); }
+}
+async function ptEnvoyer(id, email){
+  const e = prompt('E-mail du commerçant :', email || '');
+  if(e === null) return;
+  try{ await ptApi({action:'envoyer', id, email:e}); showToast('Présentation + convention envoyées ✓', 'success'); prTerrain(); }
+  catch(x){ showToast(x.message, 'error'); }
+}
+async function ptStatut(id, statut, capaActuelle){
+  let signataire = '', capacite = capaActuelle || null;
+  if(statut === 'signe'){
+    signataire = prompt('Signée sur papier par (nom & qualité) :', ''); if(signataire === null) return;
+    if(!capacite){ const c = prompt('Combien de climatiseurs ?', '4'); if(c === null) return; capacite = Number(c); }
+  }
+  try{ await ptApi({action:'statut', id, statut, signataire, capacite}); showToast('Fiche mise à jour ✓', 'success'); prTerrain(); }
+  catch(x){ showToast(x.message, 'error'); }
+}
+function ptCopier(t){
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => showToast('Copié ✓', 'success')).catch(() => prompt('Copiez :', t));
+}
 async function loadVilles(silent){
   const zone = document.getElementById('tab-villes');
   if(!silent) zone.innerHTML = loading();
@@ -12082,6 +13147,7 @@ const ROLE_LABEL = {
   operateur:      '📋 Opérateur — commandes, missions, clients',
   comptabilite:   '💶 Comptabilité — paiements, commissions',
   support_client: '🛟 Support client — clients, demandes',
+  prospecteur:    '🚶 Prospecteur — appli terrain seulement (/prospection)',
 };
 let EQUIPE_CACHE = [];
 async function loadEquipe(silent){
@@ -12294,6 +13360,10 @@ function renderTutoriels(){
   const nbEnvoyees = TUTO_VIDEOS_CACHE.filter(v => v.storage_path).length;
   const nbAEnvoyer = TUTO_VIDEOS_CACHE.filter(v => !v.storage_path).length;
   zone.innerHTML = `
+    <div class="pr-outils" style="margin:0 0 16px">
+      <a class="pr-outil" href="/guide-prospecteur" target="_blank" rel="noopener"><b>📘 Guide du prospecteur</b><span>Une visite en 5 étapes : QR code, 3/4/5 + OK, photo + GPS, signature — pour les jeunes recrutés</span></a>
+      <a class="pr-outil" href="/prospection" target="_blank" rel="noopener"><b>📱 Appli Terrain</b><span>À ouvrir sur le téléphone du prospecteur (rôle « Prospecteur » dans Équipe)</span></a>
+    </div>
     <p class="sub" style="margin:-4px 0 14px">Les vidéos ci-dessous s'affichent aux transporteurs dans leur appli, pour leur expliquer chaque étape (accès au box, installation, chargement...). Une seule bibliothèque, partagée par toutes les villes — pas besoin de les envoyer plusieurs fois.</p>
     <div class="stat-grid">
       <div class="stat-tile"><div class="n">${nbSujetsActifs}</div><div class="l">Sujets actifs</div></div>
@@ -12868,6 +13938,7 @@ async function openLiveMap(transporteurId, transporteurNom, adresse){
     </div>`;
   document.body.appendChild(overlay);
 
+  try { await chargerLeaflet(); } catch (e) { const eta = document.getElementById('map-eta'); if (eta) eta.textContent = 'Carte indisponible. Réessayez.'; return; }
   LIVE_DEST_COORDS = await geocodeAddress(adresse + ', France');
 
   setTimeout(() => {
@@ -12910,7 +13981,7 @@ async function refreshLivePosition(transporteurId){
 
     if(LIVE_DEST_COORDS){
       if(LIVE_LINE) LIVE_MAP.removeLayer(LIVE_LINE);
-      LIVE_LINE = L.polyline([point, [LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng]], {color:'#0E1F35', weight:3, dashArray:'6,8'}).addTo(LIVE_MAP);
+      LIVE_LINE = L.polyline([point, [LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng]], {color:'#0E1726', weight:3, dashArray:'6,8'}).addTo(LIVE_MAP);
     }
 
     const ageSec = Math.round((Date.now() - new Date(d.position_at).getTime()) / 1000);
@@ -13017,7 +14088,7 @@ function julieAvatar(phone){
   const p = (phone||'').replace(/\D/g,'');
   const letter = p ? p.slice(-2,-1) || '?' : '?';
   // Couleur déterministe selon le numéro
-  const colors = ['#086E60','#2563eb','#7c3aed','#db2777','#d97706','#0891b2'];
+  const colors = ['#1A5EDB','#2563eb','#7c3aed','#db2777','#d97706','#0891b2'];
   const idx    = parseInt(p.slice(-1)||'0') % colors.length;
   return `<div style="width:46px;height:46px;border-radius:50%;background:${colors[idx]};color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${letter}</div>`;
 }

@@ -10,6 +10,8 @@ const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, gen
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { todayParis } = require('./_lib/dates');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { numeroComptoir: numComptoir } = require('./_lib/clickCollect');
+const { getPointRetrait } = require('./_lib/pointsRetrait');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
 // climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
@@ -131,9 +133,11 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
 // payment_intent.succeeded / checkout.session.completed, plus bas).
 async function findReservationByPaymentIntent(supabase, paymentIntentId) {
   if (!paymentIntentId) return null;
-  const { data } = await supabase
-    .from('reservations').select('id, city_id, ref, statut, prenom, nom, partenaire_commission_payee')
+  const base = 'id, city_id, ref, statut, prenom, nom, partenaire_commission_payee, partenaire_id, partenaire_commission_cents, source_channel, point_retrait_id';
+  let { data, error } = await supabase.from('reservations').select(base + ', remis_at, rendu_at')
     .eq('stripe_payment_intent_id', paymentIntentId).maybeSingle();
+  // Colonnes du retrait/retour absentes de la base : on relit sans elles.
+  if (error) ({ data } = await supabase.from('reservations').select(base).eq('stripe_payment_intent_id', paymentIntentId).maybeSingle());
   return data || null;
 }
 
@@ -155,9 +159,9 @@ async function logPaymentIncident(supabase, { cityId, reservationId, description
 async function handlePaymentFailed(supabase, intent) {
   const resa = await findReservationByPaymentIntent(supabase, intent.id);
   const raison = intent.last_payment_error?.message || 'raison inconnue';
-  if (resa && resa.statut === 'en_attente') {
-    await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).eq('statut', 'en_attente');
-  }
+  // On n'annule PLUS la réservation ici : le client peut réessayer avec une
+  // autre carte sur le même paiement, et ce deuxième essai peut réussir.
+  // Les réservations restées « en attente » sont nettoyées par le cron.
   await logPaymentIncident(supabase, {
     cityId: resa?.city_id,
     reservationId: resa?.id,
@@ -255,6 +259,7 @@ async function handleChargeRefunded(supabase, charge) {
     // Marquer remboursée seulement si le remboursement couvre la totalité du paiement
     if (remboursementTotal) {
       await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id).eq('statut', 'confirmee');
+      await require('./_lib/parrainage').premiereLocationRemboursee(supabase, resa);
 
       const { data: missions } = await supabase
         .from('livraisons').select('id, type, statut, transporteur_id')
@@ -309,12 +314,45 @@ async function handleChargeRefunded(supabase, charge) {
   });
   await pushToAdmin(supabase, {
     title: 'Remboursement Stripe',
-    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}${resa && remboursementTotal && livraisonDejaEffectuee ? ' — le climatiseur est chez le client, vérifie la mission de récupération.' : ''}`.trim(),
+    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}${resa && remboursementTotal && livraisonDejaEffectuee ? ' — le climatiseur est chez le client, vérifie la mission de récupération.' : ''}${resa && remboursementTotal && resa.source_channel === 'click_collect' && resa.remis_at && !resa.rendu_at ? ' — Click & Collect : le climatiseur est chez le client, il doit le rapporter au point (le retour reste possible au comptoir).' : ''}`.trim(),
     tag:   `remboursement-${resa?.id || piId}`,
   });
   // Une commission déjà versée à un partenaire pour cette réservation devient
   // un litige à réconcilier — jusqu'ici visible seulement en badge, jamais
   // poussé au moment où ça arrive vraiment (audit automatisations, 2026-08-02).
+  // Remboursement PARTIEL (ex. rétractation après le retrait : le client ne
+  // paie que les jours utilisés) : la commission du partenaire est recalculée
+  // sur ce qui reste encaissé (convention : 20 % des locations encaissées).
+  // Calcul toujours repris du taux et du montant restant : sans effet si
+  // Stripe renvoie le même événement.
+  if (resa && !remboursementTotal && resa.partenaire_id && (resa.partenaire_commission_cents || 0) > 0 && charge.amount > 0) {
+    try {
+      let pct = null;
+      if (resa.source_channel === 'click_collect') {
+        const pt = require('./_lib/pointsRetrait').getPointRetrait(resa.point_retrait_id || '');
+        if (pt) pct = pt.commission_pct;
+      }
+      if (pct == null) {
+        const { data: part } = await supabase.from('partenaires').select('taux_commission_pct').eq('id', resa.partenaire_id).maybeSingle();
+        if (part && Number.isFinite(part.taux_commission_pct)) pct = part.taux_commission_pct;
+      }
+      if (pct != null) {
+        const reste = Math.max(0, charge.amount - (charge.amount_refunded || 0));
+        const nouvelle = Math.min(resa.partenaire_commission_cents, Math.round(reste * pct / 100));
+        if (nouvelle !== resa.partenaire_commission_cents) {
+          if (resa.partenaire_commission_payee) {
+            await pushToAdmin(supabase, {
+              title: '⚠️ Commission partenaire à corriger',
+              body: `Dossier ${resa.ref || '?'} remboursé en partie : la commission devrait passer de ${(resa.partenaire_commission_cents / 100).toFixed(2)} € à ${(nouvelle / 100).toFixed(2)} €, mais elle est déjà versée. À déduire du prochain virement.`,
+              tag: `partenaire-commission-partielle-${resa.id}`,
+            });
+          } else {
+            await supabase.from('reservations').update({ partenaire_commission_cents: nouvelle }).eq('id', resa.id).eq('partenaire_commission_payee', false);
+          }
+        }
+      }
+    } catch (e) { console.error('[Remboursement partiel commission]', e.message); }
+  }
   if (resa && remboursementTotal && resa.partenaire_commission_payee) {
     await pushToAdmin(supabase, {
       title: '⚠️ Litige commission partenaire',
@@ -348,6 +386,7 @@ async function handleDisputeCreated(supabase, dispute) {
 
 // ── Webhook principal ─────────────────────────────────────────────────────────
 const handler = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).end();
 
   // Lire le corps brut (nécessaire pour la vérification de signature Stripe)
@@ -620,6 +659,12 @@ const handler = async (req, res) => {
           const { data: origResa } = await lookup.maybeSingle();
           if (origResa?.id) {
             await getSupabase().from('reservations').update({ date_fin: confirmedResa.date_fin }).eq('id', origResa.id);
+            // Click & Collect : le rappel « demain, retour » a pu partir pour
+            // l'ancienne date. On retire son verrou pour qu'il reparte la
+            // veille de la NOUVELLE date de retour.
+            if (origResa.source_channel === 'click_collect') {
+              await getSupabase().from('email_sent').delete().eq('reservation_id', origResa.id).eq('scenario', 'cc_rappel_retour').then(() => {}, () => {});
+            }
             // Contrat mis à jour (nouvelle date de fin) + facture de l'extension —
             // sans ça, le contrat déjà en possession du client restait figé sur
             // la durée/le montant de sa réservation initiale (audit du 2026-07-27).
@@ -724,7 +769,29 @@ const handler = async (req, res) => {
         const lang = confirmedResa.lang || meta.lang || 'fr';
         const d = meta.date ? new Date(meta.date + 'T12:00:00Z') : null;
         let smsConfirmationContent;
-        if (lang === 'en') {
+        if (meta.mode === 'click_collect') {
+          // Click & Collect : le client vient chercher l'appareil — jamais
+          // « livraison » ni « notre technicien arrive ».
+          const dateStr = d ? d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+          smsConfirmationContent = meta.lang === 'es'
+            ? `Loc'Air - Reserva Click & Collect confirmada.${d ? ' Recogida el ' + d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' en ' + meta.point_nom : ''}. Ve a la tienda en su horario de apertura: escanea el código QR del mostrador, escribe tu número de pedido y enseña tu documento de identidad.`
+            : meta.lang === 'en'
+            ? `Loc'Air - Click & Collect booking confirmed.${d ? ' Pick-up on ' + d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}${meta.point_nom ? ' at ' + meta.point_nom : ''}. Go to the shop during opening hours: scan the QR code at the counter, enter your order number and show your ID.`
+            : `Loc'Air - Réservation Click & Collect confirmée.${dateStr ? ' Retrait le ' + dateStr : ''}${meta.point_nom ? ' au point ' + meta.point_nom : ''}. En arrivant, scannez le QR code du comptoir (retrait et retour).`;
+          // Numéro de commande : le seul numéro du séjour (retrait, prolongation, retour).
+          smsConfirmationContent += meta.lang === 'es' ? ` Tu número de pedido: ${numComptoir(confirmedResa.ref)}.`
+            : meta.lang === 'en' ? ` Your order number: ${numComptoir(confirmedResa.ref)}.`
+            : ` Votre numéro de commande : ${numComptoir(confirmedResa.ref)}.`;
+          if ((confirmedResa.quantite || 1) > 1) smsConfirmationContent += meta.lang === 'en' ? ` (${confirmedResa.quantite} units)` : meta.lang === 'es' ? ` (${confirmedResa.quantite} aparatos)` : ` (${confirmedResa.quantite} climatiseurs)`;
+          // Pas de réseau dans la boutique : l'écran de retrait s'ouvre avant d'entrer.
+          const idPoint = confirmedResa.point_retrait_id || meta.point_id || '';
+          if (idPoint) {
+            const lienRetrait = `locair.fr/retrait?p=${encodeURIComponent(idPoint)}`;
+            smsConfirmationContent += meta.lang === 'en' ? ` No signal in the shop? Open ${lienRetrait} before going in.`
+              : meta.lang === 'es' ? ` ¿Sin cobertura en la tienda? Abre ${lienRetrait} antes de entrar.`
+              : ` Pas de réseau dans la boutique ? Ouvrez ${lienRetrait} avant d'entrer.`;
+          }
+        } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
         } else if (lang === 'zh') {
@@ -761,7 +828,24 @@ const handler = async (req, res) => {
     // cron-daily.js à partir des données Supabase du moment (jamais figés à
     // l'avance comme l'ancien envoi programmé via scheduledAt) — voir
     // _lib/emailSchedule.js et _lib/emailEngine.js.
-    if (confirmedResa) {
+    if (confirmedResa && meta.mode === 'click_collect') {
+      // Paiement resté ouvert plus de 30 min : entre-temps, un autre client a
+      // pu prendre les mêmes appareils. On ne refuse jamais un client qui a
+      // payé : on prévient l'admin pour trouver un appareil à temps.
+      try {
+        const { getPointRetrait } = require('./_lib/pointsRetrait');
+        const { tientDansLeStock } = require('./_lib/clickCollect');
+        const pt = getPointRetrait(confirmedResa.point_retrait_id || '');
+        if (pt && !(await tientDansLeStock(getSupabase(), pt, confirmedResa.date_debut, confirmedResa.date_fin, confirmedResa.id, false))) {
+          await pushToAdmin(getSupabase(), { title: `⚠️ Click & Collect — stock dépassé — ${pt.nom}`,
+            body: `${confirmedResa.ref} (${confirmedResa.prenom || ''} ${confirmedResa.nom || ''}, × ${confirmedResa.quantite || 1}) a payé mais le point n'a plus assez d'appareils du ${confirmedResa.date_debut} au ${confirmedResa.date_fin}. Apporter un appareil au point ou appeler le client.`,
+            tag: `cc-stock-${confirmedResa.id}` });
+        }
+      } catch (e) { console.error('[CC stock après paiement]', e.message); }
+      await sendConfirmationClickCollect(getSupabase(), confirmedResa, meta, amount);
+      // 1re location d'un commerçant parrainé : « à verser » (50 € + 50 €).
+      await require('./_lib/parrainage').premiereLocationParrainee(getSupabase(), confirmedResa);
+    } else if (confirmedResa) {
       try {
         await sendScenarioEmail(getSupabase(), { reservationId: confirmedResa.id, scenario: 'confirmation' });
       } catch (e) {
@@ -780,6 +864,55 @@ const handler = async (req, res) => {
     return res.status(200).json({ received: true, error: 'internal' });
   }
 };
+
+// Email de confirmation Click & Collect — envoyé une seule fois (verrou
+// email_sent, comme le SMS de confirmation), tracé dans email_log.
+async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
+  try {
+    const { error: lockErr } = await supabase.from('email_sent')
+      .insert({ reservation_id: resa.id, scenario: 'confirmation_click_collect', sent_at: new Date().toISOString() });
+    if (lockErr) return; // déjà envoyé (ou en cours) par une autre instance
+    const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // Email dans la langue choisie par le client sur la page (fr / en / es).
+    const lg = resa.lang || meta.lang;
+    const en = lg === 'en', es = lg === 'es';
+    const T = (fr, eng, esp) => (en ? eng : es ? esp : fr);
+    const fmt = (iso) => iso ? new Date(iso + 'T12:00:00Z').toLocaleDateString(en ? 'en-GB' : es ? 'es-ES' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Paris' }) : '';
+    const adressePoint = String(resa.adresse || '').replace(/^CLICK & COLLECT — /, '');
+    // Le point (horaires, position, photos) : on accompagne le client jusqu'au comptoir.
+    const pt = getPointRetrait(resa.point_retrait_id || meta.point_id || '') || null;
+    const o = (pt && pt.ouverture) || [9, 19];
+    const hh = (x) => (en ? (x > 12 ? `${x - 12}pm` : `${x}${x === 12 ? 'pm' : 'am'}`) : es ? `${x}:00` : `${x}h`);
+    const horaires = T(`ouvert de ${hh(o[0])} à ${hh(o[1])}`, `open ${hh(o[0])}–${hh(o[1])}`, `abierto de ${hh(o[0])} a ${hh(o[1])}`);
+    const itineraire = pt ? `https://www.google.com/maps/dir/?api=1&destination=${pt.lat},${pt.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adressePoint)}`;
+    const photo = pt && pt.photos && pt.photos[0] ? `https://www.locair.fr${pt.photos[0]}` : '';
+    const lignes = [
+      [T('Point de retrait', 'Pick-up point', 'Punto de recogida'), adressePoint],
+      [T('Retrait', 'Pick-up', 'Recogida'), fmt(resa.date_debut) + ' — ' + horaires],
+      [T('Retour au même point', 'Return to the same point', 'Devolución en el mismo punto'), fmt(resa.date_fin)],
+      [T('Payé', 'Paid', 'Pagado'), amount],
+    ].map(([k, v]) => `<tr><td style="padding:6px 12px 6px 0;color:#4B5873;white-space:nowrap">${esc(k)}</td><td style="padding:6px 0"><b>${esc(v)}</b></td></tr>`).join('');
+    const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
+<h2 style="color:#1A5EDB;margin:0 0 12px">${T('C’est réservé', 'You’re booked', 'Ya está reservado')}, ${esc(resa.prenom)} !</h2>
+<p>${(resa.quantite || 1) > 1 ? T(`<b>${resa.quantite} climatiseurs</b>, un seul numéro pour tous. `, `<b>${resa.quantite} air conditioners</b>, one number for all. `, `<b>${resa.quantite} aparatos</b>, un solo número para todos. `) : ''}${T('Votre climatiseur mobile est réservé à votre nom. <b>Le ' + esc(fmt(resa.date_debut)) + ', rendez-vous directement au point de retrait</b>, aux horaires d’ouverture.', 'Your portable air conditioner is reserved in your name. <b>On ' + esc(fmt(resa.date_debut)) + ', go straight to the pick-up point</b> during opening hours.', 'Tu aire acondicionado portátil está reservado a tu nombre. <b>El ' + esc(fmt(resa.date_debut)) + ', ve directamente al punto de recogida</b>, en su horario de apertura.')}</p>
+${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${esc(pt.nom)}" style="width:100%;max-width:520px;border-radius:12px"></p>` : ''}
+<p style="margin:14px 0"><a href="${esc(itineraire)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>
+<table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
+<p style="margin:18px 0 14px;padding:14px 16px;background:#EFF4FD;border-radius:12px;font-size:16px"><b>${T('Retrait et retour : en arrivant, scannez le QR code du comptoir.', 'Pick-up and return: when you arrive, scan the QR code at the counter.', 'Recogida y devolución: al llegar, escanea el código QR del mostrador.')}</b><br>${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:22px;letter-spacing:.12em">${numComptoir(resa.ref)}</b>${pt ? `<br><span style="font-size:14px">${T('Pas de réseau dans la boutique ?', 'No signal in the shop?', '¿Sin cobertura en la tienda?')} <a href="https://www.locair.fr/retrait?p=${encodeURIComponent(pt.id)}" style="color:#1A5EDB;font-weight:bold">${T('Ouvrez votre écran de retrait', 'Open your pick-up screen', 'Abre tu pantalla de recogida')}</a> ${T('juste avant d’entrer.', 'just before going in.', 'justo antes de entrar.')}</span>` : ''}</p>
+<p>${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.')}</p>
+<p>${T('Un souci avec l’appareil pendant la location ? Déclarez-le en 1 minute :', 'A problem with the unit during the rental? Report it in 1 minute:', '¿Un problema con el aparato durante el alquiler? Decláralo en 1 minuto:')} <a href="https://www.locair.fr/panne?ref=${encodeURIComponent(resa.ref || '')}">locair.fr/panne</a>.</p>
+<p>${T('Une question ? Écrivez à Julie, notre assistante, sur', 'Any question? Chat with Julie, our assistant, on', '¿Alguna pregunta? Escribe a Julie, nuestra asistente, en')} <a href="https://www.locair.fr/click-and-collect">locair.fr/click-and-collect</a>.</p>
+<p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
+    const r = await sendBrevoEmail({ to: resa.email, subject: T(`Click & Collect confirmé — retrait le ${fmt(resa.date_debut)}`, `Click & Collect confirmed — pick-up on ${fmt(resa.date_debut)}`, `Click & Collect confirmado — recogida el ${fmt(resa.date_debut)}`), html, senderName: "Loc'Air" });
+    if (!r.ok) await supabase.from('email_sent').delete().eq('reservation_id', resa.id).eq('scenario', 'confirmation_click_collect').then(() => {}, () => {});
+    await supabase.from('email_log').insert({
+      reservation_id: resa.id, scenario: 'confirmation_click_collect', canal: 'email',
+      destinataire: resa.email, modele: 'confirmation_click_collect', statut: r.ok ? 'envoye' : 'erreur',
+    }).then(() => {}, () => {});
+  } catch (e) {
+    console.error('[Email Click & Collect]', e.message);
+  }
+}
 
 // Désactiver le body parser Vercel pour accéder au corps brut (signature Stripe)
 handler.config = { api: { bodyParser: false } };
