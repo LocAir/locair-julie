@@ -333,7 +333,7 @@ changer un chiffre). Inspirée de Beyond / PriceLabs.
 Points de retrait → Points → « + Nouveau point de retrait » (gérant
 seulement) : nom, adresse choisie dans la Base Adresse Nationale (position
 et ville remplies d'office), téléphone, climatiseurs (3/4/5 ou 1 à 20),
-heures, jours fermés, code du commerçant, « Ouvert aux réservations »
+heures, jours fermés, **fiche partenaire du commerçant choisie dans la liste** (onglet Partenaires ; une fiche = un seul point, vérifié par le serveur ; « + Créer sa fiche » si elle n'existe pas), « Ouvert aux réservations »
 (décoché = exemple, paiement refusé). Bouton « Modifier » sur chaque carte ;
 « Retirer ce point » seulement pour un point créé dans l'admin et sans
 location à venir. Table `points_retrait`

@@ -1057,6 +1057,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .pf-sugg button{display:block;width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid #EEF1F6;padding:12px 14px;font:600 15px var(--body);cursor:pointer}
 .pf-sugg{border-radius:14px;overflow:hidden;margin:-8px 0 10px;box-shadow:0 10px 30px -14px rgba(11,30,68,.35)}
 .pf-ok{display:block;color:#12B76A;font-weight:800;margin:-6px 0 12px}
+.pf-lien{display:block;background:none;border:0;color:#1A5EDB;font:800 14px var(--body);margin:-6px 0 16px;padding:0;cursor:pointer}
 .pf-case{display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 10px}.pf-case input{width:22px;height:22px}.pf-case small{flex-basis:100%;padding-left:32px}
 .mc-vide{text-align:center;font:900 22px var(--body);color:#12B76A;padding:40px 0}
 @media(max-width:600px){.mc{padding-bottom:56px}.mc h2{font-size:30px}.mc-grille{gap:10px}.mc-tuile{min-height:150px;padding:18px 14px 14px}.mc-tuile b{font-size:54px}.mc-tuile span{font-size:16px;padding-right:34px}.mc-tuile svg{width:32px;height:32px;right:12px;bottom:12px}}
@@ -12240,7 +12241,11 @@ async function prTerrain(){
 // Sans toucher au code : table points_retrait. L'adresse est choisie dans la
 // Base Adresse Nationale (position et ville remplies d'office).
 let PR_FICHE = null;
-function prFiche(id){
+async function prFiche(id){
+  // La fiche partenaire du commerçant se choisit dans la liste (onglet Partenaires).
+  if(!PARTENAIRES_CACHE.length){
+    try{ const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}); const d = await r.json(); if(r.ok) PARTENAIRES_CACHE = d.partenaires || []; }catch(e){}
+  }
   const p = id ? (PR_DATA.points||[]).find(x => x.id === id) : null;
   const f = p ? (p.fiche||{}) : {};
   PR_FICHE = {id: p ? p.id : '', lat: f.lat ?? null, lng: f.lng ?? null, ville: p ? p.ville : '', stock: 4,
@@ -12263,13 +12268,23 @@ function prFiche(id){
     <div class="pf-h"><select id="pf-o1">${heures(PR_FICHE.ouverture[0])}</select><span>à</span><select id="pf-o2">${heures(PR_FICHE.ouverture[1])}</select></div>
     <p class="pf-t">Fermé le</p>
     <div class="pf-choix pf-jours">${J.map(([j,t]) => `<button type="button" class="${PR_FICHE.fermes.includes(j)?'on':''}" onclick="pfJour(${j},this)">${t}</button>`).join('')}</div>
-    <label>Code du commerçant <small>(onglet Partenaires, facultatif)</small><input id="pf-code" value="${escAttr(p && p.partenaire_code ? p.partenaire_code : '')}" autocomplete="off"></label>
+    <label>Fiche partenaire du commerçant<select id="pf-code">${pfPartenaires(p)}</select></label>
+    <button type="button" class="pf-lien" onclick="mcFermer();switchAdminTab('partenaires')">+ Créer sa fiche dans Partenaires</button>
     <label class="pf-case"><input type="checkbox" id="pf-ouvert" ${!p || !p.exemple ? 'checked' : ''}> Ouvert aux réservations <small>(décoché : visible, paiement refusé)</small></label>
     <button type="button" class="mc-nouv" id="pf-ok" onclick="pfEnregistrer()">${p ? 'Enregistrer' : 'Créer le point'}</button>
     ${p && f.cree_admin && !f.du_code ? `<button type="button" class="mc-mode" style="color:#D92D20" onclick="pfRetirer()">Retirer ce point</button>` : ''}
   </div>`;
   document.body.appendChild(el); document.body.style.overflow = 'hidden';
   setTimeout(() => { const n = document.getElementById('pf-nom'); if(n && !p) n.focus(); }, 50);
+}
+function pfPartenaires(p){
+  const actuel = p && p.partenaire_code ? String(p.partenaire_code).toLowerCase() : '';
+  const pris = {}; (PR_DATA.points||[]).forEach(x => { if(x.partenaire_code && (!p || x.id !== p.id)) pris[String(x.partenaire_code).toLowerCase()] = x.nom; });
+  const liste = [...PARTENAIRES_CACHE].filter(x => x.actif !== false || String(x.code).toLowerCase() === actuel).sort((a, b) => String(a.nom||'').localeCompare(String(b.nom||''), 'fr'));
+  const opts = liste.map(x => { const c = String(x.code||'').toLowerCase(), autre = pris[c];
+    return `<option value="${escAttr(c)}"${c === actuel ? ' selected' : ''}${autre ? ' disabled' : ''}>${escHtml(x.nom || c)}${x.telephone ? ' · ' + escHtml(x.telephone) : ''}${autre ? ' — déjà à ' + escHtml(autre) : ''}</option>`; }).join('');
+  const inconnu = actuel && !liste.some(x => String(x.code||'').toLowerCase() === actuel) ? `<option value="${escAttr(actuel)}" selected>${escHtml(actuel)} (fiche introuvable)</option>` : '';
+  return `<option value="">— Pas encore de fiche —</option>${inconnu}${opts}`;
 }
 function pfStock(n, b){ PR_FICHE.stock = n; document.querySelectorAll('#pf-stock button').forEach(x => x.classList.toggle('on', x === b)); }
 function pfJour(j, b){ const f = PR_FICHE.fermes, i = f.indexOf(j); if(i < 0) f.push(j); else f.splice(i, 1); b.classList.toggle('on', i < 0); }
