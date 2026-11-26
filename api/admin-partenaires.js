@@ -148,10 +148,23 @@ module.exports = async (req, res) => {
       if (body.bic != null)              patch.bic             = normalizeBic(body.bic);
       if (!Object.keys(patch).length) return res.status(400).json({ error: 'Rien à modifier' });
 
+      const { data: avantPart } = patch.code ? await supabase.from('partenaires').select('code').eq('id', id).maybeSingle() : { data: null };
+      const ancienCode = avantPart && avantPart.code ? String(avantPart.code).toLowerCase() : '';
       const { error } = await supabase.from('partenaires').update(patch).eq('id', id);
       if (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'Ce code ou ce PIN est déjà utilisé par un autre partenaire, réessaie' });
         throw error;
+      }
+      // Le code a changé : le point de retrait relié suit (sinon il perdrait
+      // son commerçant, sa commission et son code retour).
+      if (ancienCode && ancienCode !== patch.code) {
+        const PRet = require('./_lib/pointsRetrait');
+        await PRet.chargerPoints(supabase, { force: true });
+        for (const pt of PRet.POINTS_RETRAIT.filter((x) => x.partenaire_code && String(x.partenaire_code).toLowerCase() === ancienCode)) {
+          const { data: l } = await supabase.from('points_retrait').select('data, actif').eq('id', pt.id).maybeSingle();
+          await supabase.from('points_retrait').upsert({ id: pt.id, data: { ...((l && l.data) || {}), partenaire_code: patch.code }, actif: l ? l.actif : true, updated_at: new Date().toISOString() }, { onConflict: 'id' }).then(() => {}, () => {});
+        }
+        await PRet.chargerPoints(supabase, { force: true });
       }
       // Le code personnel a changé : renvoyer automatiquement le nouveau code
       // par email, comme à la création.
