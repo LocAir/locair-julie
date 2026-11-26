@@ -1027,6 +1027,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .mc-tuile.mc-zero{--mc:#9AA6BC}
 .mc-nouv{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:16px 0 0;border:0;border-radius:100px;background:#1A5EDB;color:#fff;font:900 20px var(--body);letter-spacing:-.02em;padding:20px;cursor:pointer;box-shadow:0 14px 30px -14px rgba(26,94,219,.7)}
 .mc-nouv:active{transform:scale(.98)}
+.mc-nouv.mc-qr{background:#0E1726;margin-top:10px;font-size:18px;padding:17px;box-shadow:none}
 .mc-mode{display:block;margin:14px auto 0;background:none;border:0;color:#4B5873;font:700 14px var(--body);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .mc-feuille{position:fixed;inset:0;z-index:900;background:#F4F7FC;overflow-y:auto;padding:18px 16px 40px;animation:mcIn .18s ease-out}
 @keyframes mcIn{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
@@ -1044,7 +1045,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .mc-btns .bl{background:#1A5EDB}
 .mc-btns .cl{background:#EFF4FD;color:#0D3FA0}
 .mc-vide{text-align:center;font:900 22px var(--body);color:#12B76A;padding:40px 0}
-@media(max-width:600px){.mc h2{font-size:30px}.mc-grille{gap:10px}.mc-tuile{min-height:150px;padding:18px 14px 14px}.mc-tuile b{font-size:54px}.mc-tuile span{font-size:16px;padding-right:34px}.mc-tuile svg{width:32px;height:32px;right:12px;bottom:12px}}
+@media(max-width:600px){.mc{padding-bottom:56px}.mc h2{font-size:30px}.mc-grille{gap:10px}.mc-tuile{min-height:150px;padding:18px 14px 14px}.mc-tuile b{font-size:54px}.mc-tuile span{font-size:16px;padding-right:34px}.mc-tuile svg{width:32px;height:32px;right:12px;bottom:12px}}
 .ck{margin:0 0 20px}
 .ck-tete{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .ck-tete h2{font:900 30px var(--body);letter-spacing:-.04em;margin:0}
@@ -3019,12 +3020,12 @@ async function ckEnvoiRapide(btn){
 // N'importe qui dans l'équipe sait quoi faire : 4 cartes, un chiffre géant,
 // un clic = la liste, un bouton = l'action. Le mode complet reste à un clic.
 let MC = {livrer:[], recup:[], pb:[]};
+const MC_TITRES = {};
 function modeSimple(){ try{ return localStorage.getItem('a_mode') !== 'complet'; }catch(_){ return true; } }
 function changerMode(simple){
   try{ localStorage.setItem('a_mode', simple ? 'simple' : 'complet'); }catch(_){}
-  const a = document.getElementById('acc-simple'), b = document.getElementById('acc-complet');
-  if(a) a.classList.toggle('hidden', !simple);
-  if(b) b.classList.toggle('hidden', simple);
+  document.querySelectorAll('[data-mode="simple"]').forEach(e => e.classList.toggle('hidden', !simple));
+  document.querySelectorAll('[data-mode="complet"]').forEach(e => e.classList.toggle('hidden', simple));
   window.scrollTo(0, 0);
 }
 const MC_IC = {
@@ -3033,6 +3034,30 @@ const MC_IC = {
   pb:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>',
   points:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
 };
+function dateFrCourte(iso){ const d = new Date(iso + 'T12:00:00'); return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}); }
+// Missions en mode simple : 4 cartes, un clic = la liste.
+function missionsSimpleHtml(liste){
+  const auj = todayParisStr();
+  const dem = new Date(Date.parse(auj + 'T12:00:00Z') + 86400000).toISOString().slice(0, 10);
+  const actives = (liste||[]).filter(m => !m.masquee && ['a_faire','acceptee','en_route','arrivee','probleme'].includes(m.statut));
+  MC.m_auj = actives.filter(m => m.date_prevue === auj);
+  MC.m_retard = actives.filter(m => m.date_prevue < auj);
+  MC.m_sans = actives.filter(m => m.date_prevue >= auj && !m.transporteur);
+  MC.m_demain = actives.filter(m => m.date_prevue === dem);
+  Object.assign(MC_TITRES, {m_auj:['Aujourd’hui', '#1A5EDB'], m_retard:['En retard', '#D92D20'], m_sans:['Sans livreur', '#0E1726'], m_demain:['Demain', '#12B76A']});
+  const tuile = (cls, k, label, ic, urgent) => { const n = MC[k].length; return `<button type="button" class="mc-tuile ${n ? cls : cls + ' mc-zero'}" onclick="mcOuvrir('${k}')"><b>${n}</b><span>${label}${urgent && n ? '<small>URGENT</small>' : ''}</span>${MC_IC[ic]}</button>`; };
+  return `<div class="mc">
+    <h2>Missions</h2>
+    <div class="mc-grille">
+      ${tuile('mc-bleu', 'm_auj', 'Aujourd’hui', 'livrer')}
+      ${tuile('mc-rouge', 'm_retard', 'En retard', 'pb', true)}
+      ${tuile('mc-encre', 'm_sans', 'Sans livreur', 'recup')}
+      ${tuile('mc-vert', 'm_demain', 'Demain', 'points')}
+    </div>
+    <button type="button" class="mc-nouv" onclick="openCreateMissionModal()"><span style="font-size:26px;line-height:0">+</span> Créer une mission</button>
+    <button type="button" class="mc-mode" onclick="changerMode(false)">Tout voir (mode complet)</button>
+  </div>`;
+}
 function mcHeure(c){ const m = String(c||'').match(/(\d{1,2})\s*h\s*(\d{0,2})/); return m ? Number(m[1]) * 60 + Number(m[2]||0) : 9999; }
 function mcVille(adr){ const m = String(adr||'').match(/\b\d{5}\s+(.+)$/); return m ? m[1].trim() : ''; }
 function simpleHtml(al, pr, livraisons){
@@ -3065,13 +3090,14 @@ function simpleHtml(al, pr, livraisons){
       ${tuile('mc-vert', nPts, 'Points de retrait', 'points', "switchAdminTab('pointsretrait')")}
     </div>
     <button type="button" class="mc-nouv" onclick="goToNouvelleReservation()"><span style="font-size:26px;line-height:0">+</span> Nouvelle réservation</button>
+    <button type="button" class="mc-nouv mc-qr" onclick="location.href='/prospection?visite=1'"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h3M21 18v3"/></svg> QR code · envoyer la présentation</button>
     <button type="button" class="mc-mode" onclick="changerMode(false)">Tout voir (mode complet)</button>
   </div>`;
 }
 function mcFermer(){ const f = document.getElementById('mc-feuille'); if(f) f.remove(); document.body.style.overflow = ''; }
 function mcOuvrir(quoi){
   mcFermer();
-  const titres = {livrer:['À livrer', '#1A5EDB'], recup:['À récupérer', '#0E1726'], pb:['À régler', '#D92D20']};
+  const titres = Object.assign({livrer:['À livrer', '#1A5EDB'], recup:['À récupérer', '#0E1726'], pb:['À régler', '#D92D20']}, MC_TITRES);
   const [titre, coul] = titres[quoi];
   const liste = MC[quoi] || [];
   let corps;
@@ -3079,7 +3105,7 @@ function mcOuvrir(quoi){
     corps = liste.map(x => `<div class="mc-carte"><p class="t" style="font-size:20px">${x.t}</p><p class="s">${x.s}</p>
       <div class="mc-btns">${x.go ? `<button type="button" class="bl" onclick="mcFermer();${x.go}">${x.l}</button>` : (x.html||'').split('<button type="button"').join('<button type="button" class="bl"')}</div></div>`).join('');
   }else{
-    const tri = liste.slice().sort((a, b) => (a.statut === 'fait') - (b.statut === 'fait') || mcHeure(a.creneau) - mcHeure(b.creneau));
+    const tri = liste.slice().sort((a, b) => (a.statut === 'fait') - (b.statut === 'fait') || String(a.date_prevue||'').localeCompare(String(b.date_prevue||'')) || mcHeure(a.creneau) - mcHeure(b.creneau));
     corps = tri.map(m => {
       const r = m.reservation || {}, autre = m.type === 'autre';
       const nom = autre ? (m.titre || 'Mission') : (r.prenom || r.nom || 'Client');
@@ -3089,9 +3115,9 @@ function mcOuvrir(quoi){
       const fait = m.statut === 'fait';
       const qui = m.transporteur ? m.transporteur.nom : 'Personne n’y va encore';
       return `<div class="mc-carte${fait ? ' ok' : ''}">
-        <p class="h">🕘 ${escHtml(m.creneau || 'Aujourd’hui')}${fait ? ' · ✓ Fait' : ''}</p>
+        <p class="h">🕘 ${m.date_prevue && m.date_prevue !== todayParisStr() ? escHtml(dateFrCourte(m.date_prevue)) + ' · ' : ''}${escHtml(m.creneau || 'Aujourd’hui')}${fait ? ' · ✓ Fait' : ''}</p>
         <p class="t">${escHtml(nom)}${ville ? ' <span style="color:#1A5EDB">·</span> ' + escHtml(ville) : ''}</p>
-        <p class="s">${m.type === 'changement' ? 'Remplacement · ' : ''}${escHtml(qui)}</p>
+        <p class="s">${({livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement', autre:'Mission libre'})[m.type] || ''} · ${escHtml(qui)}</p>
         ${fait ? '' : `<div class="mc-btns">
           ${tel ? `<a href="tel:${escHtml(tel)}">📞 Appeler</a>` : ''}
           ${adr ? `<a class="bl" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adr)}">➤ Y aller</a>` : ''}
@@ -3145,8 +3171,8 @@ async function loadDashboard(periode, silent){
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     const simple = modeSimple();
     zone.innerHTML = `
-      <div id="acc-simple" class="${simple ? '' : 'hidden'}">${simpleHtml(alertes, prData, ld.livraisons||[])}</div>
-      <div id="acc-complet" class="${simple ? 'hidden' : ''}">
+      <div id="acc-simple" data-mode="simple" class="${simple ? '' : 'hidden'}">${simpleHtml(alertes, prData, ld.livraisons||[])}</div>
+      <div id="acc-complet" data-mode="complet" class="${simple ? 'hidden' : ''}">
       <button type="button" class="mc-mode" style="margin:0 0 12px auto;text-align:right" onclick="changerMode(true)">← Mode simple</button>
       ${cockpitHtml(d, alertes, prData)}
       <div style="display:flex;gap:10px;margin-bottom:16px;align-items:stretch">
@@ -7001,7 +7027,11 @@ function renderLivraisonsToolbar(){
       ${avgLiv!=null?`<div class="liv-stat-pill"><div class="n">${avgLiv}<small> min</small></div><div class="l">Tps moy. liv.</div></div>`:''}
       ${avgRec!=null?`<div class="liv-stat-pill"><div class="n">${avgRec}<small> min</small></div><div class="l">Tps moy. récup.</div></div>`:''}
     </div>` : '';
+  const simple = modeSimple();
   zone.innerHTML = `
+    <div data-mode="simple" class="${simple ? '' : 'hidden'}">${missionsSimpleHtml(LIVRAISONS_CACHE)}</div>
+    <div data-mode="complet" class="${simple ? 'hidden' : ''}">
+    <button type="button" class="mc-mode" style="margin:0 0 12px auto" onclick="changerMode(true)">← Mode simple</button>
     ${statsHtml}
     <div class="liv-toolbar-top">
       <button class="btn btn-blue" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px" onclick="openCreateMissionModal()">${IC_PLUS} Créer une mission</button>
@@ -7033,6 +7063,7 @@ function renderLivraisonsToolbar(){
     </div>
     <div id="liv-recup-cal-view" class="${LIVRAISONS_VIEW!=='recup_calendrier'?'hidden':''}">
       <div id="liv-recup-cal-content"></div>
+    </div>
     </div>`;
   if(LIVRAISONS_VIEW==='liste') renderLivraisons();
   else if(LIVRAISONS_VIEW==='affectation') renderAffectBoard();
