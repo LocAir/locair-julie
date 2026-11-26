@@ -782,6 +782,14 @@ const handler = async (req, res) => {
             : meta.lang === 'en' ? ` Your order number: ${numComptoir(confirmedResa.ref)}.`
             : ` Votre numéro de commande : ${numComptoir(confirmedResa.ref)}.`;
           if ((confirmedResa.quantite || 1) > 1) smsConfirmationContent += meta.lang === 'en' ? ` (${confirmedResa.quantite} units)` : meta.lang === 'es' ? ` (${confirmedResa.quantite} aparatos)` : ` (${confirmedResa.quantite} climatiseurs)`;
+          // Pas de réseau dans la boutique : l'écran de retrait s'ouvre avant d'entrer.
+          const idPoint = confirmedResa.point_retrait_id || meta.point_id || '';
+          if (idPoint) {
+            const lienRetrait = `locair.fr/retrait?p=${encodeURIComponent(idPoint)}`;
+            smsConfirmationContent += meta.lang === 'en' ? ` No signal in the shop? Open ${lienRetrait} before going in.`
+              : meta.lang === 'es' ? ` ¿Sin cobertura en la tienda? Abre ${lienRetrait} antes de entrar.`
+              : ` Pas de réseau dans la boutique ? Ouvrez ${lienRetrait} avant d'entrer.`;
+          }
         } else if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
@@ -889,7 +897,7 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
 ${photo ? `<p style="margin:12px 0"><img src="${esc(photo)}" width="520" alt="${esc(pt.nom)}" style="width:100%;max-width:520px;border-radius:12px"></p>` : ''}
 <p style="margin:14px 0"><a href="${esc(itineraire)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
-<p style="margin:18px 0 14px;padding:14px 16px;background:#EFF4FD;border-radius:12px;font-size:16px"><b>${T('Retrait et retour : en arrivant, scannez le QR code du comptoir.', 'Pick-up and return: when you arrive, scan the QR code at the counter.', 'Recogida y devolución: al llegar, escanea el código QR del mostrador.')}</b><br>${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:22px;letter-spacing:.12em">${numComptoir(resa.ref)}</b></p>
+<p style="margin:18px 0 14px;padding:14px 16px;background:#EFF4FD;border-radius:12px;font-size:16px"><b>${T('Retrait et retour : en arrivant, scannez le QR code du comptoir.', 'Pick-up and return: when you arrive, scan the QR code at the counter.', 'Recogida y devolución: al llegar, escanea el código QR del mostrador.')}</b><br>${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:22px;letter-spacing:.12em">${numComptoir(resa.ref)}</b>${pt ? `<br><span style="font-size:14px">${T('Pas de réseau dans la boutique ?', 'No signal in the shop?', '¿Sin cobertura en la tienda?')} <a href="https://www.locair.fr/retrait?p=${encodeURIComponent(pt.id)}" style="color:#1A5EDB;font-weight:bold">${T('Ouvrez votre écran de retrait', 'Open your pick-up screen', 'Abre tu pantalla de recogida')}</a> ${T('juste avant d’entrer.', 'just before going in.', 'justo antes de entrar.')}</span>` : ''}</p>
 <p>${T('Pensez à venir en voiture pour repartir avec l’appareil.', 'Come by car to take the unit home.', 'Ven en coche para llevarte el aparato.')}</p>
 <p>${T('Un souci avec l’appareil pendant la location ? Déclarez-le en 1 minute :', 'A problem with the unit during the rental? Report it in 1 minute:', '¿Un problema con el aparato durante el alquiler? Decláralo en 1 minuto:')} <a href="https://www.locair.fr/panne?ref=${encodeURIComponent(resa.ref || '')}">locair.fr/panne</a>.</p>
 <p>${T('Une question ? Écrivez à Julie, notre assistante, sur', 'Any question? Chat with Julie, our assistant, on', '¿Alguna pregunta? Escribe a Julie, nuestra asistente, en')} <a href="https://www.locair.fr/click-and-collect">locair.fr/click-and-collect</a>.</p>

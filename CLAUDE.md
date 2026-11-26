@@ -338,6 +338,13 @@ complet, pour un retrait demain — jamais le nombre exact) ; « Bonjour
 au premier geste (page plus rapide). `/retrait` s'ouvre sans réseau
 (`retrait-sw.js`). Apple Pay n'apparaît que si le domaine locair.fr est
 validé dans Stripe.
+**Client sans réseau au comptoir (26/11/2026)** : sans réseau, pas d'écran
+vert (la vérification passe par le serveur, voulu contre les faux écrans).
+Deux parades : 1) affiche du comptoir (`affiche-retrait?p=<id>`) : champs
+« Wi-Fi invité » (avec l'accord du commerçant) → 2e petit QR code qui
+connecte le téléphone au Wi-Fi d'un geste (rien n'est enregistré sur le
+site) ; 2) SMS + e-mail de confirmation et e-mail de la veille : « Pas de
+réseau dans la boutique ? Ouvrez locair.fr/retrait?p=<id> avant d'entrer ».
 
 **Convention de partenariat (V11, reçue le 24/11/2026) = référence.**
 Contact des commerçants : **partenaires.locair@outlook.com** (pages et emails
