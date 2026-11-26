@@ -12,6 +12,7 @@ const { notifyTransporteur } = require('./_lib/transporteurNotif');
 // ascenseur, parking impossible...) — jamais un blocage, juste une info
 // consultée par l'admin et le livreur.
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
   // RBAC (audit 2026-08-06 C2) : checkAdminToken ne vérifie que la session,

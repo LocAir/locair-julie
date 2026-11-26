@@ -24,6 +24,7 @@ const { codeRemise } = require('./_lib/clickCollect');
 const { agir, estLeBonCommercant } = require('./_lib/remiseCC');
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
   const partenaireId = await verifyPartenaireToken(req, supabase);

@@ -80,6 +80,7 @@ function publicFiche(f) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   const supabase = getSupabase();
 
   // ── Commerçant : télécharger sa convention (lien /api/prospection?s=…&pdf=1)

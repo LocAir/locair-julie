@@ -386,6 +386,7 @@ async function handleDisputeCreated(supabase, dispute) {
 
 // ── Webhook principal ─────────────────────────────────────────────────────────
 const handler = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).end();
 
   // Lire le corps brut (nécessaire pour la vérification de signature Stripe)

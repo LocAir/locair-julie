@@ -8,6 +8,7 @@ const { getPointRetrait, POINTS_RETRAIT } = require('./_lib/pointsRetrait');
 const { codeRetour } = require('./_lib/clickCollect');
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
   const a = await checkAdminRole(req, supabase);

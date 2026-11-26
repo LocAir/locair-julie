@@ -26,6 +26,7 @@ function verifyCronAuth(req) {
 // L'avis à l'installation (post_installation) reste, à un moment bien
 // distinct du séjour.
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
 

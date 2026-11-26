@@ -12,8 +12,10 @@ const { POINTS_RETRAIT } = require('./pointsRetrait');
 const DUREE_CACHE_MS = 60 * 1000;
 let lu = 0;
 let table = null; // true : table lue ; false : absente ; null : jamais lue
+let dernier = null; // dernière lecture, réappliquée si la liste des points change
 
 function appliquer(map) {
+  dernier = map;
   for (const p of POINTS_RETRAIT) {
     const v = map[p.id];
     p.stock = Number.isInteger(v) && v >= 0 ? v : p.stock_code;
@@ -37,4 +39,8 @@ async function chargerStocks(supabase, { force } = {}) {
   return table;
 }
 
-module.exports = { chargerStocks, appliquerStocks: appliquer };
+// La liste des points vient d'être relue (_lib/pointsRetrait.js) : on remet
+// les stocks déjà connus, sans attendre la prochaine lecture.
+function reappliquer() { if (dernier) appliquer(dernier); }
+
+module.exports = { chargerStocks, appliquerStocks: appliquer, reappliquerStocks: reappliquer };

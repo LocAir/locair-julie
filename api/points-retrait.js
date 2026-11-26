@@ -3,7 +3,8 @@
 const { POINTS_RETRAIT, getCellule } = require('./_lib/pointsRetrait');
 const { REGLES } = require('./_lib/tarifDynamique');
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   // 5 min dans le cache de Vercel : la page reste rapide, et une liste
   // modifiée apparaît vite.

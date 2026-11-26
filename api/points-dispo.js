@@ -27,6 +27,7 @@ function fenetre(p, debut, fin) {
 function plus(iso, n) { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   // 1 min dans le cache de Vercel : à jour, sans relire la base à chaque visite.
   res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');

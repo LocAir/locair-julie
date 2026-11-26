@@ -96,6 +96,7 @@ async function closeMissionIncident(supabase, liv) {
 }
 
 module.exports = async (req, res) => {
+  await require('./_lib/pointsRetrait').chargerPoints(); // points créés dans l'admin
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const supabase = getSupabase();

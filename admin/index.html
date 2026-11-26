@@ -1044,6 +1044,20 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .mc-btns a,.mc-btns button{flex:1;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:100px;padding:13px 10px;font:900 16px var(--body);text-decoration:none;cursor:pointer;background:#0E1726;color:#fff}
 .mc-btns .bl{background:#1A5EDB}
 .mc-btns .cl{background:#EFF4FD;color:#0D3FA0}
+.pf label{display:block;font:800 14px var(--body);color:#0E1726;margin:0 0 14px;text-transform:none;letter-spacing:0}
+.pf label small{font-weight:600;color:#4B5873;text-transform:none;letter-spacing:0;font-size:13px}
+.pf input:not([type=checkbox]),.pf select{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1.5px solid #DDE6F5;border-radius:14px;padding:14px;font:600 17px var(--body);background:#fff;color:#0E1726}
+.pf-t{font:800 14px var(--body);margin:0 0 8px}
+.pf-choix{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
+.pf-jours{flex-wrap:nowrap}.pf-choix button{flex:1 1 0;min-width:0;border:2px solid #DDE6F5;background:#fff;border-radius:14px;padding:14px 0;font:900 20px var(--body);color:#0E1726;cursor:pointer}
+.pf-choix button.on{border-color:#1A5EDB;background:#1A5EDB;color:#fff}
+.pf-jours button.on{border-color:#D92D20;background:#D92D20}
+.pf-choix input{flex:1.4;min-width:80px;margin:0!important}
+.pf-h{display:flex;align-items:center;gap:10px;margin:0 0 16px}.pf-h select{margin:0!important}
+.pf-sugg button{display:block;width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid #EEF1F6;padding:12px 14px;font:600 15px var(--body);cursor:pointer}
+.pf-sugg{border-radius:14px;overflow:hidden;margin:-8px 0 10px;box-shadow:0 10px 30px -14px rgba(11,30,68,.35)}
+.pf-ok{display:block;color:#12B76A;font-weight:800;margin:-6px 0 12px}
+.pf-case{display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 10px}.pf-case input{width:22px;height:22px}.pf-case small{flex-basis:100%;padding-left:32px}
 .mc-vide{text-align:center;font:900 22px var(--body);color:#12B76A;padding:40px 0}
 @media(max-width:600px){.mc{padding-bottom:56px}.mc h2{font-size:30px}.mc-grille{gap:10px}.mc-tuile{min-height:150px;padding:18px 14px 14px}.mc-tuile b{font-size:54px}.mc-tuile span{font-size:16px;padding-right:34px}.mc-tuile svg{width:32px;height:32px;right:12px;bottom:12px}}
 .ck{margin:0 0 20px}
@@ -11903,6 +11917,7 @@ function prCarte(p){
       <a href="/retrait?p=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Comptoir</a>
       ${!p.exemple && PR_DATA.passages_table ? `<button type="button" onclick="prPassage('${escHtml(p.id)}', this)">Passage fait</button>` : ''}
       ${!p.exemple && PR_DATA.stock_table ? `<button type="button" onclick="prStock(${escAttr(JSON.stringify(p.id))}, ${p.stock}, ${escAttr(JSON.stringify(p.nom))})">Stock</button>` : ''}
+      ${!p.test && ROLE === 'administrateur' ? `<button type="button" onclick="prFiche(${escAttr(JSON.stringify(p.id))})">Modifier</button>` : ''}
     </div>
   </div>`;
 }
@@ -12113,6 +12128,7 @@ function renderPointsRetrait(){
     <div class="pr-tete" style="margin:0 0 12px"><p class="section-title" style="margin:0">Les points</p>
       <div class="pr-filtres">${[['tous','Tous'],['ouverts','Ouverts'],['exemples','Exemples'],['test','Test']].map(([k,t]) => `<button type="button" class="${PR_FILTRE===k?'on':''}" onclick="setPrFiltre('${k}')">${t}</button>`).join('')}</div>
     </div>
+    ${ROLE === 'administrateur' ? `<button type="button" class="mc-nouv" style="margin:0 0 16px" onclick="prFiche()"><span style="font-size:26px;line-height:0">+</span> Nouveau point de retrait</button>` : ''}
     ${liste.length ? `<div class="pr-grille">${liste.map(prCarte).join('')}</div>` : '<p class="empty">Aucun point ici.</p>'}
     ${d.passages_table===false?'<p class="empty" style="padding:12px 16px;margin-bottom:12px">Passages de l’agent : table à créer dans Supabase (supabase/migration_2026-11-24_passages_agent.sql).</p>':''}
     ${(PR_DATA.stock_historique||[]).length ? `<p class="section-title">Changements de stock</p><div class="pr-col" style="margin-bottom:8px"><ul>${PR_DATA.stock_historique.map(h => `<li><span><b>${escHtml(h.point)} · ${h.ancien ?? '—'} → ${h.nouveau}</b><small>${escHtml(h.raison||'')} · ${h.accord_gerant?'gérant d’accord':''} · ${escHtml(h.par||'')} · ${new Date(h.created_at).toLocaleDateString('fr-FR')}</small></span></li>`).join('')}</ul></div>` : ''}
@@ -12220,6 +12236,89 @@ async function prTerrain(){
     </details>`;
 }
 // Stock d'un point : modifiable avec l'accord du gérant (trace + e-mail au commerçant).
+// ── Créer / modifier un point de retrait (26/11/2026) ─────────────────────
+// Sans toucher au code : table points_retrait. L'adresse est choisie dans la
+// Base Adresse Nationale (position et ville remplies d'office).
+let PR_FICHE = null;
+function prFiche(id){
+  const p = id ? (PR_DATA.points||[]).find(x => x.id === id) : null;
+  const f = p ? (p.fiche||{}) : {};
+  PR_FICHE = {id: p ? p.id : '', lat: f.lat ?? null, lng: f.lng ?? null, ville: p ? p.ville : '', stock: 4,
+    fermes: p ? (f.fermes||[]) : [0], ouverture: p ? (f.ouverture||[9,19]) : [9,19]};
+  mcFermer();
+  const heures = (sel) => Array.from({length:25}, (_, h) => `<option value="${h}"${h===sel?' selected':''}>${h}h</option>`).join('');
+  const J = [[1,'L'],[2,'M'],[3,'M'],[4,'J'],[5,'V'],[6,'S'],[0,'D']];
+  const el = document.createElement('div');
+  el.id = 'mc-feuille'; el.className = 'mc-feuille';
+  el.innerHTML = `<div class="mc-feuille-in pf">
+    <button type="button" class="mc-retour" onclick="mcFermer()">← Retour</button>
+    <h3>${p ? 'Modifier le point' : 'Nouveau point'}</h3>
+    <label>Nom du point<input id="pf-nom" value="${escAttr(p ? p.nom : '')}" placeholder="Ex. Tabac du Port" autocomplete="off"></label>
+    <label>Adresse<input id="pf-adr" value="${escAttr(p && !/^Adresse à venir/.test(p.adresse) ? p.adresse : '')}" placeholder="Numéro, rue, ville" autocomplete="off" oninput="pfAdresse(this.value)"></label>
+    <div id="pf-sugg" class="pf-sugg"></div>
+    <small id="pf-pos" class="pf-ok">${p && f.lat ? '📍 ' + escHtml(p.ville) : ''}</small>
+    <label>Téléphone de la boutique<input id="pf-tel" type="tel" inputmode="tel" value="${escAttr(f.tel||'')}" placeholder="04 93 00 00 00"></label>
+    ${p ? '' : `<p class="pf-t">Climatiseurs</p><div class="pf-choix" id="pf-stock">${[3,4,5].map(n => `<button type="button" class="${n===4?'on':''}" onclick="pfStock(${n},this)">${n}</button>`).join('')}<input type="number" min="1" max="20" placeholder="Autre" oninput="pfStock(Number(this.value))"></div>`}
+    <p class="pf-t">Ouvert de</p>
+    <div class="pf-h"><select id="pf-o1">${heures(PR_FICHE.ouverture[0])}</select><span>à</span><select id="pf-o2">${heures(PR_FICHE.ouverture[1])}</select></div>
+    <p class="pf-t">Fermé le</p>
+    <div class="pf-choix pf-jours">${J.map(([j,t]) => `<button type="button" class="${PR_FICHE.fermes.includes(j)?'on':''}" onclick="pfJour(${j},this)">${t}</button>`).join('')}</div>
+    <label>Code du commerçant <small>(onglet Partenaires, facultatif)</small><input id="pf-code" value="${escAttr(p && p.partenaire_code ? p.partenaire_code : '')}" autocomplete="off"></label>
+    <label class="pf-case"><input type="checkbox" id="pf-ouvert" ${!p || !p.exemple ? 'checked' : ''}> Ouvert aux réservations <small>(décoché : visible, paiement refusé)</small></label>
+    <button type="button" class="mc-nouv" id="pf-ok" onclick="pfEnregistrer()">${p ? 'Enregistrer' : 'Créer le point'}</button>
+    ${p && f.cree_admin && !f.du_code ? `<button type="button" class="mc-mode" style="color:#D92D20" onclick="pfRetirer()">Retirer ce point</button>` : ''}
+  </div>`;
+  document.body.appendChild(el); document.body.style.overflow = 'hidden';
+  setTimeout(() => { const n = document.getElementById('pf-nom'); if(n && !p) n.focus(); }, 50);
+}
+function pfStock(n, b){ PR_FICHE.stock = n; document.querySelectorAll('#pf-stock button').forEach(x => x.classList.toggle('on', x === b)); }
+function pfJour(j, b){ const f = PR_FICHE.fermes, i = f.indexOf(j); if(i < 0) f.push(j); else f.splice(i, 1); b.classList.toggle('on', i < 0); }
+let _pfT = null;
+function pfAdresse(q){
+  PR_FICHE.lat = PR_FICHE.lng = null; document.getElementById('pf-pos').textContent = '';
+  clearTimeout(_pfT);
+  const box = document.getElementById('pf-sugg');
+  if(q.trim().length < 4){ box.innerHTML = ''; return; }
+  _pfT = setTimeout(() => {
+    fetch('https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&lat=43.65&lon=7.15&q=' + encodeURIComponent(q))
+      .then(r => r.json()).then(j => {
+        box.innerHTML = (j.features||[]).map((x, i) => `<button type="button" data-i="${i}">${escHtml(x.properties.label)}</button>`).join('');
+        box.querySelectorAll('button').forEach(b => b.onclick = () => {
+          const x = j.features[Number(b.dataset.i)];
+          document.getElementById('pf-adr').value = x.properties.label;
+          PR_FICHE.lat = x.geometry.coordinates[1]; PR_FICHE.lng = x.geometry.coordinates[0]; PR_FICHE.ville = x.properties.city;
+          document.getElementById('pf-pos').textContent = '📍 ' + x.properties.city;
+          box.innerHTML = '';
+        });
+      }).catch(() => {});
+  }, 250);
+}
+async function pfEnregistrer(){
+  const v = (id) => document.getElementById(id).value.trim();
+  if(PR_FICHE.lat == null){ showToast('Choisis l’adresse dans la liste.', 'error'); document.getElementById('pf-adr').focus(); return; }
+  const bt = document.getElementById('pf-ok'); bt.disabled = true;
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'point_enregistrer',
+      id: PR_FICHE.id, nom: v('pf-nom'), adresse: v('pf-adr'), ville: PR_FICHE.ville, lat: PR_FICHE.lat, lng: PR_FICHE.lng, tel: v('pf-tel'),
+      stock: PR_FICHE.stock, ouverture: [Number(v('pf-o1')), Number(v('pf-o2'))], fermes: PR_FICHE.fermes,
+      partenaire_code: v('pf-code'), exemple: !document.getElementById('pf-ouvert').checked})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || 'Erreur');
+    mcFermer();
+    showToast(j.nouveau ? 'Point créé ✓ Pense à imprimer l’affiche et le flyer.' : 'Point enregistré ✓', 'success');
+    PR_ONGLET = 'points'; PR_FILTRE = 'tous';
+    loadPointsRetrait(true);
+  }catch(e){ showToast(e.message, 'error'); bt.disabled = false; }
+}
+async function pfRetirer(){
+  if(!confirm('Retirer ce point ? Il disparaît du site.')) return;
+  try{
+    const r = await fetch(API('admin-points-retrait'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'point_retirer', id: PR_FICHE.id})});
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(j.error || 'Erreur');
+    mcFermer(); showToast('Point retiré', 'success'); loadPointsRetrait(true);
+  }catch(e){ showToast(e.message, 'error'); }
+}
 async function prStock(id, actuel, nom){
   const v = prompt(`Stock de ${nom} : combien de climatiseurs ? (actuellement ${actuel})`, String(actuel));
   if(v === null) return;
