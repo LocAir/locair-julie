@@ -8,6 +8,7 @@
 <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
+<script src="/adstay/vendor/qrcode-generator-1.4.4.js"></script>
 <!-- Affiches à imprimer et coller au comptoir de chaque point de retrait.
      Une affiche (format A6) par point, générée depuis /api/points-retrait :
      un nouveau point a automatiquement son affiche. ?p=<id> = un seul point.
@@ -29,6 +30,16 @@ body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;colo
 .en{font-size:4.6mm;color:var(--ink-2);margin:0}
 .qr{width:64mm;height:64mm;margin:auto 0;border:2.5mm solid var(--vif);border-radius:4mm;padding:2mm;background:#fff}
 .qr img{width:100%;height:100%;display:block}
+.wifi-form{max-width:900px;margin:0 auto 18px;padding:14px 16px;background:#fff;border-radius:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wifi-form b{flex:1 1 100%;font-size:15px}
+.wifi-form input{flex:1 1 180px;border:1.5px solid #DDE6F5;border-radius:12px;padding:11px 12px;font:500 15px 'DM Sans',sans-serif;background:#F4F7FC}
+.wifi-form small{flex:1 1 100%;color:var(--ink-2);font-size:13px}
+/* 2e QR : se connecter au Wi-Fi invité de la boutique (sans réseau, le retrait ne marche pas) */
+.affiche.avec-wifi .qr{width:52mm;height:52mm;margin:auto 0 4mm}
+.wifi{display:flex;align-items:center;gap:3.5mm;text-align:left;margin:0 0 auto;border-top:.4mm dashed #C9D5EA;padding-top:4mm;align-self:stretch}
+.wifi img{width:21mm;height:21mm;flex:none;image-rendering:pixelated}
+.wifi p{margin:0;font-size:4.2mm;font-weight:900;letter-spacing:-.02em;line-height:1.15}
+.wifi span{display:block;font-size:3.2mm;font-weight:500;color:var(--ink-2);letter-spacing:0;margin-top:.8mm}
 .point{margin:0;font-size:3.2mm;color:var(--ink-2)} /* repère pour l'impression, pas imprimé */
 .vide{color:var(--ink-2);padding:40px;text-align:center}
 @media print{
@@ -37,6 +48,7 @@ body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;colo
   .feuilles{display:block;padding:0}
   .affiche{box-shadow:none;border-radius:0;margin:0}
   .point{visibility:hidden}
+  .wifi-form{display:none}
 }
 </style>
 </head>
@@ -45,28 +57,48 @@ body{margin:0;background:#E9EEF7;font-family:'DM Sans',system-ui,sans-serif;colo
   <div><h1>Affiches comptoir</h1><p>Une affiche par point de retrait, format A6 (carte postale). À coller près de la caisse.</p></div>
   <button type="button" onclick="window.print()">Imprimer</button>
 </div>
+<div class="wifi-form" id="wifi-form" style="display:none">
+  <b>Wi-Fi invité de la boutique (facultatif)</b>
+  <input id="wifi-nom" placeholder="Nom du Wi-Fi" autocomplete="off" oninput="dessiner()">
+  <input id="wifi-mdp" placeholder="Mot de passe (vide si ouvert)" autocomplete="off" oninput="dessiner()">
+  <small>Avec l’accord du commerçant. Un petit QR code s’ajoute : le client sans réseau se connecte d’un geste. Rien n’est enregistré sur le site.</small>
+</div>
 <div class="feuilles" id="feuilles"><p class="vide">Chargement…</p></div>
 <script>
-(function(){
-  var seul = new URLSearchParams(location.search).get('p');
-  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
-  fetch('/api/points-retrait').then(function(r){ return r.json(); }).then(function(j){
-    var pts = ((j && j.points) || []).filter(function(p){ return !seul || p.id === seul; });
-    var f = document.getElementById('feuilles');
-    if(!pts.length){ f.innerHTML = '<p class="vide">Aucun point de retrait.</p>'; return; }
-    f.innerHTML = pts.map(function(p){
-      var url = 'https://www.locair.fr/retrait?p=' + encodeURIComponent(p.id);
-      var qr = 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=0&ecc=M&data=' + encodeURIComponent(url);
-      return '<section class="affiche">' +
-        '<div class="bandeau"><div class="logo">Loc<em>’Air</em></div></div>' +
-        '<p class="titre">Retrait et retour</p>' +
-        '<p class="en">Pick-up and return</p>' +
-        '<div class="qr"><img src="' + qr + '" alt="QR code"></div>' +
-        '<p class="point">' + esc(p.nom) + (p.exemple ? ' (exemple)' : '') + '</p>' +
-      '</section>';
-    }).join('');
-  }).catch(function(){ document.getElementById('feuilles').innerHTML = '<p class="vide">Impossible de charger les points. Rechargez la page.</p>'; });
-})();
+var POINTS = [];
+var seul = new URLSearchParams(location.search).get('p');
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+// Format standard lu par l'appareil photo de l'iPhone et d'Android.
+function wifiTexte(nom, mdp){
+  var e = function(t){ return String(t).replace(/([\\;,:"])/g, '\\$1'); };
+  return 'WIFI:T:' + (mdp ? 'WPA' : 'nopass') + ';S:' + e(nom) + ';' + (mdp ? 'P:' + e(mdp) + ';' : '') + ';';
+}
+function qrLocal(texte){ var q = qrcode(0, 'M'); q.addData(texte); q.make(); return q.createDataURL(8, 0); }
+function dessiner(){
+  var f = document.getElementById('feuilles');
+  if(!POINTS.length){ f.innerHTML = '<p class="vide">Aucun point de retrait.</p>'; return; }
+  var nom = seul ? document.getElementById('wifi-nom').value.trim() : '';
+  var mdp = seul ? document.getElementById('wifi-mdp').value : '';
+  var wifi = nom ? qrLocal(wifiTexte(nom, mdp)) : '';
+  f.innerHTML = POINTS.map(function(p){
+    var url = 'https://www.locair.fr/retrait?p=' + encodeURIComponent(p.id);
+    var qr = 'https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=0&ecc=M&data=' + encodeURIComponent(url);
+    return '<section class="affiche' + (wifi ? ' avec-wifi' : '') + '">' +
+      '<div class="bandeau"><div class="logo">Loc<em>’Air</em></div></div>' +
+      '<p class="titre">Retrait et retour</p>' +
+      '<p class="en">Pick-up and return</p>' +
+      '<div class="qr"><img src="' + qr + '" alt="QR code"></div>' +
+      (wifi ? '<div class="wifi"><img src="' + wifi + '" alt="QR code Wi-Fi"><p>Pas de réseau ?<br>Wi-Fi offert ici<span>No signal? Free Wi-Fi: ' + esc(nom) + '</span></p></div>' : '') +
+      '<p class="point">' + esc(p.nom) + (p.exemple ? ' (exemple)' : '') + '</p>' +
+    '</section>';
+  }).join('');
+}
+fetch('/api/points-retrait' + (seul === 'test-locair' ? '?test=1' : '')).then(function(r){ return r.json(); }).then(function(j){
+  POINTS = ((j && j.points) || []).filter(function(p){ return !seul || p.id === seul; });
+  // Le Wi-Fi est propre à chaque boutique : seulement sur l'affiche d'un seul point.
+  if(seul && POINTS.length) document.getElementById('wifi-form').style.display = '';
+  dessiner();
+}).catch(function(){ document.getElementById('feuilles').innerHTML = '<p class="vide">Impossible de charger les points. Rechargez la page.</p>'; });
 </script>
 </body>
 </html>

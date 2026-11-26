@@ -1466,6 +1466,7 @@ async function envoyerRappelsClickCollect(supabase, todayStr) {
       const html = `<div style="font-family:Arial,sans-serif;color:#0E1726;max-width:560px">
 <h2 style="color:#1A5EDB;margin:0 0 12px">${T('Bonjour', 'Hello', 'Hola')} ${esc(r.prenom || '')}</h2>
 <p>${combien}${texte}</p>
+${retrait && pt ? `<p style="font-size:15px">${T('Pas de réseau dans la boutique ?', 'No signal in the shop?', '¿Sin cobertura en la tienda?')} <a href="https://www.locair.fr/retrait?p=${encodeURIComponent(pt.id)}" style="color:#1A5EDB;font-weight:bold">${T('Ouvrez votre écran de retrait', 'Open your pick-up screen', 'Abre tu pantalla de recogida')}</a> ${T('juste avant d’entrer.', 'just before going in.', 'justo antes de entrar.')}</p>` : ''}
 ${itin ? `<p><a href="${esc(itin)}" style="display:inline-block;background:#1A5EDB;color:#fff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:10px">${T('Voir l’itinéraire', 'Get directions', 'Ver el itinerario')}</a></p>` : ''}
 <p style="font-size:15px">${T('Votre numéro de commande', 'Your order number', 'Tu número de pedido')} : <b style="font-size:20px;letter-spacing:.12em">${numComptoir(r.ref)}</b></p>
 <p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
