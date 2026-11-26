@@ -1057,7 +1057,8 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .pf-sugg button{display:block;width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid #EEF1F6;padding:12px 14px;font:600 15px var(--body);cursor:pointer}
 .pf-sugg{border-radius:14px;overflow:hidden;margin:-8px 0 10px;box-shadow:0 10px 30px -14px rgba(11,30,68,.35)}
 .pf-ok{display:block;color:#12B76A;font-weight:800;margin:-6px 0 12px}
-.pf-lien{display:block;background:none;border:0;color:#1A5EDB;font:800 14px var(--body);margin:-6px 0 16px;padding:0;cursor:pointer}
+.pf-liens{display:flex;justify-content:space-between;margin:-6px 0 16px}.pf-lien{background:none;border:0;color:#1A5EDB;font:800 14px var(--body);padding:0;cursor:pointer}
+#modal-overlay-el{z-index:950}
 .pf-case{display:flex!important;flex-wrap:wrap;align-items:center;gap:4px 10px}.pf-case input{width:22px;height:22px}.pf-case small{flex-basis:100%;padding-left:32px}
 .mc-vide{text-align:center;font:900 22px var(--body);color:#12B76A;padding:40px 0}
 @media(max-width:600px){.mc{padding-bottom:56px}.mc h2{font-size:30px}.mc-grille{gap:10px}.mc-tuile{min-height:150px;padding:18px 14px 14px}.mc-tuile b{font-size:54px}.mc-tuile span{font-size:16px;padding-right:34px}.mc-tuile svg{width:32px;height:32px;right:12px;bottom:12px}}
@@ -12269,7 +12270,7 @@ async function prFiche(id){
     <p class="pf-t">Fermé le</p>
     <div class="pf-choix pf-jours">${J.map(([j,t]) => `<button type="button" class="${PR_FICHE.fermes.includes(j)?'on':''}" onclick="pfJour(${j},this)">${t}</button>`).join('')}</div>
     <label>Fiche partenaire du commerçant<select id="pf-code">${pfPartenaires(p)}</select></label>
-    <button type="button" class="pf-lien" onclick="mcFermer();switchAdminTab('partenaires')">+ Créer sa fiche dans Partenaires</button>
+    <div class="pf-liens"><button type="button" class="pf-lien" onclick="pfModifierFiche()">Modifier sa fiche</button><button type="button" class="pf-lien" onclick="mcFermer();switchAdminTab('partenaires')">+ Créer une fiche</button></div>
     <label class="pf-case"><input type="checkbox" id="pf-ouvert" ${!p || !p.exemple ? 'checked' : ''}> Ouvert aux réservations <small>(décoché : visible, paiement refusé)</small></label>
     <button type="button" class="mc-nouv" id="pf-ok" onclick="pfEnregistrer()">${p ? 'Enregistrer' : 'Créer le point'}</button>
     ${p && f.cree_admin && !f.du_code ? `<button type="button" class="mc-mode" style="color:#D92D20" onclick="pfRetirer()">Retirer ce point</button>` : ''}
@@ -12285,6 +12286,24 @@ function pfPartenaires(p){
     return `<option value="${escAttr(c)}"${c === actuel ? ' selected' : ''}${autre ? ' disabled' : ''}>${escHtml(x.nom || c)}${x.telephone ? ' · ' + escHtml(x.telephone) : ''}${autre ? ' — déjà à ' + escHtml(autre) : ''}</option>`; }).join('');
   const inconnu = actuel && !liste.some(x => String(x.code||'').toLowerCase() === actuel) ? `<option value="${escAttr(actuel)}" selected>${escHtml(actuel)} (fiche introuvable)</option>` : '';
   return `<option value="">— Pas encore de fiche —</option>${inconnu}${opts}`;
+}
+// Ouvre la fiche partenaire choisie par-dessus le formulaire du point.
+function pfModifierFiche(){
+  const c = document.getElementById('pf-code').value;
+  const part = PARTENAIRES_CACHE.find(x => String(x.code||'').toLowerCase() === c);
+  if(!part){ showToast('Choisis d’abord une fiche dans la liste.', 'error'); return; }
+  editPartenaireFiche(part.id);
+  // Fiche fermée : on relit les fiches et la liste du point se met à jour.
+  const iv = setInterval(async () => {
+    if(document.getElementById('modal-overlay-el')) return;
+    clearInterval(iv);
+    try{ const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}); const d = await r.json(); if(r.ok) PARTENAIRES_CACHE = d.partenaires || []; }catch(e){ return; }
+    const sel = document.getElementById('pf-code'); if(!sel) return;
+    const maj = PARTENAIRES_CACHE.find(x => x.id === part.id);
+    const pt = PR_FICHE.id ? (PR_DATA.points||[]).find(x => x.id === PR_FICHE.id) : null;
+    sel.innerHTML = pfPartenaires(pt);
+    if(maj) sel.value = String(maj.code||'').toLowerCase();
+  }, 400);
 }
 function pfStock(n, b){ PR_FICHE.stock = n; document.querySelectorAll('#pf-stock button').forEach(x => x.classList.toggle('on', x === b)); }
 function pfJour(j, b){ const f = PR_FICHE.fermes, i = f.indexOf(j); if(i < 0) f.push(j); else f.splice(i, 1); b.classList.toggle('on', i < 0); }
