@@ -290,10 +290,13 @@ C'est l'état réel, mesuré sur les 27 pages publiques.
 | Style | 3 828 lignes dans la page | `locair.css` partagé |
 | La goutte | absente | présente |
 
-**Ancienne :** `index.html`, cgv, mentions-legales, confidentialite, madrid,
-madrid-en, reunion, 404, prolongation, retard, nouvelle-version.
+**Ancienne :** `index.html`, madrid, madrid-en, reunion.
 
-**Nouvelle :** version-b, pro, les 5 pages de ville, les 7 articles de blog.
+**Nouvelle :** version-b, pro, les 5 pages de ville, les 7 articles de blog,
+cgv, mentions-legales, confidentialite, 404, prolongation, retard,
+nouvelle-version (vérifié dans le code réel le 26/11 : ces six dernières
+utilisent déjà `marque.css` — la liste ci-dessus les comptait à tort comme
+pas encore migrées).
 
 Le vert de l'ancienne, `#16a34a`, n'est pas une couleur choisie : c'est le vert
 par défaut d'une bibliothèque de code. Son contraste sur blanc est **3,3** —
@@ -301,9 +304,9 @@ sous la norme pour du texte. Le sarcelle maison est à **6,16**.
 
 **Ce qu'il reste à faire, dans l'ordre :**
 
-1. Les six pages de service et légales (cgv, mentions-legales, confidentialite,
-   404, prolongation, retard). Presque pas de mise en page, et ce sont celles
-   qu'on lit **juste avant de payer**.
+1. Madrid, Madrid-EN, Réunion. Trois vraies pages d'atterrissage (500 à
+   1 100 lignes), indexées, avec du vrai trafic — à reprendre une par une,
+   pas d'un coup.
 2. Les deux images de partage. `locair.fr` et Madrid envoient la photo,
    tout le reste envoie la carte au logo. Il en faut une seule.
 3. `index.html`. La plus grosse, celle qui porte tout le trafic — et celle que
